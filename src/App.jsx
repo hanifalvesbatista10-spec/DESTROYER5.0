@@ -2,8 +2,6 @@ import { useState, useMemo } from "react";
 
 const RED_NUMS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 
-// PB e VA: 0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10
-// PA e VB: 26,3,35,12,28,7,29,18,22,9,31,14,20,1,33,16,24,5
 const LADO_RACE = {
    0:"PB e VA", 32:"PB e VA", 15:"PB e VA", 19:"PB e VA",  4:"PB e VA",
   21:"PB e VA",  2:"PB e VA", 25:"PB e VA", 17:"PB e VA", 34:"PB e VA",
@@ -27,18 +25,22 @@ const GP_MAP = {
    2:"d1P", 4:"d1P", 6:"d1P", 8:"d1P",10:"d1P",11:"d1P",
 };
 
-// Ruas: cada dúzia tem 4 ruas de 3 números
-// D1: R1=1-3, R2=4-6, R3=7-9, R4=10-12
-// D2: R1=13-15, R2=16-18, R3=19-21, R4=22-24
-// D3: R1=25-27, R2=28-30, R3=31-33, R4=34-36
-// 0: própria rua → "0"
 function getRua(n) {
   if (n === 0) return "0";
-  const pos = ((n - 1) % 12);
+  const pos = (n - 1) % 12;
   if (pos <= 2) return "R1";
   if (pos <= 5) return "R2";
   if (pos <= 8) return "R3";
   return "R4";
+}
+
+// Colunas da roleta: C1=1,4,7,10... C2=2,5,8,11... C3=3,6,9,12...
+function getColuna(n) {
+  if (n === 0) return "0";
+  const r = n % 3;
+  if (r === 1) return "C1";
+  if (r === 2) return "C2";
+  return "C3";
 }
 
 function getColor(n)    { if(n===0) return "Verde"; if(RED_NUMS.has(n)) return "Vermelho"; return "Preto"; }
@@ -60,6 +62,7 @@ function buildEntry(n, id) {
     paridade: getParidade(n),
     gp:       getGP(n),
     rua:      getRua(n),
+    coluna:   getColuna(n),
   };
 }
 
@@ -101,16 +104,39 @@ const PAR_CELL = {
   Ímpar:  { bg:"#4b5563", text:"#e5e7eb" },
   "—":    { bg:"#111",   text:"#444444" },
 };
-// Ruas — 4 tons distintos, tonalidades não usadas: ciano, magenta escuro, oliva, índigo
 const RUA_CELL = {
-  "R1": { bg:"#4a0080", text:"#e9d5ff" },  // ciano escuro
-  "R2": { bg:"#005a5a", text:"#99f6e4" },  // laranja queimado
-  "R3": { bg:"#7a1c4b", text:"#fbcfe8" },  // verde oliva
-  "R4": { bg:"#1a3a1a", text:"#bbf7d0" },  // índigo/lilás escuro
-  "0":  { bg:"#1B7A3E", text:"#ffffff" },  // verde (igual ao zero)
+  "R1": { bg:"#4a0080", text:"#e9d5ff" },
+  "R2": { bg:"#005a5a", text:"#99f6e4" },
+  "R3": { bg:"#7a1c4b", text:"#fbcfe8" },
+  "R4": { bg:"#1a3a1a", text:"#bbf7d0" },
+  "0":  { bg:"#1B7A3E", text:"#ffffff" },
+};
+// Colunas — cores distintas de vizinhos (PAR/ÍMPAR e RUA)
+const COLUNA_CELL = {
+  "C1": { bg:"#4a5320", text:"#e5e5e5" },  // verde militar
+  "C2": { bg:"#0891b2", text:"#0a0a0a" },  // ciano
+  "C3": { bg:"#ea580c", text:"#1a1a1a" },  // laranja
+  "0":  { bg:"#1B7A3E", text:"#ffffff" },
 };
 
+const RUA_PAR_CELL = {
+  "R. Ímpar": { bg:"#4a0080", text:"#e9d5ff" },
+  "R. Par":   { bg:"#005a5a", text:"#99f6e4" },
+};
 const GOLD = "#D4AF37";
+
+// ── Definição das colunas toggleáveis ────────────────────────────────────────
+const COL_DEFS = [
+  { key:"seq",      label:"#",         toggleable: false },
+  { key:"num",      label:"Nº",        toggleable: false },
+  { key:"cor",      label:"COR",       toggleable: true  },
+  { key:"lado",     label:"LADO RACE", toggleable: true  },
+  { key:"duzia",    label:"DÚZIA",     toggleable: true  },
+  { key:"paridade", label:"PAR/ÍMPAR", toggleable: true  },
+  { key:"coluna",   label:"COLUNA",    toggleable: true  },
+  { key:"rua",      label:"RUA",       toggleable: true  },
+  { key:"regiao",   label:"REGIÃO",    toggleable: true  },
+];
 
 // ── Micro estatística HORIZONTAL ─────────────────────────────────────────────
 function countBy(arr, key, values) {
@@ -122,7 +148,7 @@ function countBy(arr, key, values) {
 function StatBlockH({ title, data, palette }) {
   const total = Object.values(data).reduce((a,b)=>a+b,0);
   return (
-    <div style={{ flex:1, minWidth:90 }}>
+    <div style={{ flex:1, minWidth:80 }}>
       <div style={{ fontSize:7, letterSpacing:"0.15em", color:"#CC0000", fontWeight:"bold", marginBottom:4, textTransform:"uppercase" }}>
         {title}
       </div>
@@ -132,7 +158,7 @@ function StatBlockH({ title, data, palette }) {
         return (
           <div key={k} style={{ display:"flex", alignItems:"center", gap:4, marginBottom:2 }}>
             <div style={{
-              width:56, fontSize:8, color:p.text, textAlign:"center",
+              width:52, fontSize:8, color:p.text, textAlign:"center",
               background:p.bg, padding:"1px 3px", borderRadius:1,
               whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
               fontFamily:"Arial, sans-serif", fontWeight:"bold", flexShrink:0,
@@ -152,8 +178,17 @@ function StatBlockH({ title, data, palette }) {
 let idCounter = 0;
 
 export default function DestroyerRaceTable() {
-  const [entries, setEntries] = useState([]);
-  const [input, setInput]     = useState("");
+  const [entries, setEntries]   = useState([]);
+  const [input, setInput]       = useState("");
+
+  // estado de visibilidade: todas visíveis por default
+  const initVisible = {};
+  COL_DEFS.forEach(c => { initVisible[c.key] = true; });
+  const [visible, setVisible] = useState(initVisible);
+
+  const toggleCol = (key) => {
+    setVisible(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const last14 = useMemo(() => entries.slice(-14), [entries]);
 
@@ -163,7 +198,8 @@ export default function DestroyerRaceTable() {
     regiao:   countBy(last14, "regiao",   ["Tier","Orphelins","Voisins"]),
     duzia:    countBy(last14, "duzia",    ["D1","D2","D3"]),
     paridade: countBy(last14, "paridade", ["Par","Ímpar"]),
-    rua:      countBy(last14, "rua",      ["R1","R2","R3","R4","0"]),
+    ruaParidade: (() => { const imp = last14.filter(e => e.rua==="R1"||e.rua==="R3").length; const par = last14.filter(e => e.rua==="R2"||e.rua==="R4").length; return {"R. Ímpar": imp, "R. Par": par}; })(),
+    coluna:   countBy(last14, "coluna",   ["C1","C2","C3"]),
   }), [last14]);
 
   function addNumbers() {
@@ -178,43 +214,73 @@ export default function DestroyerRaceTable() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addNumbers(); }
   }
 
-  // padding reduzido em 25%: era "7px 10px" → "5px 8px", era "6px 6px" → "4px 5px"
-  const HEADERS = ["#", "Nº", "COR", "LADO RACE", "DÚZIA", "PAR/ÍMPAR", "RUA", "REGIÃO"];
+  const visibleCols = COL_DEFS.filter(c => visible[c.key]);
+  const totalCols   = visibleCols.length;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0d0d0d", color:"#e5e5e5", fontFamily:"Arial, sans-serif" }}>
 
-      <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"16px 16px 0 16px" }}>
+      <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"12px 16px 0 16px" }}>
 
         {/* Título */}
-        <div style={{ marginBottom:10, display:"flex", alignItems:"center", gap:12 }}>
-          <span style={{ fontSize:14, letterSpacing:"0.3em", color:"#CC0000", fontWeight:"bold" }}>DESTROYER</span>
-          <span style={{ fontSize:10, letterSpacing:"0.2em", color:"#555" }}>RACE TABLE</span>
+        <div style={{ marginBottom:8, display:"flex", alignItems:"center", gap:12 }}>
+          <span style={{ fontSize:13, letterSpacing:"0.3em", color:"#CC0000", fontWeight:"bold" }}>DESTROYER</span>
+          <span style={{ fontSize:9, letterSpacing:"0.2em", color:"#555" }}>RACE TABLE</span>
           {entries.length > 0 && (
-            <span style={{ marginLeft:"auto", fontSize:10, color:"#555" }}>{entries.length} números</span>
+            <span style={{ marginLeft:"auto", fontSize:9, color:"#555" }}>{entries.length} números</span>
           )}
         </div>
 
         {/* Tabela */}
-        <div style={{ flex:1, overflowY:"auto", marginBottom:10 }}>
+        <div style={{ flex:1, overflowY:"auto", marginBottom:8 }}>
           <table style={{ width:"100%", borderCollapse:"collapse", borderTop:"1px solid #000", borderLeft:"1px solid #000" }}>
             <thead>
               <tr>
-                {HEADERS.map(h => (
-                  <th key={h} style={{
-                    background:"#CC0000", color:"#ffffff",
-                    padding:"5px 6px", textAlign:"center",
-                    fontSize:10, fontWeight:"bold", letterSpacing:"0.07em",
-                    borderBottom:"2px solid #000", borderRight:"1px solid #000",
-                    whiteSpace:"nowrap", fontFamily:"Arial, sans-serif"
-                  }}>{h}</th>
+                {COL_DEFS.map((col, ci) => {
+                  if (!visible[col.key]) return null;
+                  const isLast = ci === COL_DEFS.length - 1 || COL_DEFS.slice(ci+1).every(c => !visible[c.key]);
+                  return (
+                    <th
+                      key={col.key}
+                      onClick={col.toggleable ? () => toggleCol(col.key) : undefined}
+                      title={col.toggleable ? "Clique para ocultar" : ""}
+                      style={{
+                        background: "#CC0000",
+                        color: "#ffffff",
+                        padding:"5px 6px", textAlign:"center",
+                        fontSize:9, fontWeight:"bold", letterSpacing:"0.07em",
+                        borderBottom:"2px solid #000", borderRight:"1px solid #000",
+                        whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
+                        cursor: col.toggleable ? "pointer" : "default",
+                        userSelect:"none",
+                      }}
+                    >
+                      {col.label}
+                    </th>
+                  );
+                })}
+                {/* Colunas ocultas: mostrar como ícone clicável no header */}
+                {COL_DEFS.filter(c => c.toggleable && !visible[c.key]).map(col => (
+                  <th
+                    key={"hidden-"+col.key}
+                    onClick={() => toggleCol(col.key)}
+                    title={`Mostrar ${col.label}`}
+                    style={{
+                      background:"#1a0000", color:"#CC0000",
+                      padding:"5px 4px", textAlign:"center",
+                      fontSize:8, fontWeight:"bold",
+                      borderBottom:"2px solid #000", borderRight:"1px solid #000",
+                      whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
+                      cursor:"pointer", userSelect:"none", letterSpacing:0,
+                    }}
+                  >▶</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {entries.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign:"center", padding:"3rem", color:"#333", fontSize:12, background:"#0d0d0d", borderBottom:"1px solid #1a1a1a", borderRight:"1px solid #1a1a1a" }}>
+                  <td colSpan={totalCols} style={{ textAlign:"center", padding:"3rem", color:"#333", fontSize:12, background:"#0d0d0d", borderBottom:"1px solid #1a1a1a", borderRight:"1px solid #1a1a1a" }}>
                     Nenhum número inserido
                   </td>
                 </tr>
@@ -235,44 +301,59 @@ export default function DestroyerRaceTable() {
                   }}>{children}</td>
                 );
 
+                // Determina qual é a última coluna visível
+                const lastVisKey = [...COL_DEFS].reverse().find(c => visible[c.key])?.key;
+
                 return (
                   <tr key={e.id}>
                     {/* # */}
-                    <td style={{
-                      background:"#0d0d0d", color:"#444",
-                      fontSize:9, textAlign:"center", padding:"1px 3px",
-                      borderTop:bTop, borderBottom:bBot,
-                      borderLeft: isGold ? `2px solid ${GOLD}` : "none",
-                      borderRight:"1px solid #000",
-                      fontFamily:"Arial, sans-serif", width:24,
-                    }}>{i + 1}</td>
+                    {visible["seq"] && (
+                      <td style={{
+                        background:"#0d0d0d", color:"#444",
+                        fontSize:8, textAlign:"center", padding:"1px 3px",
+                        borderTop:bTop, borderBottom:bBot,
+                        borderLeft: isGold ? `2px solid ${GOLD}` : "none",
+                        borderRight:"1px solid #000",
+                        fontFamily:"Arial, sans-serif", width:22,
+                      }}>{i + 1}</td>
+                    )}
 
-                    {/* Bola — menor: 32px */}
-                    <td style={{
-                      background:"#0d0d0d", padding:"1px 3px", textAlign:"center",
-                      borderTop:bTop, borderBottom:bBot, borderRight:"1px solid #000", width:46,
-                    }}>
-                      <div style={{
-                        display:"inline-flex", flexDirection:"column",
-                        alignItems:"center", justifyContent:"center",
-                        width:24, height:24, borderRadius:"50%",
-                        background: NUM_BALL[e.cor].bg,
-                        border:`2px solid ${NUM_BALL[e.cor].border}`,
-                        color: NUM_BALL[e.cor].text, fontFamily:"Arial, sans-serif",
+                    {/* Bola */}
+                    {visible["num"] && (
+                      <td style={{
+                        background:"#0d0d0d", padding:"1px 3px", textAlign:"center",
+                        borderTop:bTop, borderBottom:bBot, borderRight:"1px solid #000", width:40,
                       }}>
-                        <span style={{ fontSize:10, fontWeight:"bold", lineHeight:1 }}>{e.num}</span>
-                        {e.gp !== "—" && (
-                          <span style={{ fontSize:6, fontWeight:"normal", opacity:0.85, lineHeight:1, marginTop:0 }}>{e.gp}</span>
-                        )}
-                      </div>
-                    </td>
+                        <div style={{
+                          display:"inline-flex", flexDirection:"column",
+                          alignItems:"center", justifyContent:"center",
+                          width:24, height:24, borderRadius:"50%",
+                          background: NUM_BALL[e.cor].bg,
+                          border:`2px solid ${NUM_BALL[e.cor].border}`,
+                          color: NUM_BALL[e.cor].text, fontFamily:"Arial, sans-serif",
+                        }}>
+                          <span style={{ fontSize:10, fontWeight:"bold", lineHeight:1 }}>{e.num}</span>
+                          {e.gp !== "—" && (
+                            <span style={{ fontSize:6, fontWeight:"normal", opacity:0.85, lineHeight:1 }}>{e.gp}</span>
+                          )}
+                        </div>
+                      </td>
+                    )}
 
-                    <Cell scheme={COR_CELL[e.cor]}>{e.corAbrev}</Cell>
-                    <Cell scheme={LADO_CELL[e.lado]}>{e.lado}</Cell>
-                    <Cell scheme={DUZIA_CELL[e.duzia]}>{e.duzia}</Cell>
-                    <Cell scheme={PAR_CELL[e.paridade]}>{e.paridade.toUpperCase()}</Cell>
-                    <Cell scheme={RUA_CELL[e.rua] || RUA_CELL["R1"]}>{e.rua}</Cell>
-                    <Cell scheme={REGIAO_CELL[e.regiao]} isLast={true}>{e.regiao.toUpperCase()}</Cell>
+                    {visible["cor"]      && <Cell scheme={COR_CELL[e.cor]}                   isLast={lastVisKey==="cor"}>{e.corAbrev}</Cell>}
+                    {visible["lado"]     && <Cell scheme={LADO_CELL[e.lado]}                  isLast={lastVisKey==="lado"}>{e.lado}</Cell>}
+                    {visible["duzia"]    && <Cell scheme={DUZIA_CELL[e.duzia]}                isLast={lastVisKey==="duzia"}>{e.duzia}</Cell>}
+                    {visible["paridade"] && <Cell scheme={PAR_CELL[e.paridade]}               isLast={lastVisKey==="paridade"}>{e.paridade.toUpperCase()}</Cell>}
+                    {visible["coluna"]   && <Cell scheme={COLUNA_CELL[e.coluna]||COLUNA_CELL["C1"]} isLast={lastVisKey==="coluna"}>{e.coluna}</Cell>}
+                    {visible["rua"]      && <Cell scheme={RUA_CELL[e.rua]||RUA_CELL["R1"]}   isLast={lastVisKey==="rua"}>{e.rua}</Cell>}
+                    {visible["regiao"]   && <Cell scheme={REGIAO_CELL[e.regiao]}              isLast={lastVisKey==="regiao"}>{e.regiao.toUpperCase()}</Cell>}
+
+                    {/* Placeholder cells para colunas ocultas */}
+                    {COL_DEFS.filter(c => c.toggleable && !visible[c.key]).map(col => (
+                      <td key={"ph-"+col.key} style={{
+                        background:"#0a0a0a", borderBottom:bBot, borderRight:"1px solid #111", width:10,
+                      }}/>
+                    ))}
                   </tr>
                 );
               })}
@@ -281,9 +362,8 @@ export default function DestroyerRaceTable() {
         </div>
       </div>
 
-      {/* ── Rodapé: input + estatísticas ── */}
+      {/* ── Rodapé ── */}
       <div style={{ background:"#080808", borderTop:"1px solid #1e1e1e", padding:"10px 16px" }}>
-
         <div style={{ display:"flex", gap:8, marginBottom: last14.length > 0 ? 10 : 0 }}>
           <textarea
             value={input}
@@ -310,19 +390,21 @@ export default function DestroyerRaceTable() {
         </div>
 
         {last14.length > 0 && (
-          <div style={{ display:"flex", gap:10 }}>
-            <div style={{ fontSize:7, letterSpacing:"0.15em", color:"#CC0000", fontWeight:"bold", textTransform:"uppercase", writingMode:"vertical-rl", transform:"rotate(180deg)", alignSelf:"center", marginRight:2 }}>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            <div style={{ fontSize:7, letterSpacing:"0.15em", color:"#CC0000", fontWeight:"bold", textTransform:"uppercase", writingMode:"vertical-rl", transform:"rotate(180deg)", alignSelf:"center" }}>
               ult 14
             </div>
             <StatBlockH title="Cor"         data={stats.cor}      palette={COR_CELL}    />
             <div style={{ width:"0.5px", background:"#1e1e1e" }}/>
-            <StatBlockH title="Lado Race"   data={stats.lado}     palette={LADO_CELL}   />
+            <StatBlockH title="Lado"        data={stats.lado}     palette={LADO_CELL}   />
             <div style={{ width:"0.5px", background:"#1e1e1e" }}/>
             <StatBlockH title="Dúzia"       data={stats.duzia}    palette={DUZIA_CELL}  />
             <div style={{ width:"0.5px", background:"#1e1e1e" }}/>
-            <StatBlockH title="Par / Ímpar" data={stats.paridade} palette={PAR_CELL}    />
+            <StatBlockH title="Par/Ímpar"   data={stats.paridade} palette={PAR_CELL}    />
             <div style={{ width:"0.5px", background:"#1e1e1e" }}/>
-            <StatBlockH title="Rua"         data={stats.rua}      palette={RUA_CELL}    />
+            <StatBlockH title="Coluna"      data={stats.coluna}   palette={COLUNA_CELL} />
+            <div style={{ width:"0.5px", background:"#1e1e1e" }}/>
+            <StatBlockH title="Rua" data={stats.ruaParidade} palette={RUA_PAR_CELL} />
             <div style={{ width:"0.5px", background:"#1e1e1e" }}/>
             <StatBlockH title="Região"      data={stats.regiao}   palette={REGIAO_CELL} />
           </div>
