@@ -90,6 +90,7 @@ const CELL_SCHEME = (e, key) => {
 const INIT_COLS = [
   { key:"seq",      label:"#",         toggleable:false },
   { key:"num",      label:"Nº",        toggleable:false },
+  { key:"hist",     label:"PUXOU",     toggleable:false },
   { key:"cor",      label:"COR",       toggleable:true  },
   { key:"lado",     label:"LADO RACE", toggleable:true  },
   { key:"duzia",    label:"DÚZIA",     toggleable:true  },
@@ -98,6 +99,17 @@ const INIT_COLS = [
   { key:"rua",      label:"RUA",       toggleable:true  },
   { key:"regiao",   label:"REGIÃO",    toggleable:true  },
 ];
+
+// Retorna os numeros que saíram APÓS cada ocorrência anterior do mesmo num
+function getHistorico(entries, currentIndex, num) {
+  const nexts = [];
+  for (let i = 0; i < currentIndex; i++) {
+    if (entries[i].num === num && i + 1 < entries.length) {
+      nexts.push(entries[i + 1]);
+    }
+  }
+  return nexts.slice(-5);
+}
 
 function countBy(arr, key, values) {
   const r={};
@@ -287,6 +299,29 @@ export default function DestroyerRaceTable() {
                           </div>
                         </td>
                       );
+                      if (col.key==="hist") {
+                        const hist = getHistorico(entries, i, e.num);
+                        return (
+                          <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:82}}>
+                            <div style={{display:"flex",alignItems:"center",gap:2,flexWrap:"nowrap"}}>
+                              {hist.length===0
+                                ? <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
+                                : hist.map((h,hi) => (
+                                  <div key={hi} style={{
+                                    display:"inline-flex",alignItems:"center",justifyContent:"center",
+                                    width:16,height:16,borderRadius:"50%",flexShrink:0,
+                                    background:NUM_BALL[h.cor].bg,
+                                    border:`1px solid ${NUM_BALL[h.cor].border}`,
+                                    color:NUM_BALL[h.cor].text,
+                                    fontSize:7,fontWeight:"bold",
+                                  }}>{h.num}</div>
+                                ))
+                              }
+                            </div>
+                          </td>
+                        );
+                      }
                       return <Cell key={col.key} ckey={col.key} isLast={isLast}/>;
                     })}
                     {[...hidden].map(key=>(
