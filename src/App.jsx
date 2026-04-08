@@ -134,6 +134,8 @@ export default function DestroyerRaceTable() {
   const [input, setInput]     = useState("");
   const [colOrder, setColOrder] = useState(INIT_COLS.map(c=>c.key));
   const [hidden, setHidden]     = useState(new Set());
+  const [acertos, setAcertos]   = useState(0);
+  const [erros, setErros]       = useState(0);
 
   const dragKey   = useRef(null);
   const dragOver  = useRef(null);
@@ -307,8 +309,37 @@ export default function DestroyerRaceTable() {
               padding:"7px 10px",fontSize:12,fontFamily:"Arial, sans-serif",resize:"none",outline:"none"}}/>
           <button onClick={addNumbers} style={{padding:"0 20px",background:"#CC0000",border:"none",borderRadius:2,
             color:"#fff",fontSize:11,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",fontFamily:"Arial, sans-serif"}}>ADD</button>
-          <button onClick={()=>setEntries([])} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",
+          <button onClick={()=>{ setEntries([]); setAcertos(0); setErros(0); }} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",
             borderRadius:2,color:"#666",fontSize:11,cursor:"pointer",fontFamily:"Arial, sans-serif"}}>CLR</button>
+          <button onClick={()=>setEntries(prev=>prev.slice(0,-1))} disabled={entries.length===0} style={{padding:"0 14px",background:"transparent",border:"1px solid #444",
+            borderRadius:2,color:entries.length===0?"#333":"#aaa",fontSize:11,cursor:entries.length===0?"default":"pointer",fontFamily:"Arial, sans-serif"}}>↩</button>
+        </div>
+
+        {/* Contador de tentativas */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <button onClick={()=>setAcertos(a=>a+1)} style={{flex:1,padding:"3px 0",background:"#14532d",border:"none",borderRadius:3,
+            color:"#4ade80",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.05em"}}>
+            ✓ ACERTO
+          </button>
+          <button onClick={()=>setErros(e=>e+1)} style={{flex:1,padding:"3px 0",background:"#7f1d1d",border:"none",borderRadius:3,
+            color:"#fca5a5",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.05em"}}>
+            ✗ ERRO
+          </button>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:60,background:"#111",borderRadius:3,padding:"4px 10px",border:"0.5px solid #222"}}>
+            <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>tentativas</span>
+            <div style={{display:"flex",gap:10,marginTop:2}}>
+              <span style={{fontSize:13,fontWeight:"bold",color:"#4ade80"}}>{acertos}</span>
+              <span style={{fontSize:13,color:"#333"}}>|</span>
+              <span style={{fontSize:13,fontWeight:"bold",color:"#f87171"}}>{erros}</span>
+            </div>
+            <span style={{fontSize:7,color:"#555"}}>acertos | erros</span>
+          </div>
+          {(acertos+erros)>0 && (
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:48,background:"#111",borderRadius:3,padding:"4px 8px",border:"0.5px solid #222"}}>
+              <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>taxa</span>
+              <span style={{fontSize:13,fontWeight:"bold",color: acertos/(acertos+erros)>=0.5?"#4ade80":"#f87171"}}>{Math.round(acertos/(acertos+erros)*100)}%</span>
+            </div>
+          )}
         </div>
 
         {last14.length>0&&(
