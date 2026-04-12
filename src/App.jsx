@@ -124,6 +124,138 @@ function getHistorico(entries, currentIndex, num) {
   return nexts.slice(-5);
 }
 
+
+// ── Painel Repetição / Alternância ───────────────────────────────────────────
+// Para cada valor específico de um campo, conta rep (saiu de novo na próxima) e alt (não saiu)
+function calcRepAltPerValue(arr, field, value) {
+  let rep = 0, alt = 0;
+  for (let i = 0; i < arr.length - 1; i++) {
+    if ((arr[i][field]||"—") !== value) continue;
+    const next = arr[i+1][field]||"—";
+    if (next === value) rep++; else alt++;
+  }
+  const total = rep + alt;
+  return { rep, alt, repPct: total>0?Math.round(rep/total*100):0, altPct: total>0?Math.round(alt/total*100):0, total };
+}
+
+const RA_FIELDS = [
+  { key:"cor",      label:"Cor",       values:["Vermelho","Preto","Verde"],        palette:{"Vermelho":{bg:"#CC0000",text:"#fff"},"Preto":{bg:"#222",text:"#ddd"},"Verde":{bg:"#1B7A3E",text:"#fff"}} },
+  { key:"lado",     label:"Lado",      values:["PB e VA","PA e VB"],               palette:{"PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"},"PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}} },
+  { key:"duzia",    label:"Dúzia",     values:["D1","D2","D3"],                    palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
+  { key:"paridade", label:"Par/Ímpar", values:["Par","Ímpar"],                     palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
+  { key:"coluna",   label:"Coluna",    values:["C1","C2","C3"],                    palette:{"C1":{bg:"#4a5320",text:"#e5e5e5"},"C2":{bg:"#0891b2",text:"#0a0a0a"},"C3":{bg:"#ea580c",text:"#1a1a1a"}} },
+  { key:"parte",    label:"Parte",     values:["P1","P2"],                         palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
+  { key:"regiao",   label:"Região",    values:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
+];
+
+function RepAltPanel({ last14 }) {
+  if (last14.length < 2) return <div style={{color:"#333",fontSize:10,padding:"8px 0"}}>Insira ao menos 2 números</div>;
+  return (
+    <div>
+      {RA_FIELDS.map(({key, label, values, palette}) => (
+        <div key={key} style={{marginBottom:10}}>
+          <div style={{fontSize:7,letterSpacing:"0.12em",color:"#666",textTransform:"uppercase",marginBottom:4,borderBottom:"0.5px solid #1e1e1e",paddingBottom:2}}>{label}</div>
+          {values.map(val => {
+            const {rep, alt, repPct, altPct, total} = calcRepAltPerValue(last14, key, val);
+            if (total === 0) return null;
+            const p = palette[val] || {bg:"#222",text:"#aaa"};
+            return (
+              <div key={val} style={{marginBottom:5}}>
+                <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:2}}>
+                  <div style={{background:p.bg,color:p.text,fontSize:7,fontWeight:"bold",padding:"1px 4px",borderRadius:1,minWidth:36,textAlign:"center",flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{val}</div>
+                  <div style={{flex:1}}/>
+                </div>
+                {/* REP */}
+                <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:1}}>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:"#22c55e",flexShrink:0}}/>
+                  <div style={{width:18,fontSize:7,color:"#22c55e"}}>REP</div>
+                  <div style={{flex:1,height:7,background:"#1a1a1a",borderRadius:1,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:repPct+"%",background:"#166534",transition:"width 0.4s"}}/>
+                  </div>
+                  <div style={{width:22,fontSize:7,color:"#22c55e",textAlign:"right"}}>{repPct}%</div>
+                  <div style={{width:10,fontSize:7,color:"#444",textAlign:"right"}}>{rep}</div>
+                </div>
+                {/* ALT */}
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:"#f97316",flexShrink:0}}/>
+                  <div style={{width:18,fontSize:7,color:"#f97316"}}>ALT</div>
+                  <div style={{flex:1,height:7,background:"#1a1a1a",borderRadius:1,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:altPct+"%",background:"#7c2d12",transition:"width 0.4s"}}/>
+                  </div>
+                  <div style={{width:22,fontSize:7,color:"#f97316",textAlign:"right"}}>{altPct}%</div>
+                  <div style={{width:10,fontSize:7,color:"#444",textAlign:"right"}}>{alt}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Score de Rep/Alt ─────────────────────────────────────────────────────────
+function ScorePanel({ last14 }) {
+  if (last14.length < 2) return null;
+
+  const fields = ["cor","lado","duzia","paridade","coluna","parte","regiao"];
+  let totalRep = 0, totalAlt = 0;
+  fields.forEach(field => {
+    const vals = [...new Set(last14.map(e => e[field]||"—").filter(v=>v!=="—"))];
+    vals.forEach(val => {
+      const {rep, alt} = calcRepAltPerValue(last14, field, val);
+      totalRep += rep;
+      totalAlt += alt;
+    });
+  });
+
+  const total = totalRep + totalAlt;
+  if (total === 0) return null;
+  const score = Math.round((totalRep / total) * 100);
+  const isRepDominant = score >= 70;
+  const isAltDominant = score <= 30;
+  const isExtreme = isRepDominant || isAltDominant;
+  const scoreColor = score >= 60 ? "#22c55e" : score <= 40 ? "#f97316" : "#facc15";
+  const label = score >= 60 ? "REPETIÇÃO" : score <= 40 ? "ALTERNÂNCIA" : "NEUTRO";
+  const labelColor = score >= 60 ? "#22c55e" : score <= 40 ? "#f97316" : "#facc15";
+
+  return (
+    <div style={{
+      marginTop:14,
+      border: isExtreme ? "2px solid " + scoreColor : "0.5px solid #2a2a2a",
+      borderRadius:4,
+      padding:"10px 10px",
+      background:"#0d0d0d",
+      animation: isExtreme ? "pulseBorder 0.9s ease-in-out infinite" : "none",
+      outline: isExtreme ? "2px solid " + scoreColor : "none",
+      outlineOffset: isExtreme ? "-2px" : "0",
+    }}>
+      <div style={{fontSize:7,letterSpacing:"0.15em",color:"#555",textTransform:"uppercase",marginBottom:8}}>Score Geral</div>
+      {/* Barra de score */}
+      <div style={{position:"relative",height:14,background:"#1a1a1a",borderRadius:2,overflow:"hidden",marginBottom:6}}>
+        <div style={{
+          position:"absolute",left:0,top:0,height:"100%",
+          width:score+"%",
+          background: score>=60?"#166534":score<=40?"#7c2d12":"#713f00",
+          transition:"width 0.5s ease",
+        }}/>
+        <div style={{
+          position:"absolute",left:"50%",top:0,bottom:0,width:"1px",background:"#444"
+        }}/>
+      </div>
+      {/* Valor e label */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontSize:20,fontWeight:"bold",color:scoreColor,fontFamily:"Arial, sans-serif"}}>{score}</span>
+        <span style={{fontSize:9,fontWeight:"bold",color:labelColor,letterSpacing:"0.08em"}}>{label}</span>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+        <span style={{fontSize:7,color:"#444"}}>ALT ← 0</span>
+        <span style={{fontSize:7,color:"#444"}}>100 → REP</span>
+      </div>
+    </div>
+  );
+}
+
 function countBy(arr, key, values) {
   const r={};
   values.forEach(v=>{ r[v]=arr.filter(e=>e[key]===v).length; });
@@ -214,8 +346,65 @@ export default function DestroyerRaceTable() {
   const visibleCols = cols.filter(c=>!hidden.has(c.key));
   const lastVisKey  = [...visibleCols].reverse()[0]?.key;
 
+  // Compute which columns have 100% match AND the last occurrence index for each matched key
+  const { pulseKeys, pulseLastIdx } = useMemo(() => {
+    if (entries.length === 0) return { pulseKeys: new Set(), pulseLastIdx: {} };
+    const lastEntry = entries[entries.length - 1];
+    const hist = getHistorico(entries, entries.length - 1, lastEntry.num);
+    if (hist.length === 0) return { pulseKeys: new Set(), pulseLastIdx: {} };
+    const total = hist.length;
+    const threshold = total - 0.1;
+    const keys = new Set();
+    const dominantVal = {};
+
+    const check = (field, vals) => {
+      const counts = {};
+      hist.forEach(h => { const v = h[field]||"—"; counts[v] = (counts[v]||0) + 1; });
+      const maxVal = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+      if (maxVal && maxVal[1] > threshold) { keys.add(field); dominantVal[field] = maxVal[0]; }
+    };
+
+    check("cor",      ["Vermelho","Preto","Verde"]);
+    check("lado",     ["PB e VA","PA e VB"]);
+    check("duzia",    ["D1","D2","D3"]);
+    check("paridade", ["Par","Ímpar"]);
+    check("coluna",   ["C1","C2","C3"]);
+    check("rua",      ["R1","R2","R3","R4"]);
+    check("parte",    ["P1","P2"]);
+    check("regiao",   ["Tier","Orphelins","Voisins"]);
+
+    // For each matched key, find the last occurrence index (excluding the last entry itself)
+    const lastIdx = {};
+    keys.forEach(field => {
+      const val = dominantVal[field];
+      for (let i = entries.length - 2; i >= 0; i--) {
+        if ((entries[i][field]||"—") === val) { lastIdx[field] = i; break; }
+      }
+    });
+
+    return { pulseKeys: keys, pulseLastIdx: lastIdx };
+  }, [entries]);
+
+  const isLastEntry = (i) => i === entries.length - 1;
+
   return (
-    <div style={{display:"flex",flexDirection:"column",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
+    <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
+      <style>{`
+        @keyframes pulseBorder {
+          0%,100% { box-shadow: inset 0 0 0 2px #FFD700, inset 0 0 8px #FFD700; }
+          50%      { box-shadow: inset 0 0 0 2px #fff5a0, inset 0 0 16px #FFD700; }
+        }
+        .pulse-cell {
+          animation: pulseBorder 0.9s ease-in-out infinite;
+          outline: 2px solid #FFD700;
+          outline-offset: -2px;
+          position: relative;
+          z-index: 1;
+        }
+      `}</style>
+
+      {/* ── Coluna central (tabela + rodapé) ── */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
 
       <div style={{flex:1,display:"flex",flexDirection:"column",padding:"12px 16px 0 16px"}}>
 
@@ -280,11 +469,14 @@ export default function DestroyerRaceTable() {
 
                 const Cell = ({ckey, isLast}) => {
                   const scheme = CELL_SCHEME(e,ckey);
+                  const pulse = pulseLastIdx[ckey] === i;
                   return (
-                    <td style={{background:scheme.bg,color:scheme.text,padding:"2px 5px",textAlign:"center",
+                    <td className={pulse ? "pulse-cell" : ""}
+                      style={{background:scheme.bg,color:scheme.text,padding:"2px 5px",textAlign:"center",
                       fontSize:10,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0.02em",whiteSpace:"nowrap",
-                      borderTop:bTop,borderBottom:bBot,
-                      borderRight:isLast&&isGold?`2px solid ${GOLD}`:"1px solid #000"}}>
+                      borderTop: pulse ? "2px solid #FFD700" : bTop,
+                      borderBottom: pulse ? "2px solid #FFD700" : bBot,
+                      borderRight: (isLast&&isGold) ? `2px solid ${GOLD}` : pulse ? "2px solid #FFD700" : "1px solid #000"}}>
                       {CELL_VAL(e,ckey)}
                     </td>
                   );
@@ -412,6 +604,17 @@ export default function DestroyerRaceTable() {
           </div>
         )}
       </div>
+      </div>{/* fim coluna central */}
+
+      {/* ── Painel lateral: Rep/Alt ── */}
+      <div style={{width:200,background:"#080808",borderLeft:"1px solid #1e1e1e",padding:"14px 12px",flexShrink:0,overflowY:"auto",display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
+        <div style={{fontSize:8,letterSpacing:"0.2em",color:"#CC0000",fontWeight:"bold",marginBottom:14,textTransform:"uppercase"}}>
+          Rep / Alt — ult 14
+        </div>
+        <RepAltPanel last14={last14} />
+        <ScorePanel last14={last14} />
+      </div>
+
     </div>
   );
 }
