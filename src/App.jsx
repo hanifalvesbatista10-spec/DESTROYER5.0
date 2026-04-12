@@ -41,6 +41,10 @@ function getColuna(n) {
   const r = n%3;
   if (r===1) return "C1"; if (r===2) return "C2"; return "C3";
 }
+function getAltoBaixo(n) {
+  if (n === 0) return "—";
+  return n <= 18 ? "BAIXO" : "ALTO";
+}
 function getColor(n)    { if(n===0) return "Verde"; if(RED_NUMS.has(n)) return "Vermelho"; return "Preto"; }
 function getLado(n)     { return LADO_RACE[n]||"—"; }
 function getRegiao(n)   { if(TIER_NUMS.has(n)) return "Tier"; if(ORPHELINS.has(n)) return "Orphelins"; return "Voisins"; }
@@ -52,7 +56,7 @@ function getGP(n)       { return GP_MAP[n]||"—"; }
 function buildEntry(n, id) {
   return { id, num:n, cor:getColor(n), corAbrev:getCorAbrev(getColor(n)),
     lado:getLado(n), regiao:getRegiao(n), duzia:getDuzia(n),
-    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n) };
+    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n) };
 }
 function parseInput(raw) {
   return raw.split(/[\s,;\n\r]+/).map(t=>parseInt(t.trim())).filter(n=>!isNaN(n)&&n>=0&&n<=36);
@@ -64,6 +68,11 @@ const LADO_CELL = { "PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"}, "PA e VB":{bg:"#1e3
 const REGIAO_CELL = { Tier:{bg:"#7c2d12",text:"#fdba74"}, Orphelins:{bg:"#854d0e",text:"#fefce8"}, Voisins:{bg:"#166534",text:"#bbf7d0"} };
 const DUZIA_CELL  = { D1:{bg:"#1e3a8a",text:"#bfdbfe"}, D2:{bg:"#92400e",text:"#fde68a"}, D3:{bg:"#7f1d1d",text:"#fca5a5"}, "—":{bg:"#111",text:"#444"} };
 const PAR_CELL    = { Par:{bg:"#0f1f5c",text:"#bfdbfe"}, Ímpar:{bg:"#4b5563",text:"#e5e7eb"}, "—":{bg:"#111",text:"#444"} };
+const ALTOBAIXO_CELL = {
+  "ALTO":  { bg:"#0e3a5c", text:"#7dd3fc" },  // azul frio
+  "BAIXO": { bg:"#3b1f5c", text:"#c4b5fd" },  // violeta escuro
+  "—":     { bg:"#111",   text:"#444"    },
+};
 const PARTE_CELL = {
   "P1": { bg:"#713f00", text:"#fef08a" },  // amarelo claro
   "P2": { bg:"#14532d", text:"#bbf7d0" },  // verde claro
@@ -84,6 +93,7 @@ const CELL_VAL = (e, key) => {
   if (key==="rua")      return e.rua;
   if (key==="regiao")   return e.regiao.toUpperCase();
   if (key==="parte")    return e.parte;
+  if (key==="altobaixo") return e.altobaixo;
   return "";
 };
 // CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
@@ -96,6 +106,7 @@ const CELL_SCHEME = (e, key) => {
   if (key==="rua")      return RUA_CELL[e.rua]          || {bg:"#111",text:"#fff"};
   if (key==="regiao")   return REGIAO_CELL[e.regiao]    || {bg:"#111",text:"#fff"};
   if (key==="parte")    return PARTE_CELL[e.parte]      || PARTE_CELL["—"];
+  if (key==="altobaixo") return ALTOBAIXO_CELL[e.altobaixo] || ALTOBAIXO_CELL["—"];
   return {bg:"#111",text:"#fff"};
 };
 
@@ -104,6 +115,7 @@ const INIT_COLS = [
   { key:"num",      label:"Nº",        toggleable:false },
   { key:"hist",     label:"PUXOU",     toggleable:false },
   { key:"parte",    label:"PARTE",     toggleable:true  },
+  { key:"altobaixo", label:"A/B",        toggleable:true  },
   { key:"cor",      label:"COR",       toggleable:true  },
   { key:"lado",     label:"LADO RACE", toggleable:true  },
   { key:"duzia",    label:"DÚZIA",     toggleable:true  },
@@ -144,7 +156,10 @@ const RA_FIELDS = [
   { key:"duzia",    label:"Dúzia",     values:["D1","D2","D3"],                    palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
   { key:"paridade", label:"Par/Ímpar", values:["Par","Ímpar"],                     palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
   { key:"coluna",   label:"Coluna",    values:["C1","C2","C3"],                    palette:{"C1":{bg:"#4a5320",text:"#e5e5e5"},"C2":{bg:"#0891b2",text:"#0a0a0a"},"C3":{bg:"#ea580c",text:"#1a1a1a"}} },
-  { key:"parte",    label:"Parte",     values:["P1","P2"],                         palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
+  { key:"parte",    label:"Parte",     values:["P1","P2"],
+    palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
+  { key:"altobaixo", label:"Alto/Baixo", values:["ALTO","BAIXO"],
+    palette:{"ALTO":{bg:"#0e3a5c",text:"#7dd3fc"},"BAIXO":{bg:"#3b1f5c",text:"#c4b5fd"}} },
   { key:"regiao",   label:"Região",    values:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
 ];
 
@@ -198,7 +213,7 @@ function RepAltPanel({ last14 }) {
 function ScorePanel({ last14 }) {
   if (last14.length < 2) return null;
 
-  const fields = ["cor","lado","paridade","parte","regiao"];
+  const fields = ["cor","lado","paridade","parte","regiao","altobaixo"];
   let totalRep = 0, totalAlt = 0;
   fields.forEach(field => {
     const vals = [...new Set(last14.map(e => e[field]||"—").filter(v=>v!=="—"))];
@@ -332,6 +347,7 @@ export default function DestroyerRaceTable() {
     paridade: countBy(last14,"paridade", ["Par","Ímpar"]),
     coluna:   countBy(last14,"coluna",   ["C1","C2","C3"]),
     parte:    countBy(last14,"parte",    ["P1","P2"]),
+    altobaixo: countBy(last14,"altobaixo", ["ALTO","BAIXO"]),
     ruaParidade: (()=>{ const imp=last14.filter(e=>e.rua==="R1"||e.rua==="R3").length; const par=last14.filter(e=>e.rua==="R2"||e.rua==="R4").length; return {"R. Ímpar":imp,"R. Par":par}; })(),
   }),[last14]);
 
@@ -597,6 +613,8 @@ export default function DestroyerRaceTable() {
             <StatBlockH title="Coluna"    data={stats.coluna}      palette={COLUNA_CELL} />
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Parte"     data={stats.parte}       palette={PARTE_CELL}  />
+            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
+            <StatBlockH title="A/B"       data={stats.altobaixo}   palette={ALTOBAIXO_CELL}/>
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Rua"       data={stats.ruaParidade} palette={RUA_PAR_CELL}/>
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
