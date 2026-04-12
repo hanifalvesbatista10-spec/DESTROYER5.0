@@ -198,7 +198,7 @@ function RepAltPanel({ last14 }) {
 function ScorePanel({ last14 }) {
   if (last14.length < 2) return null;
 
-  const fields = ["cor","lado","duzia","paridade","coluna","parte","regiao"];
+  const fields = ["cor","lado","paridade","parte","regiao"];
   let totalRep = 0, totalAlt = 0;
   fields.forEach(field => {
     const vals = [...new Set(last14.map(e => e[field]||"—").filter(v=>v!=="—"))];
