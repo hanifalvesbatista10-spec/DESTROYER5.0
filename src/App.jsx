@@ -69,8 +69,8 @@ const REGIAO_CELL = { Tier:{bg:"#7c2d12",text:"#fdba74"}, Orphelins:{bg:"#854d0e
 const DUZIA_CELL  = { D1:{bg:"#1e3a8a",text:"#bfdbfe"}, D2:{bg:"#92400e",text:"#fde68a"}, D3:{bg:"#7f1d1d",text:"#fca5a5"}, "—":{bg:"#111",text:"#444"} };
 const PAR_CELL    = { Par:{bg:"#0f1f5c",text:"#bfdbfe"}, Ímpar:{bg:"#4b5563",text:"#e5e7eb"}, "—":{bg:"#111",text:"#444"} };
 const ALTOBAIXO_CELL = {
-  "ALTO":  { bg:"#0e3a5c", text:"#7dd3fc" },  // azul frio
-  "BAIXO": { bg:"#3b1f5c", text:"#c4b5fd" },  // violeta escuro
+  "ALTO":  { bg:"#7c0000", text:"#fca5a5" },  // vermelho escuro
+  "BAIXO": { bg:"#0c4a6e", text:"#7dd3fc" },  // azul profundo
   "—":     { bg:"#111",   text:"#444"    },
 };
 const PARTE_CELL = {
@@ -111,18 +111,18 @@ const CELL_SCHEME = (e, key) => {
 };
 
 const INIT_COLS = [
-  { key:"seq",      label:"#",         toggleable:false },
-  { key:"num",      label:"Nº",        toggleable:false },
-  { key:"hist",     label:"PUXOU",     toggleable:false },
-  { key:"parte",    label:"PARTE",     toggleable:true  },
-  { key:"altobaixo", label:"A/B",        toggleable:true  },
-  { key:"cor",      label:"COR",       toggleable:true  },
-  { key:"lado",     label:"LADO RACE", toggleable:true  },
-  { key:"duzia",    label:"DÚZIA",     toggleable:true  },
-  { key:"paridade", label:"PAR/ÍMPAR", toggleable:true  },
-  { key:"coluna",   label:"COLUNA",    toggleable:true  },
-  { key:"rua",      label:"RUA",       toggleable:true  },
-  { key:"regiao",   label:"REGIÃO",    toggleable:true  },
+  { key:"seq",       label:"#",         toggleable:false },
+  { key:"num",       label:"Nº",        toggleable:false },
+  { key:"hist",      label:"PUXOU",     toggleable:false },
+  { key:"lado",      label:"LADO RACE", toggleable:true  },
+  { key:"cor",       label:"COR",       toggleable:true  },
+  { key:"altobaixo", label:"A/B",       toggleable:true  },
+  { key:"paridade",  label:"PAR/ÍMPAR", toggleable:true  },
+  { key:"parte",     label:"PARTE",     toggleable:true  },
+  { key:"duzia",     label:"DÚZIA",     toggleable:true  },
+  { key:"coluna",    label:"COLUNA",    toggleable:true  },
+  { key:"rua",       label:"RUA",       toggleable:true  },
+  { key:"regiao",    label:"REGIÃO",    toggleable:true  },
 ];
 
 // Retorna os numeros que saíram APÓS cada ocorrência anterior do mesmo num
@@ -159,7 +159,7 @@ const RA_FIELDS = [
   { key:"parte",    label:"Parte",     values:["P1","P2"],
     palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
   { key:"altobaixo", label:"Alto/Baixo", values:["ALTO","BAIXO"],
-    palette:{"ALTO":{bg:"#0e3a5c",text:"#7dd3fc"},"BAIXO":{bg:"#3b1f5c",text:"#c4b5fd"}} },
+    palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
   { key:"regiao",   label:"Região",    values:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
 ];
 
@@ -532,11 +532,11 @@ export default function DestroyerRaceTable() {
                                 : hist.map((h,hi) => (
                                   <div key={hi} style={{
                                     display:"inline-flex",alignItems:"center",justifyContent:"center",
-                                    width:16,height:16,borderRadius:"50%",flexShrink:0,
+                                    width:24,height:24,borderRadius:"50%",flexShrink:0,
                                     background:NUM_BALL[h.cor].bg,
-                                    border:`1px solid ${NUM_BALL[h.cor].border}`,
+                                    border:`2px solid ${NUM_BALL[h.cor].border}`,
                                     color:NUM_BALL[h.cor].text,
-                                    fontSize:7,fontWeight:"bold",
+                                    fontSize:10,fontWeight:"bold",
                                   }}>{h.num}</div>
                                 ))
                               }
