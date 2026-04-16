@@ -569,7 +569,7 @@ export default function DestroyerRaceTable() {
                       if (col.key==="hist") {
                         const hist = getHistorico(entries, i, e.num);
                         const lastGp = entries.length > 0 ? entries[entries.length-1].gp : "—";
-                        const isLast3General = posFromLast >= 2 && posFromLast <= 4;
+                        const isLast3General = posFromLast >= 1 && posFromLast <= 4;
                         return (
                           <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
                             borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:82}}>
