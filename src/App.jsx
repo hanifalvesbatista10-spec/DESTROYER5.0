@@ -428,6 +428,43 @@ export default function DestroyerRaceTable() {
     return { ballIndices, histGpNums };
   }, [entries]);
 
+  // Top 3 stats from last 3 entries' puxou
+  const top3Stats = useMemo(() => {
+    if (entries.length === 0) return [];
+    const last3 = entries.slice(Math.max(0, entries.length - 3));
+    const allPuxou = [];
+    last3.forEach((e, relIdx) => {
+      const absIdx = entries.length - last3.length + relIdx;
+      const hist = getHistorico(entries, absIdx, e.num);
+      allPuxou.push(...hist);
+    });
+    if (allPuxou.length === 0) return [];
+
+    const total = allPuxou.length;
+    const fields = [
+      { key:"cor",      vals:["Vermelho","Preto","Verde"],         palette:{"Vermelho":{bg:"#CC0000",text:"#fff"},"Preto":{bg:"#222",text:"#ddd"},"Verde":{bg:"#1B7A3E",text:"#fff"}} },
+      { key:"lado",     vals:["PB e VA","PA e VB"],                palette:{"PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"},"PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}} },
+      { key:"paridade", vals:["Par","Ímpar"],                      palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
+      { key:"parte",    vals:["P1","P2"],                          palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
+      { key:"altobaixo",vals:["ALTO","BAIXO"],                     palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
+      { key:"regiao",   vals:["Tier","Orphelins","Voisins"],        palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
+      { key:"duzia",    vals:["D1","D2","D3"],                     palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
+    ];
+
+    const results = [];
+    fields.forEach(({key, vals, palette}) => {
+      vals.forEach(val => {
+        const count = allPuxou.filter(h => (h[key]||"—") === val).length;
+        if (count > 0) {
+          const pct = Math.round((count / total) * 100);
+          results.push({ label: val, pct, count, scheme: palette[val]||{bg:"#222",text:"#aaa"} });
+        }
+      });
+    });
+
+    return results.sort((a,b) => b.pct - a.pct).slice(0, 3);
+  }, [entries]);
+
   // Arrow markers on # column
   const getArrow = (posFromLast) => {
     if (posFromLast === 2 || posFromLast === 4) return { char: "▶", color: "#facc15" }; // yellow
@@ -622,7 +659,19 @@ export default function DestroyerRaceTable() {
           <button onClick={()=>setEntries(prev=>prev.slice(0,-1))} disabled={entries.length===0} style={{padding:"0 14px",background:"transparent",border:"1px solid #444",
             borderRadius:2,color:entries.length===0?"#333":"#aaa",fontSize:11,cursor:entries.length===0?"default":"pointer",fontFamily:"Arial, sans-serif"}}>↩</button>
         </div>
-
+        {/* Top 3 stats from last 3 puxou — junto ao input */}
+        {top3Stats.length > 0 && (
+          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8,marginTop:2}}>
+            <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",whiteSpace:"nowrap",flexShrink:0}}>ult 3 →</span>
+            {top3Stats.map((s,idx) => (
+              <div key={idx} style={{display:"flex",alignItems:"center",gap:4,background:"#111",borderRadius:3,padding:"3px 8px",border:"0.5px solid #222"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:s.scheme.bg,border:"0.5px solid "+s.scheme.text,flexShrink:0}}/>
+                <span style={{fontSize:9,color:s.scheme.text,fontWeight:"bold",fontFamily:"Arial, sans-serif"}}>{s.label}</span>
+                <span style={{fontSize:9,color:"#666",fontFamily:"Arial, sans-serif"}}>{s.pct}%</span>
+              </div>
+            ))}
+          </div>
+        )}
         {/* Contador de tentativas */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
           <button onClick={()=>setAcertos(a=>a+1)} style={{flex:1,padding:"3px 0",background:"#14532d",border:"none",borderRadius:3,
