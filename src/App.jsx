@@ -403,6 +403,38 @@ export default function DestroyerRaceTable() {
 
   const isLastEntry = (i) => i === entries.length - 1;
 
+  // GP blue border logic
+  const gpHighlight = useMemo(() => {
+    if (entries.length === 0) return { ballIndices: new Set(), histGpNums: new Set() };
+    const lastGp = entries[entries.length - 1].gp;
+    if (lastGp === "—") return { ballIndices: new Set(), histGpNums: new Set() };
+
+    // last 3 siblings of same GP (excluding last entry itself)
+    const siblings = [];
+    for (let i = entries.length - 2; i >= 0 && siblings.length < 3; i--) {
+      if (entries[i].gp === lastGp) siblings.push(i);
+    }
+    const ballIndices = new Set([entries.length - 1, ...siblings]);
+
+    // In the last 3 general entries (excluding last), find puxou balls that belong to lastGp
+    const histGpNums = new Set();
+    const last3 = entries.slice(Math.max(0, entries.length - 4), entries.length - 1);
+    last3.forEach((e, relIdx) => {
+      const absIdx = entries.length - 1 - (last3.length - relIdx);
+      const hist = getHistorico(entries, entries.length - 1 - (last3.length - relIdx), e.num);
+      hist.forEach(h => { if (h.gp === lastGp) histGpNums.add(h.num + "_" + (entries.length - 1 - (last3.length - relIdx))); });
+    });
+
+    return { ballIndices, histGpNums };
+  }, [entries]);
+
+  // Arrow markers on # column
+  const getArrow = (posFromLast) => {
+    if (posFromLast === 2 || posFromLast === 4) return { char: "▶", color: "#facc15" }; // yellow
+    if (posFromLast === 3 || posFromLast === 6) return { char: "▶", color: "#ffffff" }; // white
+    return null;
+  };
+
   return (
     <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
       <style>{`
@@ -504,41 +536,60 @@ export default function DestroyerRaceTable() {
                       if (hidden.has(col.key)) return null;
                       const isLast = col.key===lastVisKey;
 
-                      if (col.key==="seq") return (
-                        <td key="seq" style={{background:"#0d0d0d",color:"#444",fontSize:8,textAlign:"center",
-                          padding:"1px 3px",borderTop:bTop,borderBottom:bBot,
-                          borderLeft:isGold?`2px solid ${GOLD}`:"none",borderRight:"1px solid #000",
-                          fontFamily:"Arial, sans-serif",width:22}}>{i+1}</td>
-                      );
-                      if (col.key==="num") return (
-                        <td key="num" style={{background:"#0d0d0d",padding:"1px 3px",textAlign:"center",
-                          borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:40}}>
-                          <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-                            width:24,height:24,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
-                            border:`2px solid ${NUM_BALL[e.cor].border}`,color:NUM_BALL[e.cor].text,fontFamily:"Arial, sans-serif"}}>
-                            <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>{e.num}</span>
-                            {e.gp!=="—"&&<span style={{fontSize:6,fontWeight:"normal",opacity:0.85,lineHeight:1}}>{e.gp}</span>}
-                          </div>
-                        </td>
-                      );
+                      if (col.key==="seq") {
+                        const arrow = getArrow(posFromLast);
+                        return (
+                          <td key="seq" style={{background:"#0d0d0d",fontSize:8,textAlign:"center",
+                            padding:"1px 2px",borderTop:bTop,borderBottom:bBot,
+                            borderLeft:isGold?`2px solid ${GOLD}`:"none",borderRight:"1px solid #000",
+                            fontFamily:"Arial, sans-serif",width:26,whiteSpace:"nowrap"}}>
+                            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:1}}>
+                              {arrow && <span style={{color:arrow.color,fontSize:7,lineHeight:1}}>{arrow.char}</span>}
+                              <span style={{color:"#444"}}>{i+1}</span>
+                            </div>
+                          </td>
+                        );
+                      }
+                      if (col.key==="num") {
+                        const gpBall = gpHighlight.ballIndices.has(i);
+                        return (
+                          <td key="num" style={{background:"#0d0d0d",padding:"1px 3px",textAlign:"center",
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:40}}>
+                            <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+                              width:24,height:24,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
+                              border: gpBall ? "2px solid #3b82f6" : `2px solid ${NUM_BALL[e.cor].border}`,
+                              boxShadow: gpBall ? "0 0 6px #3b82f6" : "none",
+                              color:NUM_BALL[e.cor].text,fontFamily:"Arial, sans-serif"}}>
+                              <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>{e.num}</span>
+                              {e.gp!=="—"&&<span style={{fontSize:6,fontWeight:"normal",opacity:0.85,lineHeight:1}}>{e.gp}</span>}
+                            </div>
+                          </td>
+                        );
+                      }
                       if (col.key==="hist") {
                         const hist = getHistorico(entries, i, e.num);
+                        const lastGp = entries.length > 0 ? entries[entries.length-1].gp : "—";
+                        const isLast3General = posFromLast >= 2 && posFromLast <= 4;
                         return (
                           <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
                             borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:82}}>
                             <div style={{display:"flex",alignItems:"center",gap:2,flexWrap:"nowrap"}}>
                               {hist.length===0
                                 ? <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
-                                : hist.map((h,hi) => (
-                                  <div key={hi} style={{
-                                    display:"inline-flex",alignItems:"center",justifyContent:"center",
-                                    width:24,height:24,borderRadius:"50%",flexShrink:0,
-                                    background:NUM_BALL[h.cor].bg,
-                                    border:`2px solid ${NUM_BALL[h.cor].border}`,
-                                    color:NUM_BALL[h.cor].text,
-                                    fontSize:10,fontWeight:"bold",
-                                  }}>{h.num}</div>
-                                ))
+                                : hist.map((h,hi) => {
+                                    const isGpMatch = isLast3General && lastGp !== "—" && h.gp === lastGp;
+                                    return (
+                                      <div key={hi} style={{
+                                        display:"inline-flex",alignItems:"center",justifyContent:"center",
+                                        width:24,height:24,borderRadius:"50%",flexShrink:0,
+                                        background:NUM_BALL[h.cor].bg,
+                                        border: isGpMatch ? "2px solid #3b82f6" : `2px solid ${NUM_BALL[h.cor].border}`,
+                                        boxShadow: isGpMatch ? "0 0 6px #3b82f6" : "none",
+                                        color:NUM_BALL[h.cor].text,
+                                        fontSize:10,fontWeight:"bold",
+                                      }}>{h.num}</div>
+                                    );
+                                  })
                               }
                             </div>
                           </td>
