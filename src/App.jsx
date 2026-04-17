@@ -63,15 +63,24 @@ function parseInput(raw) {
 }
 
 const NUM_BALL  = { Vermelho:{bg:"#CC0000",border:"#ff6666",text:"#fff"}, Preto:{bg:"#111",border:"#555",text:"#fff"}, Verde:{bg:"#1B7A3E",border:"#4ade80",text:"#fff"} };
-const COR_CELL  = { Vermelho:{bg:"#CC0000",text:"#fff"}, Preto:{bg:"#111",text:"#ddd"}, Verde:{bg:"#1B7A3E",text:"#fff"} };
+const COR_CELL  = { "Vermelho":{bg:"#CC0000",text:"#fff"}, "Preto":{bg:"#111",text:"#ddd"}, "Verde":{bg:"#1B7A3E",text:"#fff"} };
 const LADO_CELL = { "PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"}, "PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}, "—":{bg:"#111",text:"#444"} };
 const REGIAO_CELL = { Tier:{bg:"#7c2d12",text:"#fdba74"}, Orphelins:{bg:"#854d0e",text:"#fefce8"}, Voisins:{bg:"#166534",text:"#bbf7d0"} };
 const DUZIA_CELL  = { D1:{bg:"#1e3a8a",text:"#bfdbfe"}, D2:{bg:"#92400e",text:"#fde68a"}, D3:{bg:"#7f1d1d",text:"#fca5a5"}, "—":{bg:"#111",text:"#444"} };
-const PAR_CELL    = { Par:{bg:"#0f1f5c",text:"#bfdbfe"}, Ímpar:{bg:"#4b5563",text:"#e5e7eb"}, "—":{bg:"#111",text:"#444"} };
+const PAR_CELL    = { "Par":{bg:"#0f1f5c",text:"#bfdbfe"}, "Ímpar":{bg:"#4b5563",text:"#e5e7eb"}, "—":{bg:"#111",text:"#444"} };
 const ALTOBAIXO_CELL = {
   "ALTO":  { bg:"#7c0000", text:"#fca5a5" },  // vermelho escuro
   "BAIXO": { bg:"#0c4a6e", text:"#7dd3fc" },  // azul profundo
   "—":     { bg:"#111",   text:"#444"    },
+};
+const GP_CELL = {
+  "d1V": { bg:"#713f00", text:"#fef08a" },  // amarelo       — PA e VB
+  "d2P": { bg:"#44180a", text:"#d4a574" },  // marrom        — PA e VB
+  "d3P": { bg:"#7c2d12", text:"#fdba74" },  // laranja       — PA e VB
+  "d1P": { bg:"#1e3a8a", text:"#bfdbfe" },  // azul claro    — PB e VA
+  "d2I": { bg:"#164e63", text:"#67e8f9" },  // ciano escuro  — PB e VA
+  "d3V": { bg:"#0f2044", text:"#93c5fd" },  // azul escuro   — PB e VA
+  "—":   { bg:"#111",   text:"#444"    },
 };
 const PARTE_CELL = {
   "P1": { bg:"#713f00", text:"#fef08a" },  // amarelo claro
@@ -88,12 +97,13 @@ const CELL_VAL = (e, key) => {
   if (key==="cor")      return e.corAbrev;
   if (key==="lado")     return e.lado;
   if (key==="duzia")    return e.duzia;
-  if (key==="paridade") return e.paridade.toUpperCase();
+  if (key==="paridade") return (e.paridade||"—").toUpperCase();
   if (key==="coluna")   return e.coluna;
   if (key==="rua")      return e.rua;
   if (key==="regiao")   return e.regiao.toUpperCase();
   if (key==="parte")    return e.parte;
   if (key==="altobaixo") return e.altobaixo;
+  if (key==="gp")        return e.gp;
   return "";
 };
 // CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
@@ -101,12 +111,13 @@ const CELL_SCHEME = (e, key) => {
   if (key==="cor")      return COR_CELL[e.cor]         || {bg:"#111",text:"#fff"};
   if (key==="lado")     return LADO_CELL[e.lado]        || LADO_CELL["—"];
   if (key==="duzia")    return DUZIA_CELL[e.duzia]      || DUZIA_CELL["—"];
-  if (key==="paridade") return PAR_CELL[e.paridade]     || PAR_CELL["—"];
+  if (key==="paridade") return PAR_CELL[e.paridade||"—"]  || PAR_CELL["—"];
   if (key==="coluna")   return COLUNA_CELL[e.coluna]    || {bg:"#111",text:"#fff"};
   if (key==="rua")      return RUA_CELL[e.rua]          || {bg:"#111",text:"#fff"};
   if (key==="regiao")   return REGIAO_CELL[e.regiao]    || {bg:"#111",text:"#fff"};
-  if (key==="parte")    return PARTE_CELL[e.parte]      || PARTE_CELL["—"];
-  if (key==="altobaixo") return ALTOBAIXO_CELL[e.altobaixo] || ALTOBAIXO_CELL["—"];
+  if (key==="parte")    return PARTE_CELL[e.parte||"—"]  || PARTE_CELL["—"];
+  if (key==="altobaixo") return ALTOBAIXO_CELL[e.altobaixo||"—"] || ALTOBAIXO_CELL["—"];
+  if (key==="gp")        return GP_CELL[e.gp]           || GP_CELL["—"];
   return {bg:"#111",text:"#fff"};
 };
 
@@ -114,6 +125,7 @@ const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false },
   { key:"num",       label:"Nº",        toggleable:false },
   { key:"hist",      label:"PUXOU",     toggleable:false },
+  { key:"gp",        label:"GP",         toggleable:true  },
   { key:"lado",      label:"LADO RACE", toggleable:true  },
   { key:"cor",       label:"COR",       toggleable:true  },
   { key:"altobaixo", label:"A/B",       toggleable:true  },
@@ -312,7 +324,17 @@ export default function DestroyerRaceTable() {
   const dragKey   = useRef(null);
   const dragOver  = useRef(null);
 
-  const cols = colOrder.map(k => INIT_COLS.find(c=>c.key===k));
+  // Merge colOrder with INIT_COLS — ensures new columns are always included
+  const cols = useMemo(() => {
+    const ordered = colOrder
+      .filter(k => INIT_COLS.find(c => c.key === k))
+      .map(k => INIT_COLS.find(c => c.key === k));
+    // Add any new columns not yet in colOrder
+    INIT_COLS.forEach(c => {
+      if (!colOrder.includes(c.key)) ordered.push(c);
+    });
+    return ordered;
+  }, [colOrder]);
 
   const toggleHide = (key) => {
     if (!INIT_COLS.find(c=>c.key===key)?.toggleable) return;
@@ -348,6 +370,7 @@ export default function DestroyerRaceTable() {
     coluna:   countBy(last14,"coluna",   ["C1","C2","C3"]),
     parte:    countBy(last14,"parte",    ["P1","P2"]),
     altobaixo: countBy(last14,"altobaixo", ["ALTO","BAIXO"]),
+    gp:        countBy(last14,"gp",        ["d1V","d1P","d2I","d2P","d3V","d3P"]),
     ruaParidade: (()=>{ const imp=last14.filter(e=>e.rua==="R1"||e.rua==="R3").length; const par=last14.filter(e=>e.rua==="R2"||e.rua==="R4").length; return {"R. Ímpar":imp,"R. Par":par}; })(),
   }),[last14]);
 
@@ -715,6 +738,8 @@ export default function DestroyerRaceTable() {
             <StatBlockH title="Parte"     data={stats.parte}       palette={PARTE_CELL}  />
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="A/B"       data={stats.altobaixo}   palette={ALTOBAIXO_CELL}/>
+            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
+            <StatBlockH title="GP"        data={stats.gp}          palette={GP_CELL}     />
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Rua"       data={stats.ruaParidade} palette={RUA_PAR_CELL}/>
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
