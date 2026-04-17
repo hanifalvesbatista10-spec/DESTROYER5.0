@@ -31,19 +31,10 @@ function getRua(n) {
   if (pos<=2) return "R1"; if (pos<=5) return "R2";
   if (pos<=8) return "R3"; return "R4";
 }
-function getParte(n) {
-  if (n===0) return "—";
-  const rua = getRua(n);
-  return (rua==="R1"||rua==="R2") ? "P1" : "P2";
-}
 function getColuna(n) {
   if (n===0) return "0";
   const r = n%3;
   if (r===1) return "C1"; if (r===2) return "C2"; return "C3";
-}
-function getAltoBaixo(n) {
-  if (n === 0) return "—";
-  return n <= 18 ? "BAIXO" : "ALTO";
 }
 function getColor(n)    { if(n===0) return "Verde"; if(RED_NUMS.has(n)) return "Vermelho"; return "Preto"; }
 function getLado(n)     { return LADO_RACE[n]||"—"; }
@@ -56,232 +47,50 @@ function getGP(n)       { return GP_MAP[n]||"—"; }
 function buildEntry(n, id) {
   return { id, num:n, cor:getColor(n), corAbrev:getCorAbrev(getColor(n)),
     lado:getLado(n), regiao:getRegiao(n), duzia:getDuzia(n),
-    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n) };
+    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n) };
 }
 function parseInput(raw) {
   return raw.split(/[\s,;\n\r]+/).map(t=>parseInt(t.trim())).filter(n=>!isNaN(n)&&n>=0&&n<=36);
 }
 
 const NUM_BALL  = { Vermelho:{bg:"#CC0000",border:"#ff6666",text:"#fff"}, Preto:{bg:"#111",border:"#555",text:"#fff"}, Verde:{bg:"#1B7A3E",border:"#4ade80",text:"#fff"} };
-const COR_CELL  = { "Vermelho":{bg:"#CC0000",text:"#fff"}, "Preto":{bg:"#111",text:"#ddd"}, "Verde":{bg:"#1B7A3E",text:"#fff"} };
+const COR_CELL  = { Vermelho:{bg:"#CC0000",text:"#fff"}, Preto:{bg:"#111",text:"#ddd"}, Verde:{bg:"#1B7A3E",text:"#fff"} };
 const LADO_CELL = { "PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"}, "PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}, "—":{bg:"#111",text:"#444"} };
 const REGIAO_CELL = { Tier:{bg:"#7c2d12",text:"#fdba74"}, Orphelins:{bg:"#854d0e",text:"#fefce8"}, Voisins:{bg:"#166534",text:"#bbf7d0"} };
 const DUZIA_CELL  = { D1:{bg:"#1e3a8a",text:"#bfdbfe"}, D2:{bg:"#92400e",text:"#fde68a"}, D3:{bg:"#7f1d1d",text:"#fca5a5"}, "—":{bg:"#111",text:"#444"} };
-const PAR_CELL    = { "Par":{bg:"#0f1f5c",text:"#bfdbfe"}, "Ímpar":{bg:"#4b5563",text:"#e5e7eb"}, "—":{bg:"#111",text:"#444"} };
-const ALTOBAIXO_CELL = {
-  "ALTO":  { bg:"#7c0000", text:"#fca5a5" },  // vermelho escuro
-  "BAIXO": { bg:"#0c4a6e", text:"#7dd3fc" },  // azul profundo
-  "—":     { bg:"#111",   text:"#444"    },
-};
-const GP_CELL = {
-  "d1V": { bg:"#713f00", text:"#fef08a" },  // amarelo       — PA e VB
-  "d2P": { bg:"#44180a", text:"#d4a574" },  // marrom        — PA e VB
-  "d3P": { bg:"#7c2d12", text:"#fdba74" },  // laranja       — PA e VB
-  "d1P": { bg:"#1e3a8a", text:"#bfdbfe" },  // azul claro    — PB e VA
-  "d2I": { bg:"#164e63", text:"#67e8f9" },  // ciano escuro  — PB e VA
-  "d3V": { bg:"#0f2044", text:"#93c5fd" },  // azul escuro   — PB e VA
-  "—":   { bg:"#111",   text:"#444"    },
-};
-const PARTE_CELL = {
-  "P1": { bg:"#713f00", text:"#fef08a" },  // amarelo claro
-  "P2": { bg:"#14532d", text:"#bbf7d0" },  // verde claro
-  "—":  { bg:"#111",   text:"#444"    },
-};
+const PAR_CELL    = { Par:{bg:"#0f1f5c",text:"#bfdbfe"}, Ímpar:{bg:"#4b5563",text:"#e5e7eb"}, "—":{bg:"#111",text:"#444"} };
 const RUA_CELL    = { R1:{bg:"#4a0080",text:"#e9d5ff"}, R2:{bg:"#005a5a",text:"#99f6e4"}, R3:{bg:"#7a1c4b",text:"#fbcfe8"}, R4:{bg:"#1a3a1a",text:"#bbf7d0"}, "0":{bg:"#1B7A3E",text:"#fff"} };
 const COLUNA_CELL = { C1:{bg:"#4a5320",text:"#e5e5e5"}, C2:{bg:"#0891b2",text:"#0a0a0a"}, C3:{bg:"#ea580c",text:"#1a1a1a"}, "0":{bg:"#1B7A3E",text:"#fff"} };
 const RUA_PAR_CELL = { "R. Ímpar":{bg:"#4a0080",text:"#e9d5ff"}, "R. Par":{bg:"#005a5a",text:"#99f6e4"} };
 const GOLD = "#D4AF37";
 
-// CELL_VAL: valor exibido na célula
+const CELL_MAP = { cor:COR_CELL, lado:LADO_CELL, duzia:DUZIA_CELL, paridade:PAR_CELL, coluna:COLUNA_CELL, rua:RUA_CELL, regiao:REGIAO_CELL };
 const CELL_VAL = (e, key) => {
   if (key==="cor")      return e.corAbrev;
   if (key==="lado")     return e.lado;
   if (key==="duzia")    return e.duzia;
-  if (key==="paridade") return (e.paridade||"—").toUpperCase();
+  if (key==="paridade") return e.paridade.toUpperCase();
   if (key==="coluna")   return e.coluna;
   if (key==="rua")      return e.rua;
   if (key==="regiao")   return e.regiao.toUpperCase();
-  if (key==="parte")    return e.parte;
-  if (key==="altobaixo") return e.altobaixo;
-  if (key==="gp")        return e.gp;
   return "";
 };
-// CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
 const CELL_SCHEME = (e, key) => {
-  if (key==="cor")      return COR_CELL[e.cor]         || {bg:"#111",text:"#fff"};
-  if (key==="lado")     return LADO_CELL[e.lado]        || LADO_CELL["—"];
-  if (key==="duzia")    return DUZIA_CELL[e.duzia]      || DUZIA_CELL["—"];
-  if (key==="paridade") return PAR_CELL[e.paridade||"—"]  || PAR_CELL["—"];
-  if (key==="coluna")   return COLUNA_CELL[e.coluna]    || {bg:"#111",text:"#fff"};
-  if (key==="rua")      return RUA_CELL[e.rua]          || {bg:"#111",text:"#fff"};
-  if (key==="regiao")   return REGIAO_CELL[e.regiao]    || {bg:"#111",text:"#fff"};
-  if (key==="parte")    return PARTE_CELL[e.parte||"—"]  || PARTE_CELL["—"];
-  if (key==="altobaixo") return ALTOBAIXO_CELL[e.altobaixo||"—"] || ALTOBAIXO_CELL["—"];
-  if (key==="gp")        return GP_CELL[e.gp]           || GP_CELL["—"];
-  return {bg:"#111",text:"#fff"};
+  const map = CELL_MAP[key]; if (!map) return {bg:"#111",text:"#fff"};
+  return map[CELL_VAL(e,key)] || map["—"] || {bg:"#111",text:"#fff"};
 };
 
 const INIT_COLS = [
-  { key:"seq",       label:"#",         toggleable:false },
-  { key:"num",       label:"Nº",        toggleable:false },
-  { key:"hist",      label:"PUXOU",     toggleable:false },
-  { key:"gp",        label:"GP",         toggleable:true  },
-  { key:"lado",      label:"LADO RACE", toggleable:true  },
-  { key:"cor",       label:"COR",       toggleable:true  },
-  { key:"altobaixo", label:"A/B",       toggleable:true  },
-  { key:"paridade",  label:"PAR/ÍMPAR", toggleable:true  },
-  { key:"parte",     label:"PARTE",     toggleable:true  },
-  { key:"duzia",     label:"DÚZIA",     toggleable:true  },
-  { key:"coluna",    label:"COLUNA",    toggleable:true  },
-  { key:"rua",       label:"RUA",       toggleable:true  },
-  { key:"regiao",    label:"REGIÃO",    toggleable:true  },
+  { key:"seq",      label:"#",         toggleable:false },
+  { key:"num",      label:"Nº",        toggleable:false },
+  { key:"cor",      label:"COR",       toggleable:true  },
+  { key:"lado",     label:"LADO RACE", toggleable:true  },
+  { key:"duzia",    label:"DÚZIA",     toggleable:true  },
+  { key:"paridade", label:"PAR/ÍMPAR", toggleable:true  },
+  { key:"coluna",   label:"COLUNA",    toggleable:true  },
+  { key:"rua",      label:"RUA",       toggleable:true  },
+  { key:"regiao",   label:"REGIÃO",    toggleable:true  },
 ];
-
-// Retorna os numeros que saíram APÓS cada ocorrência anterior do mesmo num
-function getHistorico(entries, currentIndex, num) {
-  const nexts = [];
-  for (let i = 0; i < currentIndex; i++) {
-    if (entries[i].num === num && i + 1 < entries.length) {
-      nexts.push(entries[i + 1]);
-    }
-  }
-  return nexts.slice(-5);
-}
-
-
-// ── Painel Repetição / Alternância ───────────────────────────────────────────
-// Para cada valor específico de um campo, conta rep (saiu de novo na próxima) e alt (não saiu)
-function calcRepAltPerValue(arr, field, value) {
-  let rep = 0, alt = 0;
-  for (let i = 0; i < arr.length - 1; i++) {
-    if ((arr[i][field]||"—") !== value) continue;
-    const next = arr[i+1][field]||"—";
-    if (next === value) rep++; else alt++;
-  }
-  const total = rep + alt;
-  return { rep, alt, repPct: total>0?Math.round(rep/total*100):0, altPct: total>0?Math.round(alt/total*100):0, total };
-}
-
-const RA_FIELDS = [
-  { key:"cor",      label:"Cor",       values:["Vermelho","Preto","Verde"],        palette:{"Vermelho":{bg:"#CC0000",text:"#fff"},"Preto":{bg:"#222",text:"#ddd"},"Verde":{bg:"#1B7A3E",text:"#fff"}} },
-  { key:"lado",     label:"Lado",      values:["PB e VA","PA e VB"],               palette:{"PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"},"PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}} },
-  { key:"duzia",    label:"Dúzia",     values:["D1","D2","D3"],                    palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
-  { key:"paridade", label:"Par/Ímpar", values:["Par","Ímpar"],                     palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
-  { key:"coluna",   label:"Coluna",    values:["C1","C2","C3"],                    palette:{"C1":{bg:"#4a5320",text:"#e5e5e5"},"C2":{bg:"#0891b2",text:"#0a0a0a"},"C3":{bg:"#ea580c",text:"#1a1a1a"}} },
-  { key:"parte",    label:"Parte",     values:["P1","P2"],
-    palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
-  { key:"altobaixo", label:"Alto/Baixo", values:["ALTO","BAIXO"],
-    palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
-  { key:"regiao",   label:"Região",    values:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
-];
-
-function RepAltPanel({ last14 }) {
-  if (last14.length < 2) return <div style={{color:"#333",fontSize:10,padding:"8px 0"}}>Insira ao menos 2 números</div>;
-  return (
-    <div>
-      {RA_FIELDS.map(({key, label, values, palette}) => (
-        <div key={key} style={{marginBottom:10}}>
-          <div style={{fontSize:7,letterSpacing:"0.12em",color:"#666",textTransform:"uppercase",marginBottom:4,borderBottom:"0.5px solid #1e1e1e",paddingBottom:2}}>{label}</div>
-          {values.map(val => {
-            const {rep, alt, repPct, altPct, total} = calcRepAltPerValue(last14, key, val);
-            if (total === 0) return null;
-            const p = palette[val] || {bg:"#222",text:"#aaa"};
-            return (
-              <div key={val} style={{marginBottom:5}}>
-                <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:2}}>
-                  <div style={{background:p.bg,color:p.text,fontSize:7,fontWeight:"bold",padding:"1px 4px",borderRadius:1,minWidth:36,textAlign:"center",flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{val}</div>
-                  <div style={{flex:1}}/>
-                </div>
-                {/* REP */}
-                <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:1}}>
-                  <div style={{width:5,height:5,borderRadius:"50%",background:"#22c55e",flexShrink:0}}/>
-                  <div style={{width:18,fontSize:7,color:"#22c55e"}}>REP</div>
-                  <div style={{flex:1,height:7,background:"#1a1a1a",borderRadius:1,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:repPct+"%",background:"#166534",transition:"width 0.4s"}}/>
-                  </div>
-                  <div style={{width:22,fontSize:7,color:"#22c55e",textAlign:"right"}}>{repPct}%</div>
-                  <div style={{width:10,fontSize:7,color:"#444",textAlign:"right"}}>{rep}</div>
-                </div>
-                {/* ALT */}
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <div style={{width:5,height:5,borderRadius:"50%",background:"#f97316",flexShrink:0}}/>
-                  <div style={{width:18,fontSize:7,color:"#f97316"}}>ALT</div>
-                  <div style={{flex:1,height:7,background:"#1a1a1a",borderRadius:1,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:altPct+"%",background:"#7c2d12",transition:"width 0.4s"}}/>
-                  </div>
-                  <div style={{width:22,fontSize:7,color:"#f97316",textAlign:"right"}}>{altPct}%</div>
-                  <div style={{width:10,fontSize:7,color:"#444",textAlign:"right"}}>{alt}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Score de Rep/Alt ─────────────────────────────────────────────────────────
-function ScorePanel({ last14 }) {
-  if (last14.length < 2) return null;
-
-  const fields = ["cor","lado","paridade","parte","regiao","altobaixo"];
-  let totalRep = 0, totalAlt = 0;
-  fields.forEach(field => {
-    const vals = [...new Set(last14.map(e => e[field]||"—").filter(v=>v!=="—"))];
-    vals.forEach(val => {
-      const {rep, alt} = calcRepAltPerValue(last14, field, val);
-      totalRep += rep;
-      totalAlt += alt;
-    });
-  });
-
-  const total = totalRep + totalAlt;
-  if (total === 0) return null;
-  const score = Math.round((totalRep / total) * 100);
-  const isRepDominant = score >= 70;
-  const isAltDominant = score <= 30;
-  const isExtreme = isRepDominant || isAltDominant;
-  const scoreColor = score >= 60 ? "#22c55e" : score <= 40 ? "#f97316" : "#facc15";
-  const label = score >= 60 ? "REPETIÇÃO" : score <= 40 ? "ALTERNÂNCIA" : "NEUTRO";
-  const labelColor = score >= 60 ? "#22c55e" : score <= 40 ? "#f97316" : "#facc15";
-
-  return (
-    <div style={{
-      marginTop:14,
-      border: isExtreme ? "2px solid " + scoreColor : "0.5px solid #2a2a2a",
-      borderRadius:4,
-      padding:"10px 10px",
-      background:"#0d0d0d",
-      animation: isExtreme ? "pulseBorder 0.9s ease-in-out infinite" : "none",
-      outline: isExtreme ? "2px solid " + scoreColor : "none",
-      outlineOffset: isExtreme ? "-2px" : "0",
-    }}>
-      <div style={{fontSize:7,letterSpacing:"0.15em",color:"#555",textTransform:"uppercase",marginBottom:8}}>Score Geral</div>
-      {/* Barra de score */}
-      <div style={{position:"relative",height:14,background:"#1a1a1a",borderRadius:2,overflow:"hidden",marginBottom:6}}>
-        <div style={{
-          position:"absolute",left:0,top:0,height:"100%",
-          width:score+"%",
-          background: score>=60?"#166534":score<=40?"#7c2d12":"#713f00",
-          transition:"width 0.5s ease",
-        }}/>
-        <div style={{
-          position:"absolute",left:"50%",top:0,bottom:0,width:"1px",background:"#444"
-        }}/>
-      </div>
-      {/* Valor e label */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontSize:20,fontWeight:"bold",color:scoreColor,fontFamily:"Arial, sans-serif"}}>{score}</span>
-        <span style={{fontSize:9,fontWeight:"bold",color:labelColor,letterSpacing:"0.08em"}}>{label}</span>
-      </div>
-      <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-        <span style={{fontSize:7,color:"#444"}}>ALT ← 0</span>
-        <span style={{fontSize:7,color:"#444"}}>100 → REP</span>
-      </div>
-    </div>
-  );
-}
 
 function countBy(arr, key, values) {
   const r={};
@@ -316,25 +125,13 @@ let idCounter = 0;
 export default function DestroyerRaceTable() {
   const [entries, setEntries] = useState([]);
   const [input, setInput]     = useState("");
-  const [colOrder, setColOrder] = useState(() => INIT_COLS.map(c=>c.key));
+  const [colOrder, setColOrder] = useState(INIT_COLS.map(c=>c.key));
   const [hidden, setHidden]     = useState(new Set());
-  const [acertos, setAcertos]   = useState(0);
-  const [erros, setErros]       = useState(0);
 
   const dragKey   = useRef(null);
   const dragOver  = useRef(null);
 
-  // Merge colOrder with INIT_COLS — ensures new columns are always included
-  const cols = useMemo(() => {
-    const ordered = colOrder
-      .filter(k => INIT_COLS.find(c => c.key === k))
-      .map(k => INIT_COLS.find(c => c.key === k));
-    // Add any new columns not yet in colOrder
-    INIT_COLS.forEach(c => {
-      if (!colOrder.includes(c.key)) ordered.push(c);
-    });
-    return ordered;
-  }, [colOrder]);
+  const cols = colOrder.map(k => INIT_COLS.find(c=>c.key===k));
 
   const toggleHide = (key) => {
     if (!INIT_COLS.find(c=>c.key===key)?.toggleable) return;
@@ -368,9 +165,6 @@ export default function DestroyerRaceTable() {
     duzia:    countBy(last14,"duzia",    ["D1","D2","D3"]),
     paridade: countBy(last14,"paridade", ["Par","Ímpar"]),
     coluna:   countBy(last14,"coluna",   ["C1","C2","C3"]),
-    parte:    countBy(last14,"parte",    ["P1","P2"]),
-    altobaixo: countBy(last14,"altobaixo", ["ALTO","BAIXO"]),
-    gp:        countBy(last14,"gp",        ["d1V","d1P","d2I","d2P","d3V","d3P"]),
     ruaParidade: (()=>{ const imp=last14.filter(e=>e.rua==="R1"||e.rua==="R3").length; const par=last14.filter(e=>e.rua==="R2"||e.rua==="R4").length; return {"R. Ímpar":imp,"R. Par":par}; })(),
   }),[last14]);
 
@@ -385,134 +179,8 @@ export default function DestroyerRaceTable() {
   const visibleCols = cols.filter(c=>!hidden.has(c.key));
   const lastVisKey  = [...visibleCols].reverse()[0]?.key;
 
-  // Compute which columns have 100% match AND the last occurrence index for each matched key
-  const { pulseKeys, pulseLastIdx } = useMemo(() => {
-    if (entries.length === 0) return { pulseKeys: new Set(), pulseLastIdx: {} };
-    const lastEntry = entries[entries.length - 1];
-    const hist = getHistorico(entries, entries.length - 1, lastEntry.num);
-    if (hist.length === 0) return { pulseKeys: new Set(), pulseLastIdx: {} };
-    const total = hist.length;
-    const threshold = total - 0.1;
-    const keys = new Set();
-    const dominantVal = {};
-
-    const check = (field, vals) => {
-      const counts = {};
-      hist.forEach(h => { const v = h[field]||"—"; counts[v] = (counts[v]||0) + 1; });
-      const maxVal = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
-      if (maxVal && maxVal[1] > threshold) { keys.add(field); dominantVal[field] = maxVal[0]; }
-    };
-
-    check("cor",      ["Vermelho","Preto","Verde"]);
-    check("lado",     ["PB e VA","PA e VB"]);
-    check("duzia",    ["D1","D2","D3"]);
-    check("paridade", ["Par","Ímpar"]);
-    check("coluna",   ["C1","C2","C3"]);
-    check("rua",      ["R1","R2","R3","R4"]);
-    check("parte",    ["P1","P2"]);
-    check("regiao",   ["Tier","Orphelins","Voisins"]);
-
-    // For each matched key, find the last occurrence index (excluding the last entry itself)
-    const lastIdx = {};
-    keys.forEach(field => {
-      const val = dominantVal[field];
-      for (let i = entries.length - 2; i >= 0; i--) {
-        if ((entries[i][field]||"—") === val) { lastIdx[field] = i; break; }
-      }
-    });
-
-    return { pulseKeys: keys, pulseLastIdx: lastIdx };
-  }, [entries]);
-
-  const isLastEntry = (i) => i === entries.length - 1;
-
-  // GP blue border logic
-  const gpHighlight = useMemo(() => {
-    if (entries.length === 0) return { ballIndices: new Set(), histGpNums: new Set() };
-    const lastGp = entries[entries.length - 1].gp;
-    if (lastGp === "—") return { ballIndices: new Set(), histGpNums: new Set() };
-
-    // last 3 siblings of same GP (excluding last entry itself)
-    const siblings = [];
-    for (let i = entries.length - 2; i >= 0 && siblings.length < 3; i--) {
-      if (entries[i].gp === lastGp) siblings.push(i);
-    }
-    const ballIndices = new Set([entries.length - 1, ...siblings]);
-
-    // In the last 3 general entries (excluding last), find puxou balls that belong to lastGp
-    const histGpNums = new Set();
-    const last3 = entries.slice(Math.max(0, entries.length - 4), entries.length - 1);
-    last3.forEach((e, relIdx) => {
-      const absIdx = entries.length - 1 - (last3.length - relIdx);
-      const hist = getHistorico(entries, entries.length - 1 - (last3.length - relIdx), e.num);
-      hist.forEach(h => { if (h.gp === lastGp) histGpNums.add(h.num + "_" + (entries.length - 1 - (last3.length - relIdx))); });
-    });
-
-    return { ballIndices, histGpNums };
-  }, [entries]);
-
-  // Top 3 stats from last 3 entries' puxou
-  const top3Stats = useMemo(() => {
-    if (entries.length === 0) return [];
-    const last3 = entries.slice(Math.max(0, entries.length - 3));
-    const allPuxou = [];
-    last3.forEach((e, relIdx) => {
-      const absIdx = entries.length - last3.length + relIdx;
-      const hist = getHistorico(entries, absIdx, e.num);
-      allPuxou.push(...hist);
-    });
-    if (allPuxou.length === 0) return [];
-
-    const total = allPuxou.length;
-    const fields = [
-      { key:"cor",      vals:["Vermelho","Preto","Verde"],         palette:{"Vermelho":{bg:"#CC0000",text:"#fff"},"Preto":{bg:"#222",text:"#ddd"},"Verde":{bg:"#1B7A3E",text:"#fff"}} },
-      { key:"lado",     vals:["PB e VA","PA e VB"],                palette:{"PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"},"PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}} },
-      { key:"paridade", vals:["Par","Ímpar"],                      palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
-      { key:"parte",    vals:["P1","P2"],                          palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
-      { key:"altobaixo",vals:["ALTO","BAIXO"],                     palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
-      { key:"regiao",   vals:["Tier","Orphelins","Voisins"],        palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
-      { key:"duzia",    vals:["D1","D2","D3"],                     palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
-    ];
-
-    const results = [];
-    fields.forEach(({key, vals, palette}) => {
-      vals.forEach(val => {
-        const count = allPuxou.filter(h => (h[key]||"—") === val).length;
-        if (count > 0) {
-          const pct = Math.round((count / total) * 100);
-          results.push({ label: val, pct, count, scheme: palette[val]||{bg:"#222",text:"#aaa"} });
-        }
-      });
-    });
-
-    return results.sort((a,b) => b.pct - a.pct).slice(0, 3);
-  }, [entries]);
-
-  // Arrow markers on # column
-  const getArrow = (posFromLast) => {
-    if (posFromLast === 2 || posFromLast === 4) return { char: "▶", color: "#facc15" }; // yellow
-    if (posFromLast === 3 || posFromLast === 6) return { char: "▶", color: "#ffffff" }; // white
-    return null;
-  };
-
   return (
-    <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
-      <style>{`
-        @keyframes pulseBorder {
-          0%,100% { box-shadow: inset 0 0 0 2px #FFD700, inset 0 0 8px #FFD700; }
-          50%      { box-shadow: inset 0 0 0 2px #fff5a0, inset 0 0 16px #FFD700; }
-        }
-        .pulse-cell {
-          animation: pulseBorder 0.9s ease-in-out infinite;
-          outline: 2px solid #FFD700;
-          outline-offset: -2px;
-          position: relative;
-          z-index: 1;
-        }
-      `}</style>
-
-      {/* ── Coluna central (tabela + rodapé) ── */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+    <div style={{display:"flex",flexDirection:"column",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
 
       <div style={{flex:1,display:"flex",flexDirection:"column",padding:"12px 16px 0 16px"}}>
 
@@ -577,14 +245,11 @@ export default function DestroyerRaceTable() {
 
                 const Cell = ({ckey, isLast}) => {
                   const scheme = CELL_SCHEME(e,ckey);
-                  const pulse = pulseLastIdx[ckey] === i;
                   return (
-                    <td className={pulse ? "pulse-cell" : ""}
-                      style={{background:scheme.bg,color:scheme.text,padding:"2px 5px",textAlign:"center",
+                    <td style={{background:scheme.bg,color:scheme.text,padding:"2px 5px",textAlign:"center",
                       fontSize:10,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0.02em",whiteSpace:"nowrap",
-                      borderTop: pulse ? "2px solid #FFD700" : bTop,
-                      borderBottom: pulse ? "2px solid #FFD700" : bBot,
-                      borderRight: (isLast&&isGold) ? `2px solid ${GOLD}` : pulse ? "2px solid #FFD700" : "1px solid #000"}}>
+                      borderTop:bTop,borderBottom:bBot,
+                      borderRight:isLast&&isGold?`2px solid ${GOLD}`:"1px solid #000"}}>
                       {CELL_VAL(e,ckey)}
                     </td>
                   );
@@ -596,65 +261,23 @@ export default function DestroyerRaceTable() {
                       if (hidden.has(col.key)) return null;
                       const isLast = col.key===lastVisKey;
 
-                      if (col.key==="seq") {
-                        const arrow = getArrow(posFromLast);
-                        return (
-                          <td key="seq" style={{background:"#0d0d0d",fontSize:8,textAlign:"center",
-                            padding:"1px 2px",borderTop:bTop,borderBottom:bBot,
-                            borderLeft:isGold?`2px solid ${GOLD}`:"none",borderRight:"1px solid #000",
-                            fontFamily:"Arial, sans-serif",width:26,whiteSpace:"nowrap"}}>
-                            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:1}}>
-                              {arrow && <span style={{color:arrow.color,fontSize:7,lineHeight:1}}>{arrow.char}</span>}
-                              <span style={{color:"#444"}}>{i+1}</span>
-                            </div>
-                          </td>
-                        );
-                      }
-                      if (col.key==="num") {
-                        const gpBall = gpHighlight.ballIndices.has(i);
-                        return (
-                          <td key="num" style={{background:"#0d0d0d",padding:"1px 3px",textAlign:"center",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:40}}>
-                            <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-                              width:24,height:24,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
-                              border: gpBall ? "2px solid #3b82f6" : `2px solid ${NUM_BALL[e.cor].border}`,
-                              boxShadow: gpBall ? "0 0 6px #3b82f6" : "none",
-                              color:NUM_BALL[e.cor].text,fontFamily:"Arial, sans-serif"}}>
-                              <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>{e.num}</span>
-                              {e.gp!=="—"&&<span style={{fontSize:6,fontWeight:"normal",opacity:0.85,lineHeight:1}}>{e.gp}</span>}
-                            </div>
-                          </td>
-                        );
-                      }
-                      if (col.key==="hist") {
-                        const hist = getHistorico(entries, i, e.num);
-                        const lastGp = entries.length > 0 ? entries[entries.length-1].gp : "—";
-                        const isLast3General = posFromLast >= 1 && posFromLast <= 4;
-                        return (
-                          <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:82}}>
-                            <div style={{display:"flex",alignItems:"center",gap:2,flexWrap:"nowrap"}}>
-                              {hist.length===0
-                                ? <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
-                                : hist.map((h,hi) => {
-                                    const isGpMatch = isLast3General && lastGp !== "—" && h.gp === lastGp;
-                                    return (
-                                      <div key={hi} style={{
-                                        display:"inline-flex",alignItems:"center",justifyContent:"center",
-                                        width:24,height:24,borderRadius:"50%",flexShrink:0,
-                                        background:NUM_BALL[h.cor].bg,
-                                        border: isGpMatch ? "2px solid #3b82f6" : `2px solid ${NUM_BALL[h.cor].border}`,
-                                        boxShadow: isGpMatch ? "0 0 6px #3b82f6" : "none",
-                                        color:NUM_BALL[h.cor].text,
-                                        fontSize:10,fontWeight:"bold",
-                                      }}>{h.num}</div>
-                                    );
-                                  })
-                              }
-                            </div>
-                          </td>
-                        );
-                      }
+                      if (col.key==="seq") return (
+                        <td key="seq" style={{background:"#0d0d0d",color:"#444",fontSize:8,textAlign:"center",
+                          padding:"1px 3px",borderTop:bTop,borderBottom:bBot,
+                          borderLeft:isGold?`2px solid ${GOLD}`:"none",borderRight:"1px solid #000",
+                          fontFamily:"Arial, sans-serif",width:22}}>{i+1}</td>
+                      );
+                      if (col.key==="num") return (
+                        <td key="num" style={{background:"#0d0d0d",padding:"1px 3px",textAlign:"center",
+                          borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:40}}>
+                          <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+                            width:24,height:24,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
+                            border:`2px solid ${NUM_BALL[e.cor].border}`,color:NUM_BALL[e.cor].text,fontFamily:"Arial, sans-serif"}}>
+                            <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>{e.num}</span>
+                            {e.gp!=="—"&&<span style={{fontSize:6,fontWeight:"normal",opacity:0.85,lineHeight:1}}>{e.gp}</span>}
+                          </div>
+                        </td>
+                      );
                       return <Cell key={col.key} ckey={col.key} isLast={isLast}/>;
                     })}
                     {[...hidden].map(key=>(
@@ -677,49 +300,8 @@ export default function DestroyerRaceTable() {
               padding:"7px 10px",fontSize:12,fontFamily:"Arial, sans-serif",resize:"none",outline:"none"}}/>
           <button onClick={addNumbers} style={{padding:"0 20px",background:"#CC0000",border:"none",borderRadius:2,
             color:"#fff",fontSize:11,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",fontFamily:"Arial, sans-serif"}}>ADD</button>
-          <button onClick={()=>{ setEntries([]); setAcertos(0); setErros(0); }} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",
+          <button onClick={()=>setEntries([])} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",
             borderRadius:2,color:"#666",fontSize:11,cursor:"pointer",fontFamily:"Arial, sans-serif"}}>CLR</button>
-          <button onClick={()=>setEntries(prev=>prev.slice(0,-1))} disabled={entries.length===0} style={{padding:"0 14px",background:"transparent",border:"1px solid #444",
-            borderRadius:2,color:entries.length===0?"#333":"#aaa",fontSize:11,cursor:entries.length===0?"default":"pointer",fontFamily:"Arial, sans-serif"}}>↩</button>
-        </div>
-        {/* Top 3 stats from last 3 puxou — junto ao input */}
-        {top3Stats.length > 0 && (
-          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8,marginTop:2}}>
-            <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",whiteSpace:"nowrap",flexShrink:0}}>ult 3 →</span>
-            {top3Stats.map((s,idx) => (
-              <div key={idx} style={{display:"flex",alignItems:"center",gap:4,background:"#111",borderRadius:3,padding:"3px 8px",border:"0.5px solid #222"}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:s.scheme.bg,border:"0.5px solid "+s.scheme.text,flexShrink:0}}/>
-                <span style={{fontSize:9,color:s.scheme.text,fontWeight:"bold",fontFamily:"Arial, sans-serif"}}>{s.label}</span>
-                <span style={{fontSize:9,color:"#666",fontFamily:"Arial, sans-serif"}}>{s.pct}%</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {/* Contador de tentativas */}
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-          <button onClick={()=>setAcertos(a=>a+1)} style={{flex:1,padding:"3px 0",background:"#14532d",border:"none",borderRadius:3,
-            color:"#4ade80",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.05em"}}>
-            ✓ ACERTO
-          </button>
-          <button onClick={()=>setErros(e=>e+1)} style={{flex:1,padding:"3px 0",background:"#7f1d1d",border:"none",borderRadius:3,
-            color:"#fca5a5",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.05em"}}>
-            ✗ ERRO
-          </button>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:60,background:"#111",borderRadius:3,padding:"4px 10px",border:"0.5px solid #222"}}>
-            <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>tentativas</span>
-            <div style={{display:"flex",gap:10,marginTop:2}}>
-              <span style={{fontSize:13,fontWeight:"bold",color:"#4ade80"}}>{acertos}</span>
-              <span style={{fontSize:13,color:"#333"}}>|</span>
-              <span style={{fontSize:13,fontWeight:"bold",color:"#f87171"}}>{erros}</span>
-            </div>
-            <span style={{fontSize:7,color:"#555"}}>acertos | erros</span>
-          </div>
-          {(acertos+erros)>0 && (
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:48,background:"#111",borderRadius:3,padding:"4px 8px",border:"0.5px solid #222"}}>
-              <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>taxa</span>
-              <span style={{fontSize:13,fontWeight:"bold",color: acertos/(acertos+erros)>=0.5?"#4ade80":"#f87171"}}>{Math.round(acertos/(acertos+erros)*100)}%</span>
-            </div>
-          )}
         </div>
 
         {last14.length>0&&(
@@ -735,29 +317,12 @@ export default function DestroyerRaceTable() {
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Coluna"    data={stats.coluna}      palette={COLUNA_CELL} />
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="Parte"     data={stats.parte}       palette={PARTE_CELL}  />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="A/B"       data={stats.altobaixo}   palette={ALTOBAIXO_CELL}/>
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="GP"        data={stats.gp}          palette={GP_CELL}     />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Rua"       data={stats.ruaParidade} palette={RUA_PAR_CELL}/>
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Região"    data={stats.regiao}      palette={REGIAO_CELL} />
           </div>
         )}
       </div>
-      </div>{/* fim coluna central */}
-
-      {/* ── Painel lateral: Rep/Alt ── */}
-      <div style={{width:200,background:"#080808",borderLeft:"1px solid #1e1e1e",padding:"14px 12px",flexShrink:0,overflowY:"auto",display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
-        <div style={{fontSize:8,letterSpacing:"0.2em",color:"#CC0000",fontWeight:"bold",marginBottom:14,textTransform:"uppercase"}}>
-          Rep / Alt — ult 14
-        </div>
-        <RepAltPanel last14={last14} />
-        <ScorePanel last14={last14} />
-      </div>
-
     </div>
   );
 }
