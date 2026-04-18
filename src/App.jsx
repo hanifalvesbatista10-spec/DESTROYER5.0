@@ -63,7 +63,7 @@ function parseInput(raw) {
 }
 
 const NUM_BALL  = { Vermelho:{bg:"#CC0000",border:"#ff6666",text:"#fff"}, Preto:{bg:"#111",border:"#555",text:"#fff"}, Verde:{bg:"#1B7A3E",border:"#4ade80",text:"#fff"} };
-const COR_CELL  = { "Vermelho":{bg:"#CC0000",text:"#fff"}, "Preto":{bg:"#111",text:"#ddd"}, "Verde":{bg:"#1B7A3E",text:"#fff"} };
+const COR_CELL  = { "Vermelho":{bg:"#CC0000",text:"#fff"}, "Preto":{bg:"#222222",text:"#e5e5e5"}, "Verde":{bg:"#1B7A3E",text:"#fff"} };
 const LADO_CELL = { "PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"}, "PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}, "—":{bg:"#111",text:"#444"} };
 const REGIAO_CELL = { Tier:{bg:"#7c2d12",text:"#fdba74"}, Orphelins:{bg:"#854d0e",text:"#fefce8"}, Voisins:{bg:"#166534",text:"#bbf7d0"} };
 const DUZIA_CELL  = { D1:{bg:"#1e3a8a",text:"#bfdbfe"}, D2:{bg:"#92400e",text:"#fde68a"}, D3:{bg:"#7f1d1d",text:"#fca5a5"}, "—":{bg:"#111",text:"#444"} };
@@ -122,20 +122,30 @@ const CELL_SCHEME = (e, key) => {
 };
 
 const INIT_COLS = [
-  { key:"seq",       label:"#",         toggleable:false },
-  { key:"num",       label:"Nº",        toggleable:false },
-  { key:"hist",      label:"PUXOU",     toggleable:false },
-  { key:"gp",        label:"GP",         toggleable:true  },
-  { key:"lado",      label:"LADO RACE", toggleable:true  },
-  { key:"cor",       label:"COR",       toggleable:true  },
-  { key:"altobaixo", label:"A/B",       toggleable:true  },
-  { key:"paridade",  label:"PAR/ÍMPAR", toggleable:true  },
-  { key:"parte",     label:"PARTE",     toggleable:true  },
-  { key:"duzia",     label:"DÚZIA",     toggleable:true  },
-  { key:"coluna",    label:"COLUNA",    toggleable:true  },
-  { key:"rua",       label:"RUA",       toggleable:true  },
-  { key:"regiao",    label:"REGIÃO",    toggleable:true  },
+  { key:"seq",       label:"#",         toggleable:false, mode:"fixed"  },
+  { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"  },
+  { key:"hist",      label:"PUXOU",     toggleable:false, mode:"fixed"  },
+  { key:"cor",       label:"COR",       toggleable:true,  mode:"auto"   },
+  { key:"lado",      label:"LADO RACE", toggleable:true,  mode:"auto"   },
+  { key:"altobaixo", label:"A/B",       toggleable:true,  mode:"auto"   },
+  { key:"paridade",  label:"PAR/ÍMPAR", toggleable:true,  mode:"auto"   },
+  { key:"parte",     label:"PARTE",     toggleable:true,  mode:"auto"   },
+  { key:"gp",        label:"GP",        toggleable:true,  mode:"auto"   },
+  { key:"regiao",    label:"REGIÃO",    toggleable:true,  mode:"auto"   },
+  { key:"duzia",     label:"DÚZIA",     toggleable:true,  mode:"always" },
+  { key:"coluna",    label:"COLUNA",    toggleable:true,  mode:"always" },
+  { key:"rua",       label:"RUA",       toggleable:true,  mode:"always" },
 ];
+
+const AUTO_RULE_FIELDS = {
+  cor:       { field:"cor",       values:["Vermelho","Preto","Verde"] },
+  lado:      { field:"lado",      values:["PB e VA","PA e VB"]        },
+  altobaixo: { field:"altobaixo", values:["ALTO","BAIXO"]             },
+  paridade:  { field:"paridade",  values:["Par","Ímpar"]              },
+  parte:     { field:"parte",     values:["P1","P2"]                  },
+  gp:        { field:"gp",        values:["d1V","d1P","d2I","d2P","d3V","d3P"] },
+  regiao:    { field:"regiao",    values:["Tier","Orphelins","Voisins"] },
+};
 
 // Retorna os numeros que saíram APÓS cada ocorrência anterior do mesmo num
 function getHistorico(entries, currentIndex, num) {
@@ -362,6 +372,26 @@ export default function DestroyerRaceTable() {
   };
 
   const last14 = useMemo(()=>entries.slice(-14),[entries]);
+  const last14b = useMemo(()=>entries.slice(-14),[entries]);
+
+  const autoVisible = useMemo(() => {
+    const result = {};
+    Object.entries(AUTO_RULE_FIELDS).forEach(([key, {field, values}]) => {
+      if (last14b.length < 3) { result[key] = false; return; }
+      const total = last14b.length;
+      let dominant = false;
+      let dominantVal = null;
+      values.forEach(val => {
+        const cnt = last14b.filter(e => (e[field]||"—") === val).length;
+        if (cnt / total >= 0.7) { dominant = true; dominantVal = val; }
+      });
+      if (!dominant) { result[key] = false; return; }
+      const {rep, alt} = calcRepAltPerValue(last14b, field, dominantVal);
+      const repRate = (rep + alt) > 0 ? rep / (rep + alt) : 0;
+      result[key] = repRate >= 0.55;
+    });
+    return result;
+  }, [last14b]);
 
   const stats = useMemo(()=>({
     cor:      countBy(last14,"cor",      ["Vermelho","Preto","Verde"]),
@@ -384,7 +414,18 @@ export default function DestroyerRaceTable() {
   }
   function handleKey(e) { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();addNumbers();} }
 
-  const visibleCols = cols.filter(c=>!hidden.has(c.key));
+  function isColVisible(key) {
+    const col = INIT_COLS.find(c => c.key === key);
+    if (!col) return false;
+    if (!col.toggleable) return true;
+    if (hidden.has(key)) return false;
+    if (col.mode === "always") return true;
+    if (col.mode === "auto") return autoVisible[key] !== false;
+    return true;
+  }
+
+  const visibleCols = cols.filter(c=>isColVisible(c.key));
+
   const lastVisKey  = [...visibleCols].reverse()[0]?.key;
 
   // Compute which columns have 100% match AND the last occurrence index for each matched key
@@ -451,6 +492,31 @@ export default function DestroyerRaceTable() {
     });
 
     return { ballIndices, histGpNums };
+  }, [entries]);
+
+  // Absent card: last 5 entries, check which Dúzia/Coluna values are absent
+  const absentCard = useMemo(() => {
+    if (entries.length < 1) return null;
+    const last5 = entries.slice(-5);
+    const result = {};
+
+    // Dúzia
+    const duziaVals = ["D1","D2","D3"];
+    const duziaPresent = [...new Set(last5.map(e=>e.duzia).filter(v=>v!=="—"))];
+    const duziaAbsent = duziaVals.filter(v=>!duziaPresent.includes(v));
+    if (duziaAbsent.length === 1 && duziaPresent.length === 2) {
+      result.duzia = { absent: duziaAbsent[0], present: duziaPresent };
+    }
+
+    // Coluna
+    const colunaVals = ["C1","C2","C3"];
+    const colunaPresent = [...new Set(last5.map(e=>e.coluna).filter(v=>v!=="0"&&v!=="—"))];
+    const colunaAbsent = colunaVals.filter(v=>!colunaPresent.includes(v));
+    if (colunaAbsent.length === 1 && colunaPresent.length === 2) {
+      result.coluna = { absent: colunaAbsent[0], present: colunaPresent };
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
   }, [entries]);
 
   // Top 3 stats from last 3 entries' puxou
@@ -556,9 +622,12 @@ export default function DestroyerRaceTable() {
             <thead>
               <tr>
                 {cols.map(col => {
-                  if (hidden.has(col.key)) return null;
+                  if (!isColVisible(col.key)) return null;
                   const isDraggable = col.toggleable;
                   const isBeingDragged = dragKey.current===col.key;
+                  const visibleAutoKeys = visibleCols.filter(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="auto").map(c=>c.key);
+                  const firstAlwaysKey = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
+                  const isSeparator = col.key === firstAlwaysKey;
                   return (
                     <th
                       key={col.key}
@@ -574,6 +643,7 @@ export default function DestroyerRaceTable() {
                         color:"#ffffff", padding:"5px 6px", textAlign:"center",
                         fontSize:9, fontWeight:"bold", letterSpacing:"0.07em",
                         borderBottom:"2px solid #000", borderRight:"1px solid #000",
+                        borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
                         cursor: isDraggable ? "grab" : "default",
                         userSelect:"none", opacity: isBeingDragged ? 0.5 : 1,
@@ -604,15 +674,18 @@ export default function DestroyerRaceTable() {
                 const bTop = isGold?`2px solid ${GOLD}`:"none";
                 const bBot = isGold?`2px solid ${GOLD}`:"1px solid #000";
 
+                const firstAlwaysKeyRow = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
                 const Cell = ({ckey, isLast}) => {
                   const scheme = CELL_SCHEME(e,ckey);
                   const pulse = pulseLastIdx[ckey] === i;
+                  const isSep = ckey === firstAlwaysKeyRow;
                   return (
                     <td className={pulse ? "pulse-cell" : ""}
                       style={{background:scheme.bg,color:scheme.text,padding:"2px 5px",textAlign:"center",
                       fontSize:10,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0.02em",whiteSpace:"nowrap",
                       borderTop: pulse ? "2px solid #FFD700" : bTop,
                       borderBottom: pulse ? "2px solid #FFD700" : bBot,
+                      borderLeft: isSep ? "3px solid #FFD700" : "none",
                       borderRight: (isLast&&isGold) ? `2px solid ${GOLD}` : pulse ? "2px solid #FFD700" : "1px solid #000"}}>
                       {CELL_VAL(e,ckey)}
                     </td>
@@ -622,7 +695,7 @@ export default function DestroyerRaceTable() {
                 return (
                   <tr key={e.id}>
                     {cols.map((col,ci) => {
-                      if (hidden.has(col.key)) return null;
+                      if (!isColVisible(col.key)) return null;
                       const isLast = col.key===lastVisKey;
 
                       if (col.key==="seq") {
@@ -733,26 +806,54 @@ export default function DestroyerRaceTable() {
           }}>{showAlt ? "● ALT" : "○ ALT"}</button>
         </div>
         {/* Top 3 stats from last 3 puxou — junto ao input */}
-        {top3Stats.length > 0 && (
-          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8,marginTop:2}}>
-            <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",whiteSpace:"nowrap",flexShrink:0}}>ult 3 →</span>
-            {top3Stats.map((s,idx) => {
-              const hot = s.pct >= 80;
-              return (
-                <div key={idx} className={hot ? "pulse-cell" : ""}
-                  style={{
-                    display:"flex",alignItems:"center",gap:4,
-                    background: hot ? s.scheme.bg : "#111",
-                    borderRadius:3,padding:"3px 8px",
-                    border: hot ? "2px solid " + s.scheme.text : "0.5px solid #222",
-                    transition:"all 0.3s",
-                  }}>
-                  <div style={{width:8,height:8,borderRadius:"50%",background: hot ? s.scheme.text : s.scheme.bg,border:"0.5px solid "+s.scheme.text,flexShrink:0}}/>
-                  <span style={{fontSize:9,color: hot ? s.scheme.text : s.scheme.text,fontWeight:"bold",fontFamily:"Arial, sans-serif"}}>{s.label}</span>
-                  <span style={{fontSize:9,color: hot ? s.scheme.text : "#666",fontFamily:"Arial, sans-serif",fontWeight: hot ? "bold" : "normal"}}>{s.pct}%</span>
-                </div>
-              );
-            })}
+        {(top3Stats.length > 0 || absentCard) && (
+          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8,marginTop:2,flexWrap:"wrap"}}>
+            {top3Stats.length > 0 && <>
+              <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",whiteSpace:"nowrap",flexShrink:0}}>ult 3 →</span>
+              {top3Stats.map((s,idx) => {
+                const hot = s.pct >= 80;
+                return (
+                  <div key={idx} className={hot ? "pulse-cell" : ""}
+                    style={{
+                      display:"flex",alignItems:"center",gap:4,
+                      background: hot ? s.scheme.bg : "#111",
+                      borderRadius:3,padding:"3px 8px",
+                      border: hot ? "2px solid " + s.scheme.text : "0.5px solid #222",
+                      transition:"all 0.3s",
+                    }}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background: hot ? s.scheme.text : s.scheme.bg,border:"0.5px solid "+s.scheme.text,flexShrink:0}}/>
+                    <span style={{fontSize:9,color:s.scheme.text,fontWeight:"bold",fontFamily:"Arial, sans-serif"}}>{s.label}</span>
+                    <span style={{fontSize:9,color: hot ? s.scheme.text : "#666",fontFamily:"Arial, sans-serif",fontWeight: hot ? "bold" : "normal"}}>{s.pct}%</span>
+                  </div>
+                );
+              })}
+            </>}
+            {absentCard && (
+              <div style={{display:"flex",gap:4,alignItems:"center",background:"#0a0a0a",border:"0.5px solid #1e1e1e",borderRadius:3,padding:"3px 8px"}}>
+                <span style={{fontSize:7,color:"#555",textTransform:"uppercase",letterSpacing:"0.08em",flexShrink:0}}>ausente</span>
+                {absentCard.duzia && (
+                  <div style={{display:"flex",alignItems:"center",gap:3}}>
+                    <span style={{fontSize:7,color:"#666"}}>D</span>
+                    {absentCard.duzia.present.map(v=>(
+                      <span key={v} style={{fontSize:8,fontWeight:"bold",color:DUZIA_CELL[v]?.text,background:DUZIA_CELL[v]?.bg,padding:"1px 4px",borderRadius:2}}>{v}</span>
+                    ))}
+                    <span style={{fontSize:7,color:"#555"}}>→</span>
+                    <span style={{fontSize:8,fontWeight:"bold",color:"#fff",background:"#CC0000",padding:"1px 4px",borderRadius:2,border:"1px solid #ff6666"}}>{absentCard.duzia.absent}?</span>
+                  </div>
+                )}
+                {absentCard.duzia && absentCard.coluna && <div style={{width:"0.5px",height:12,background:"#2a2a2a"}}/>}
+                {absentCard.coluna && (
+                  <div style={{display:"flex",alignItems:"center",gap:3}}>
+                    <span style={{fontSize:7,color:"#666"}}>C</span>
+                    {absentCard.coluna.present.map(v=>(
+                      <span key={v} style={{fontSize:8,fontWeight:"bold",color:COLUNA_CELL[v]?.text,background:COLUNA_CELL[v]?.bg,padding:"1px 4px",borderRadius:2}}>{v}</span>
+                    ))}
+                    <span style={{fontSize:7,color:"#555"}}>→</span>
+                    <span style={{fontSize:8,fontWeight:"bold",color:"#fff",background:"#CC0000",padding:"1px 4px",borderRadius:2,border:"1px solid #ff6666"}}>{absentCard.coluna.absent}?</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         {/* Contador de tentativas */}
@@ -813,4 +914,4 @@ export default function DestroyerRaceTable() {
 
     </div>
   );
-   }
+}
