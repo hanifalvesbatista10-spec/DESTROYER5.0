@@ -417,14 +417,40 @@ export default function DestroyerRaceTable() {
   function isColVisible(key) {
     const col = INIT_COLS.find(c => c.key === key);
     if (!col) return false;
-    if (!col.toggleable) return true;
     if (hidden.has(key)) return false;
-    if (col.mode === "always") return true;
-    if (col.mode === "auto") return autoVisible[key] !== false;
     return true;
   }
 
-  const visibleCols = cols.filter(c=>isColVisible(c.key));
+  // Score each auto column for dynamic reordering
+  const colScores = useMemo(() => {
+    const scores = {};
+    Object.entries(AUTO_RULE_FIELDS).forEach(([key, {field, values}]) => {
+      if (last14b.length < 3) { scores[key] = 0; return; }
+      const total = last14b.length;
+      let maxPct = 0, bestVal = null;
+      values.forEach(val => {
+        const cnt = last14b.filter(e => (e[field]||"—") === val).length;
+        const pct = cnt / total;
+        if (pct > maxPct) { maxPct = pct; bestVal = val; }
+      });
+      if (!bestVal) { scores[key] = 0; return; }
+      const {rep, alt} = calcRepAltPerValue(last14b, field, bestVal);
+      const repRate = (rep + alt) > 0 ? rep / (rep + alt) : 0;
+      scores[key] = maxPct * repRate;
+    });
+    return scores;
+  }, [last14b]);
+
+  // Dynamically reorder cols: fixed first, then auto sorted by score desc, then always last
+  const orderedCols = useMemo(() => {
+    const fixed  = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "fixed");
+    const auto   = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "auto")
+                       .sort((a,b) => (colScores[b.key]||0) - (colScores[a.key]||0));
+    const always = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "always");
+    return [...fixed, ...auto, ...always];
+  }, [cols, colScores]);
+
+  const visibleCols = orderedCols.filter(c=>isColVisible(c.key));
 
   const lastVisKey  = [...visibleCols].reverse()[0]?.key;
 
@@ -621,7 +647,7 @@ export default function DestroyerRaceTable() {
           <table style={{width:"100%",borderCollapse:"collapse",borderTop:"1px solid #000",borderLeft:"1px solid #000"}}>
             <thead>
               <tr>
-                {cols.map(col => {
+                {orderedCols.map(col => {
                   if (!isColVisible(col.key)) return null;
                   const isDraggable = col.toggleable;
                   const isBeingDragged = dragKey.current===col.key;
