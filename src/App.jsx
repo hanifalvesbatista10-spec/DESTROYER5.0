@@ -570,17 +570,14 @@ export default function DestroyerRaceTable() {
     return Object.keys(result).length > 0 ? result : null;
   }, [entries]);
 
-  // Longest absence: which duzia/coluna has gone longest without appearing
-  const longestAbsence = useMemo(() => {
-    if (entries.length < 2) return null;
-    const result = {};
+  // Ranking de maior ausência para dúzias e colunas
+  const absenceRanking = useMemo(() => {
+    if (entries.length < 2) return [];
+    const items = [];
 
-    const calcStreak = (field, vals) => {
-      let best = null;
+    const calcMax = (field, vals, type) => {
       vals.forEach(val => {
-        // Find the LONGEST absence streak ever in the full history
-        let maxStreak = 0;
-        let current = 0;
+        let maxStreak = 0, current = 0;
         for (let i = 0; i < entries.length; i++) {
           if ((entries[i][field]||"—") === val) {
             if (current > maxStreak) maxStreak = current;
@@ -589,16 +586,15 @@ export default function DestroyerRaceTable() {
             current++;
           }
         }
-        // Also check if currently absent at the end
         if (current > maxStreak) maxStreak = current;
-        if (!best || maxStreak > best.streak) best = { val, streak: maxStreak };
+        if (maxStreak > 0) items.push({ val, streak: maxStreak, type });
       });
-      return best;
     };
 
-    result.duzia  = calcStreak("duzia",  ["D1","D2","D3"]);
-    result.coluna = calcStreak("coluna", ["C1","C2","C3"]);
-    return result;
+    calcMax("duzia",  ["D1","D2","D3"], "duzia");
+    calcMax("coluna", ["C1","C2","C3"], "coluna");
+
+    return items.sort((a,b) => b.streak - a.streak);
   }, [entries]);
 
   // Top 3 stats from last 3 entries' puxou
@@ -993,26 +989,28 @@ export default function DestroyerRaceTable() {
             )}
           </div>
         )}
-        {/* Card de maior ausência */}
-        {longestAbsence && (
-          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
-            <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0}}>maior ausência</span>
-            {longestAbsence.duzia && (
-              <div style={{display:"flex",alignItems:"center",gap:4,background:"#111",border:"1px solid "+DUZIA_CELL[longestAbsence.duzia.val]?.bg,borderRadius:3,padding:"3px 10px"}}>
-                <span style={{fontSize:8,color:"#888"}}>DÚZIA</span>
-                <span style={{fontSize:11,fontWeight:"bold",color:DUZIA_CELL[longestAbsence.duzia.val]?.text,background:DUZIA_CELL[longestAbsence.duzia.val]?.bg,padding:"1px 6px",borderRadius:2}}>{longestAbsence.duzia.val}</span>
-                <span style={{fontSize:10,color:"#FFD700",fontWeight:"bold"}}>{longestAbsence.duzia.streak}</span>
-                <span style={{fontSize:7,color:"#555"}}>nums</span>
-              </div>
-            )}
-            {longestAbsence.coluna && (
-              <div style={{display:"flex",alignItems:"center",gap:4,background:"#111",border:"1px solid "+COLUNA_CELL[longestAbsence.coluna.val]?.bg,borderRadius:3,padding:"3px 10px"}}>
-                <span style={{fontSize:8,color:"#888"}}>COLUNA</span>
-                <span style={{fontSize:11,fontWeight:"bold",color:COLUNA_CELL[longestAbsence.coluna.val]?.text,background:COLUNA_CELL[longestAbsence.coluna.val]?.bg,padding:"1px 6px",borderRadius:2}}>{longestAbsence.coluna.val}</span>
-                <span style={{fontSize:10,color:"#FFD700",fontWeight:"bold"}}>{longestAbsence.coluna.streak}</span>
-                <span style={{fontSize:7,color:"#555"}}>nums</span>
-              </div>
-            )}
+        {/* Ranking de maior ausência */}
+        {absenceRanking.length > 0 && (
+          <div style={{marginBottom:8}}>
+            <div style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:5}}>ranking ausência</div>
+            <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+              {absenceRanking.map((item,idx) => {
+                const palette = item.type === "duzia" ? DUZIA_CELL : COLUNA_CELL;
+                const p = palette[item.val] || {bg:"#222",text:"#aaa"};
+                const isTop = idx === 0;
+                return (
+                  <div key={idx} style={{
+                    display:"flex",alignItems:"center",gap:4,
+                    background:"#111",borderRadius:3,padding:"3px 8px",
+                    border: isTop ? "1px solid #FFD700" : "0.5px solid #2a2a2a",
+                  }}>
+                    <span style={{fontSize:7,color: isTop ? "#FFD700" : "#444",fontWeight:"bold",minWidth:10}}>{idx+1}</span>
+                    <span style={{fontSize:10,fontWeight:"bold",color:p.text,background:p.bg,padding:"1px 5px",borderRadius:2}}>{item.val}</span>
+                    <span style={{fontSize:10,fontWeight:"bold",color: isTop ? "#FFD700" : "#888"}}>{item.streak}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
