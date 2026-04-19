@@ -104,6 +104,9 @@ const CELL_VAL = (e, key) => {
   if (key==="parte")    return e.parte;
   if (key==="altobaixo") return e.altobaixo;
   if (key==="gp")        return e.gp;
+  if (key==="gp_d1")     return ["d1V","d1P"].includes(e.gp) ? e.gp : "";
+  if (key==="gp_d2")     return ["d2I","d2P"].includes(e.gp) ? e.gp : "";
+  if (key==="gp_d3")     return ["d3V","d3P"].includes(e.gp) ? e.gp : "";
   return "";
 };
 // CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
@@ -118,6 +121,21 @@ const CELL_SCHEME = (e, key) => {
   if (key==="parte")    return PARTE_CELL[e.parte||"—"]  || PARTE_CELL["—"];
   if (key==="altobaixo") return ALTOBAIXO_CELL[e.altobaixo||"—"] || ALTOBAIXO_CELL["—"];
   if (key==="gp")        return GP_CELL[e.gp]           || GP_CELL["—"];
+  if (key==="gp_d1")     {
+    if (e.gp==="d1P") return {bg:"#000000",text:"#ffffff"};
+    if (e.gp==="d1V") return {bg:"#CC0000",text:"#ffffff"};
+    return {bg:"#f5f0e8",text:"#f5f0e8"};
+  }
+  if (key==="gp_d2")     {
+    if (e.gp==="d2P") return {bg:"#1e3a8a",text:"#bfdbfe"};
+    if (e.gp==="d2I") return {bg:"#4b5563",text:"#e5e7eb"};
+    return {bg:"#f5f0e8",text:"#f5f0e8"};
+  }
+  if (key==="gp_d3")     {
+    if (e.gp==="d3P") return {bg:"#000000",text:"#ffffff"};
+    if (e.gp==="d3V") return {bg:"#991b1b",text:"#fecaca"};
+    return {bg:"#f5f0e8",text:"#f5f0e8"};
+  }
   return {bg:"#111",text:"#fff"};
 };
 
@@ -125,13 +143,15 @@ const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false, mode:"fixed"  },
   { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"  },
   { key:"hist",      label:"PUXOU",     toggleable:false, mode:"fixed"  },
+  { key:"gp_d1",     label:"D1",        toggleable:true,  mode:"priority"},
+  { key:"gp_d2",     label:"D2",        toggleable:true,  mode:"priority"},
+  { key:"gp_d3",     label:"D3",        toggleable:true,  mode:"priority"},
   { key:"cor",       label:"COR",       toggleable:true,  mode:"auto"   },
   { key:"lado",      label:"LADO RACE", toggleable:true,  mode:"auto"   },
   { key:"altobaixo", label:"A/B",       toggleable:true,  mode:"auto"   },
   { key:"paridade",  label:"PAR/ÍMPAR", toggleable:true,  mode:"auto"   },
   { key:"parte",     label:"PARTE",     toggleable:true,  mode:"auto"   },
-  { key:"gp",        label:"GP",        toggleable:true,  mode:"auto"   },
-  { key:"regiao",    label:"REGIÃO",    toggleable:true,  mode:"auto"   },
+  { key:"regiao",    label:"ZONA",      toggleable:true,  mode:"auto"   },
   { key:"duzia",     label:"DÚZIA",     toggleable:true,  mode:"always" },
   { key:"coluna",    label:"COLUNA",    toggleable:true,  mode:"always" },
   { key:"rua",       label:"RUA",       toggleable:true,  mode:"always" },
@@ -143,7 +163,9 @@ const AUTO_RULE_FIELDS = {
   altobaixo: { field:"altobaixo", values:["ALTO","BAIXO"]             },
   paridade:  { field:"paridade",  values:["Par","Ímpar"]              },
   parte:     { field:"parte",     values:["P1","P2"]                  },
-  gp:        { field:"gp",        values:["d1V","d1P","d2I","d2P","d3V","d3P"] },
+  gp_d1:     { field:"gp", values:["d1V","d1P"] },
+  gp_d2:     { field:"gp", values:["d2I","d2P"] },
+  gp_d3:     { field:"gp", values:["d3V","d3P"] },
   regiao:    { field:"regiao",    values:["Tier","Orphelins","Voisins"] },
 };
 
@@ -402,7 +424,9 @@ export default function DestroyerRaceTable() {
     coluna:   countBy(last14,"coluna",   ["C1","C2","C3"]),
     parte:    countBy(last14,"parte",    ["P1","P2"]),
     altobaixo: countBy(last14,"altobaixo", ["ALTO","BAIXO"]),
-    gp:        countBy(last14,"gp",        ["d1V","d1P","d2I","d2P","d3V","d3P"]),
+    gp_d1:     countBy(last14,"gp",        ["d1V","d1P"]),
+    gp_d2:     countBy(last14,"gp",        ["d2I","d2P"]),
+    gp_d3:     countBy(last14,"gp",        ["d3V","d3P"]),
     ruaParidade: (()=>{ const imp=last14.filter(e=>e.rua==="R1"||e.rua==="R3").length; const par=last14.filter(e=>e.rua==="R2"||e.rua==="R4").length; return {"R. Ímpar":imp,"R. Par":par}; })(),
   }),[last14]);
 
@@ -443,11 +467,12 @@ export default function DestroyerRaceTable() {
 
   // Dynamically reorder cols: fixed first, then auto sorted by score desc, then always last
   const orderedCols = useMemo(() => {
-    const fixed  = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "fixed");
-    const auto   = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "auto")
-                       .sort((a,b) => (colScores[b.key]||0) - (colScores[a.key]||0));
-    const always = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "always");
-    return [...fixed, ...auto, ...always];
+    const fixed    = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "fixed");
+    const priority = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "priority");
+    const auto     = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "auto")
+                         .sort((a,b) => (colScores[b.key]||0) - (colScores[a.key]||0));
+    const always   = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "always");
+    return [...fixed, ...priority, ...auto, ...always];
   }, [cols, colScores]);
 
   const visibleCols = orderedCols.filter(c=>isColVisible(c.key));
@@ -609,6 +634,16 @@ export default function DestroyerRaceTable() {
     "d1P":"#bfdbfe","d2I":"#67e8f9","d3V":"#93c5fd",
   };
 
+  // Dúzia sequence alert: D1->D2 = D3 pulses | D3->D2 = D1 pulses
+  const duziaAlert = useMemo(() => {
+    if (entries.length < 2) return null;
+    const last = entries[entries.length - 1];
+    const prev = entries[entries.length - 2];
+    if (last.duzia === "D2" && prev.duzia === "D1") return "gp_d3"; // D1->D2: D3 pulses
+    if (last.duzia === "D2" && prev.duzia === "D3") return "gp_d1"; // D3->D2: D1 pulses
+    return null;
+  }, [entries]);
+
   // Arrow markers on # column
   const getArrow = (posFromLast) => {
     if (posFromLast === 2 || posFromLast === 4) return { char: "▶", color: "#facc15" }; // yellow
@@ -629,6 +664,17 @@ export default function DestroyerRaceTable() {
           outline-offset: -2px;
           position: relative;
           z-index: 1;
+        }
+        @keyframes pulseDuzia {
+          0%,100% { box-shadow: inset 0 0 0 2px #00e5ff, inset 0 0 10px #00e5ff; }
+          50%      { box-shadow: inset 0 0 0 2px #80f4ff, inset 0 0 20px #00e5ff; }
+        }
+        .pulse-duzia {
+          animation: pulseDuzia 0.7s ease-in-out infinite;
+          outline: 2px solid #00e5ff;
+          outline-offset: -2px;
+          position: relative;
+          z-index: 2;
         }
       `}</style>
 
@@ -652,8 +698,10 @@ export default function DestroyerRaceTable() {
                   const isDraggable = col.toggleable;
                   const isBeingDragged = dragKey.current===col.key;
                   const visibleAutoKeys = visibleCols.filter(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="auto").map(c=>c.key);
-                  const firstAlwaysKey = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
-                  const isSeparator = col.key === firstAlwaysKey;
+                  const firstAlwaysKey   = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
+                  const lastPriorityKey  = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="priority")?.key;
+                  const isSeparator      = col.key === firstAlwaysKey;
+                  const isPrioritySep    = col.key === lastPriorityKey;
                   return (
                     <th
                       key={col.key}
@@ -670,6 +718,7 @@ export default function DestroyerRaceTable() {
                         fontSize:9, fontWeight:"bold", letterSpacing:"0.07em",
                         borderBottom:"2px solid #000", borderRight:"1px solid #000",
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
+                        borderRight: isPrioritySep ? "3px solid #aaaaaa" : "1px solid #000",
                         whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
                         cursor: isDraggable ? "grab" : "default",
                         userSelect:"none", opacity: isBeingDragged ? 0.5 : 1,
@@ -696,23 +745,28 @@ export default function DestroyerRaceTable() {
                 <tr><td colSpan={visibleCols.length+hidden.size} style={{textAlign:"center",padding:"3rem",color:"#333",fontSize:12,background:"#0d0d0d",borderBottom:"1px solid #1a1a1a",borderRight:"1px solid #1a1a1a"}}>Nenhum número inserido</td></tr>
               ) : entries.map((e,i) => {
                 const posFromLast = entries.length - i;
-                const isGold = posFromLast===12||posFromLast===13||posFromLast===14;
-                const bTop = isGold?`2px solid ${GOLD}`:"none";
-                const bBot = isGold?`2px solid ${GOLD}`:"1px solid #000";
+                const isGold  = posFromLast===12||posFromLast===14;
+                const isWhite = posFromLast===5||posFromLast===13;
+                const bTop = isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"none";
+                const bBot = isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"1px solid #000";
 
-                const firstAlwaysKeyRow = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
+                const firstAlwaysKeyRow  = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
+                const lastPriorityKeyRow = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="priority")?.key;
+                const isPrioritySepRow   = (ckey) => ckey === lastPriorityKeyRow;
+                const isLastRow = i === entries.length - 1;
                 const Cell = ({ckey, isLast}) => {
                   const scheme = CELL_SCHEME(e,ckey);
                   const pulse = pulseLastIdx[ckey] === i;
                   const isSep = ckey === firstAlwaysKeyRow;
+                  const isDuziaAlert = isLastRow && duziaAlert === ckey && CELL_VAL(e,ckey) === "";
                   return (
-                    <td className={pulse ? "pulse-cell" : ""}
-                      style={{background:scheme.bg,color:scheme.text,padding:"2px 5px",textAlign:"center",
+                    <td className={isDuziaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
+                      style={{background: isDuziaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"2px 5px",textAlign:"center",
                       fontSize:10,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0.02em",whiteSpace:"nowrap",
-                      borderTop: pulse ? "2px solid #FFD700" : bTop,
-                      borderBottom: pulse ? "2px solid #FFD700" : bBot,
+                      borderTop: isDuziaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
+                      borderBottom: isDuziaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
                       borderLeft: isSep ? "3px solid #FFD700" : "none",
-                      borderRight: (isLast&&isGold) ? `2px solid ${GOLD}` : pulse ? "2px solid #FFD700" : "1px solid #000"}}>
+                      borderRight: (isLast&&isGold) ? `2px solid ${GOLD}` : (isLast&&isWhite) ? "2px solid #ffffff" : isDuziaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : isPrioritySepRow(ckey) ? "3px solid #aaaaaa" : "1px solid #000"}}>
                       {CELL_VAL(e,ckey)}
                     </td>
                   );
@@ -729,7 +783,7 @@ export default function DestroyerRaceTable() {
                         return (
                           <td key="seq" style={{background:"#0d0d0d",fontSize:8,textAlign:"center",
                             padding:"1px 2px",borderTop:bTop,borderBottom:bBot,
-                            borderLeft:isGold?`2px solid ${GOLD}`:"none",borderRight:"1px solid #000",
+                            borderLeft:isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"none",borderRight:"1px solid #000",
                             fontFamily:"Arial, sans-serif",width:26,whiteSpace:"nowrap"}}>
                             <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:1}}>
                               {arrow && <span style={{color:arrow.color,fontSize:7,lineHeight:1}}>{arrow.char}</span>}
@@ -926,7 +980,11 @@ export default function DestroyerRaceTable() {
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="A/B"       data={stats.altobaixo}   palette={ALTOBAIXO_CELL}/>
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="GP"        data={stats.gp}          palette={GP_CELL}     />
+            <StatBlockH title="D1" data={stats.gp_d1} palette={{"d1P":{bg:"#111111",text:"#e5e5e5"},"d1V":{bg:"#CC0000",text:"#ffffff"}}} />
+            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
+            <StatBlockH title="D2" data={stats.gp_d2} palette={{"d2P":{bg:"#1e3a8a",text:"#bfdbfe"},"d2I":{bg:"#4b5563",text:"#e5e7eb"}}} />
+            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
+            <StatBlockH title="D3" data={stats.gp_d3} palette={{"d3P":{bg:"#1f2937",text:"#9ca3af"},"d3V":{bg:"#991b1b",text:"#fecaca"}}} />
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Rua"       data={stats.ruaParidade} palette={RUA_PAR_CELL}/>
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
