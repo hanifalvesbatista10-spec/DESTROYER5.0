@@ -354,6 +354,8 @@ export default function DestroyerRaceTable() {
   const [showRep, setShowRep] = useState(false);
   const [showAlt, setShowAlt] = useState(false);
 
+
+
   const dragKey   = useRef(null);
   const dragOver  = useRef(null);
 
@@ -436,6 +438,46 @@ export default function DestroyerRaceTable() {
     setInput("");
   }
   function handleKey(e) { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();addNumbers();} }
+
+  async function exportPDF() {
+    try {
+      // Load libraries dynamically
+      if (!window.html2canvas) {
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      if (!window.jspdf) {
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+
+      const tableEl = document.getElementById("destroyer-table");
+      if (!tableEl) return;
+
+      const canvas = await window.html2canvas(tableEl, {
+        backgroundColor: "#0d0d0d",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+
+      const { jsPDF } = window.jspdf;
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [canvas.width / 2, canvas.height / 2] });
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
+      pdf.save("destroyer-race-table.pdf");
+    } catch(err) {
+      alert("Erro ao gerar PDF: " + err.message);
+    }
+  }
 
   function isColVisible(key) {
     const col = INIT_COLS.find(c => c.key === key);
@@ -703,7 +745,6 @@ export default function DestroyerRaceTable() {
     return top2Chars.every(({key, val}) => (entry[key]||"—") === val);
   };
 
-
   return (
     <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
       <style>{`
@@ -740,10 +781,11 @@ export default function DestroyerRaceTable() {
           <span style={{fontSize:13,letterSpacing:"0.3em",color:"#CC0000",fontWeight:"bold"}}>DESTROYER</span>
           <span style={{fontSize:9,letterSpacing:"0.2em",color:"#555"}}>RACE TABLE</span>
           {entries.length>0&&<span style={{marginLeft:"auto",fontSize:9,color:"#555"}}>{entries.length} números</span>}
+
         </div>
 
-        <div style={{flex:1,overflowY:"auto",marginBottom:8}}>
-          <table style={{width:"100%",borderCollapse:"collapse",borderTop:"1px solid #000",borderLeft:"1px solid #000"}}>
+        <div id="destroyer-table-wrap" style={{flex:1,overflowY:"auto",marginBottom:8}}>
+          <table id="destroyer-table" style={{width:"100%",borderCollapse:"collapse",borderTop:"1px solid #000",borderLeft:"1px solid #000"}}>
             <thead>
               <tr>
                 {orderedCols.map(col => {
@@ -905,6 +947,36 @@ export default function DestroyerRaceTable() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Barra de toggle de colunas + PDF */}
+        <div style={{display:"flex",gap:3,padding:"4px 0",flexWrap:"wrap",borderTop:"1px solid #1a1a1a",marginTop:4,alignItems:"center"}}>
+          <button onClick={exportPDF}
+            style={{padding:"1px 10px",background:"#7c0000",border:"1px solid #CC0000",borderRadius:2,
+              color:"#fca5a5",fontSize:9,cursor:"pointer",fontFamily:"Arial, sans-serif",fontWeight:"bold",letterSpacing:"0.05em"}}>
+            ⬇ PDF
+          </button>
+          <div style={{width:"0.5px",height:14,background:"#2a2a2a"}}/>
+          {INIT_COLS.filter(c=>c.toggleable).map(col => {
+            const vis = isColVisible(col.key);
+            return (
+              <button key={col.key} onClick={()=>toggleHide(col.key)}
+                title={vis ? "Ocultar "+col.label : "Mostrar "+col.label}
+                style={{
+                  padding:"1px 7px",
+                  background: vis ? "#1a1a1a" : "#0a0a0a",
+                  border: vis ? "1px solid #333" : "1px solid #1a1a1a",
+                  borderRadius:2,
+                  color: vis ? "#aaa" : "#333",
+                  fontSize:9, cursor:"pointer",
+                  fontFamily:"Arial, sans-serif",
+                  letterSpacing:"0.04em",
+                  transition:"all 0.15s",
+                }}>
+                {vis ? "−" : "+"} {col.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
