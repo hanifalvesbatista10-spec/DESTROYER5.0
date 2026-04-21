@@ -107,6 +107,9 @@ const CELL_VAL = (e, key) => {
   if (key==="gp_d1")     return ["d1V","d1P"].includes(e.gp) ? e.gp : "";
   if (key==="gp_d2")     return ["d2I","d2P"].includes(e.gp) ? e.gp : "";
   if (key==="gp_d3")     return ["d3V","d3P"].includes(e.gp) ? e.gp : "";
+  if (key==="col_c1")    return e.coluna==="C1" ? "C1" : "";
+  if (key==="col_c2")    return e.coluna==="C2" ? "C2" : "";
+  if (key==="col_c3")    return e.coluna==="C3" ? "C3" : "";
   return "";
 };
 // CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
@@ -136,6 +139,9 @@ const CELL_SCHEME = (e, key) => {
     if (e.gp==="d3V") return {bg:"#991b1b",text:"#fecaca"};
     return {bg:"#f5f0e8",text:"#f5f0e8"};
   }
+  if (key==="col_c1")    { return e.coluna==="C1" ? {bg:"#4a5320",text:"#e5e5e5"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
+  if (key==="col_c2")    { return e.coluna==="C2" ? {bg:"#0891b2",text:"#0a0a0a"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
+  if (key==="col_c3")    { return e.coluna==="C3" ? {bg:"#ea580c",text:"#1a1a1a"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
   return {bg:"#111",text:"#fff"};
 };
 
@@ -147,7 +153,9 @@ const INIT_COLS = [
   { key:"gp_d2",     label:"D2",        toggleable:true,  mode:"priority" },
   { key:"gp_d3",     label:"D3",        toggleable:true,  mode:"priority" },
   { key:"lado",      label:"LADO RACE", toggleable:true,  mode:"pinned"   },
-  { key:"coluna",    label:"COLUNA",    toggleable:true,  mode:"pinned"   },
+  { key:"col_c1",    label:"C1",        toggleable:true,  mode:"pinned"   },
+  { key:"col_c2",    label:"C2",        toggleable:true,  mode:"pinned"   },
+  { key:"col_c3",    label:"C3",        toggleable:true,  mode:"pinned"   },
   { key:"parte",     label:"PARTE",     toggleable:true,  mode:"pinned"   },
   { key:"cor",       label:"COR",       toggleable:true,  mode:"auto"     },
   { key:"altobaixo", label:"A/B",       toggleable:true,  mode:"auto"     },
@@ -422,7 +430,9 @@ export default function DestroyerRaceTable() {
     regiao:   countBy(last14,"regiao",   ["Tier","Orphelins","Voisins"]),
     duzia:    countBy(last14,"duzia",    ["D1","D2","D3"]),
     paridade: countBy(last14,"paridade", ["Par","Ímpar"]),
-    coluna:   countBy(last14,"coluna",   ["C1","C2","C3"]),
+    col_c1:   countBy(last14,"coluna",   ["C1"]),
+    col_c2:   countBy(last14,"coluna",   ["C2"]),
+    col_c3:   countBy(last14,"coluna",   ["C3"]),
     parte:    countBy(last14,"parte",    ["P1","P2"]),
     altobaixo: countBy(last14,"altobaixo", ["ALTO","BAIXO"]),
     gp_d1:     countBy(last14,"gp",        ["d1V","d1P"]),
@@ -713,8 +723,18 @@ export default function DestroyerRaceTable() {
     if (entries.length < 2) return null;
     const last = entries[entries.length - 1];
     const prev = entries[entries.length - 2];
-    if (last.duzia === "D2" && prev.duzia === "D1") return "gp_d3"; // D1->D2: D3 pulses
-    if (last.duzia === "D2" && prev.duzia === "D3") return "gp_d1"; // D3->D2: D1 pulses
+    if (last.duzia === "D2" && prev.duzia === "D1") return "gp_d3";
+    if (last.duzia === "D2" && prev.duzia === "D3") return "gp_d1";
+    return null;
+  }, [entries]);
+
+  // Coluna sequence alert: C1->C2 = C3 pulses | C3->C2 = C1 pulses
+  const colunaAlert = useMemo(() => {
+    if (entries.length < 2) return null;
+    const last = entries[entries.length - 1];
+    const prev = entries[entries.length - 2];
+    if (last.coluna === "C2" && prev.coluna === "C1") return "col_c3";
+    if (last.coluna === "C2" && prev.coluna === "C3") return "col_c1";
     return null;
   }, [entries]);
 
@@ -795,8 +815,10 @@ export default function DestroyerRaceTable() {
                   const visibleAutoKeys = visibleCols.filter(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="auto").map(c=>c.key);
                   const firstAlwaysKey   = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
                   const lastPriorityKey  = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="priority")?.key;
+                  const lastPinnedKey    = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="pinned")?.key;
                   const isSeparator      = col.key === firstAlwaysKey;
                   const isPrioritySep    = col.key === lastPriorityKey;
+                  const isPinnedSep      = col.key === lastPinnedKey;
                   return (
                     <th
                       key={col.key}
@@ -813,7 +835,7 @@ export default function DestroyerRaceTable() {
                         fontSize:9, fontWeight:"bold", letterSpacing:"0.07em",
                         borderBottom:"2px solid #000", borderRight:"1px solid #000",
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
-                        borderRight: isPrioritySep ? "3px solid #aaaaaa" : "1px solid #000",
+                        borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
                         whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
                         cursor: isDraggable ? "grab" : "default",
                         userSelect:"none", opacity: isBeingDragged ? 0.5 : 1,
@@ -847,21 +869,23 @@ export default function DestroyerRaceTable() {
 
                 const firstAlwaysKeyRow  = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
                 const lastPriorityKeyRow = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="priority")?.key;
-                const isPrioritySepRow   = (ckey) => ckey === lastPriorityKeyRow;
+                const lastPinnedKeyRow   = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="pinned")?.key;
+                const isPrioritySepRow   = (ckey) => ckey === lastPriorityKeyRow || ckey === lastPinnedKeyRow;
                 const isLastRow = i === entries.length - 1;
                 const Cell = ({ckey, isLast}) => {
                   const scheme = CELL_SCHEME(e,ckey);
                   const pulse = pulseLastIdx[ckey] === i;
                   const isSep = ckey === firstAlwaysKeyRow;
                   const isDuziaAlert = isLastRow && duziaAlert === ckey && CELL_VAL(e,ckey) === "";
+                  const isColunaAlert = isLastRow && colunaAlert === ckey && CELL_VAL(e,ckey) === "";
                   return (
-                    <td className={isDuziaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
-                      style={{background: isDuziaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"2px 5px",textAlign:"center",
+                    <td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
+                      style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"2px 5px",textAlign:"center",
                       fontSize:10,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0.02em",whiteSpace:"nowrap",
-                      borderTop: isDuziaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
-                      borderBottom: isDuziaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
+                      borderTop: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
+                      borderBottom: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
                       borderLeft: isSep ? "3px solid #FFD700" : "none",
-                      borderRight: (isLast&&isGold) ? `2px solid ${GOLD}` : (isLast&&isWhite) ? "2px solid #ffffff" : isDuziaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : isPrioritySepRow(ckey) ? "3px solid #aaaaaa" : "1px solid #000"}}>
+                      borderRight: (isLast&&isGold) ? `2px solid ${GOLD}` : (isLast&&isWhite) ? "2px solid #ffffff" : (isDuziaAlert||isColunaAlert) ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : isPrioritySepRow(ckey) ? "3px solid #aaaaaa" : "1px solid #000"}}>
                       {CELL_VAL(e,ckey)}
                     </td>
                   );
@@ -1097,7 +1121,11 @@ export default function DestroyerRaceTable() {
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Par/Ímpar" data={stats.paridade}    palette={PAR_CELL}    />
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="Coluna"    data={stats.coluna}      palette={COLUNA_CELL} />
+            <StatBlockH title="C1" data={stats.col_c1} palette={{"C1":{bg:"#4a5320",text:"#e5e5e5"}}} />
+            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
+            <StatBlockH title="C2" data={stats.col_c2} palette={{"C2":{bg:"#0891b2",text:"#0a0a0a"}}} />
+            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
+            <StatBlockH title="C3" data={stats.col_c3} palette={{"C3":{bg:"#ea580c",text:"#1a1a1a"}}} />
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Parte"     data={stats.parte}       palette={PARTE_CELL}  />
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
