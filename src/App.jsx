@@ -25,6 +25,33 @@ const GP_MAP = {
    2:"d1P", 4:"d1P", 6:"d1P", 8:"d1P",10:"d1P",11:"d1P",
 };
 
+
+// Vizinhos diretos no racetrack para números base 1-9 (2 de cada lado)
+const VIZINHOS = {
+  1: [33,16,20,14],
+  2: [21,4,25,17],
+  3: [35,12,26,0],
+  4: [15,19,21,2],
+  5: [10,23,24,16],
+  6: [17,34,27,13],
+  7: [18,29,28,12],
+  8: [11,30,23,10],
+  9: [14,31,22,18],
+};
+
+// For a given entry, analyze its puxou history and return which base number (1-9)
+// has the most vizinhos represented among the puxados
+function getVizScore(puxados) {
+  if (!puxados || puxados.length === 0) return null;
+  const puxNums = puxados.map(p => p.num);
+  let best = null, bestScore = 0;
+  Object.entries(VIZINHOS).forEach(([base, vizs]) => {
+    const score = puxNums.filter(n => vizs.includes(n)).length;
+    if (score > bestScore) { bestScore = score; best = { base: parseInt(base), score, total: puxados.length }; }
+  });
+  return bestScore > 0 ? best : null;
+}
+
 function getRua(n) {
   if (n===0) return "0";
   const pos = (n-1)%12;
@@ -107,9 +134,11 @@ const CELL_VAL = (e, key) => {
   if (key==="gp_d1")     return ["d1V","d1P"].includes(e.gp) ? e.gp : "";
   if (key==="gp_d2")     return ["d2I","d2P"].includes(e.gp) ? e.gp : "";
   if (key==="gp_d3")     return ["d3V","d3P"].includes(e.gp) ? e.gp : "";
+  if (key==="viz")       return "";
   if (key==="col_c1")    return e.coluna==="C1" ? "C1" : "";
   if (key==="col_c2")    return e.coluna==="C2" ? "C2" : "";
   if (key==="col_c3")    return e.coluna==="C3" ? "C3" : "";
+  if (key==="viz")       return "";
   return "";
 };
 // CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
@@ -139,16 +168,61 @@ const CELL_SCHEME = (e, key) => {
     if (e.gp==="d3V") return {bg:"#991b1b",text:"#fecaca"};
     return {bg:"#f5f0e8",text:"#f5f0e8"};
   }
+  if (key==="viz")       { return {bg:"#0d0d0d",text:"#fff"}; }
   if (key==="col_c1")    { return e.coluna==="C1" ? {bg:"#4a5320",text:"#e5e5e5"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
   if (key==="col_c2")    { return e.coluna==="C2" ? {bg:"#0891b2",text:"#0a0a0a"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
   if (key==="col_c3")    { return e.coluna==="C3" ? {bg:"#ea580c",text:"#1a1a1a"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
+  if (key==="viz")       return {bg:"#0d0d0d",text:"#e5e5e5"};
   return {bg:"#111",text:"#fff"};
 };
+
+
+// Terminais: números que terminam no mesmo dígito + 1 viz cada lado no racetrack
+const TERMINAL_VIZ = {
+  0: { nums:[0,10,20,30], viz:{0:[26,32], 10:[5,23], 20:[14,1], 30:[11,8]} },
+  1: { nums:[1,11,21,31], viz:{1:[20,33], 11:[36,30], 21:[4,2], 31:[9,14]} },
+  2: { nums:[2,12,22,32], viz:{2:[21,25], 12:[35,28], 22:[18,9], 32:[0,15]} },
+  3: { nums:[3,13,23,33], viz:{3:[26,35], 13:[27,36], 23:[10,8], 33:[1,16]} },
+  4: { nums:[4,14,24,34], viz:{4:[19,21], 14:[31,20], 24:[16,5], 34:[17,6]} },
+  5: { nums:[5,15,25,35], viz:{5:[24,10], 15:[32,19], 25:[2,17], 35:[3,12]} },
+  6: { nums:[6,16,26,36], viz:{6:[34,27], 16:[33,24], 26:[3,0], 36:[13,11]} },
+  7: { nums:[7,17,27],    viz:{7:[28,29], 17:[25,34], 27:[6,13]} },
+  8: { nums:[8,18,28],    viz:{8:[30,23], 18:[29,22], 28:[12,7]} },
+  9: { nums:[9,19,29],    viz:{9:[22,31], 19:[15,4], 29:[7,18]} },
+};
+
+// Build reverse lookup: number -> which terminals it belongs to (as member or viz)
+const NUM_TO_TERMINALS = {};
+for (let i = 0; i <= 36; i++) NUM_TO_TERMINALS[i] = new Set();
+Object.entries(TERMINAL_VIZ).forEach(([t, {nums, viz}]) => {
+  const tNum = parseInt(t);
+  nums.forEach(n => NUM_TO_TERMINALS[n].add(tNum));
+  Object.values(viz).forEach(vs => vs.forEach(v => NUM_TO_TERMINALS[v].add(tNum)));
+});
+
+function analyzeTerminal(puxouList) {
+  if (!puxouList || puxouList.length === 0) return null;
+  const counts = {};
+  puxouList.forEach(h => {
+    NUM_TO_TERMINALS[h.num]?.forEach(t => {
+      counts[t] = (counts[t]||0) + 1;
+    });
+  });
+  if (Object.keys(counts).length === 0) return null;
+  const best = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  const terminal = parseInt(best[0]);
+  const count = parseInt(best[1]);
+  const pct = count / puxouList.length;
+  if (pct < 0.8) return null; // >=80% (4 de 5)
+  return { terminal, count, total: puxouList.length, pct: Math.round(pct*100) };
+}
+
 
 const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false, mode:"fixed"    },
   { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"    },
   { key:"hist",      label:"PUXOU",     toggleable:false, mode:"fixed"    },
+  { key:"viz",       label:"VIZ",       toggleable:false, mode:"fixed"    },
   { key:"gp_d1",     label:"D1",        toggleable:true,  mode:"priority" },
   { key:"gp_d2",     label:"D2",        toggleable:true,  mode:"priority" },
   { key:"gp_d3",     label:"D3",        toggleable:true,  mode:"priority" },
@@ -958,6 +1032,27 @@ export default function DestroyerRaceTable() {
                                   })
                               }
                             </div>
+                          </td>
+                        );
+                      }
+                      if (col.key==="viz") {
+                        const hist = getHistorico(entries, i, e.num);
+                        const result = analyzeTerminal(hist);
+                        return (
+                          <td key="viz" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"center",
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:36}}>
+                            {result ? (
+                              <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+                                width:28,height:28,borderRadius:"50%",
+                                background:"#1a1a00",
+                                border:"2px solid #FFD700",
+                                color:"#FFD700",fontFamily:"Arial, sans-serif"}}>
+                                <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>T{result.terminal}</span>
+                                <span style={{fontSize:6,lineHeight:1,opacity:0.85}}>{result.pct}%</span>
+                              </div>
+                            ) : (
+                              <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
+                            )}
                           </td>
                         );
                       }
