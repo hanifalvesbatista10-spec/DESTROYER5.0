@@ -425,6 +425,235 @@ function StatBlockH({ title, data, palette }) {
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// DESTROYER PAIR CATALOG — integrado
+// ══════════════════════════════════════════════════════════════
+const SK = "destroyer-pair-v6";
+const SK_LIVE = "destroyer-pair-v6-live";
+
+const TD_STYLE = {
+  padding:"0 5px", height:28, textAlign:"center", verticalAlign:"middle",
+  fontSize:11, fontWeight:600, letterSpacing:"0.02em", whiteSpace:"nowrap",
+  fontFamily:"Arial, sans-serif",
+  borderRight:"1px solid #000", borderBottom:"1px solid #000",
+};
+
+function CatalogCell({label, scheme}){
+  const s = scheme || {bg:"#111",text:"#444"};
+  const empty = !label || label==="—";
+  return (
+    <td style={{...TD_STYLE, background:empty?"#111":s.bg, color:empty?"#333":s.text}}>
+      {empty?"—":label}
+    </td>
+  );
+}
+
+function CatalogNumBall({n, size=24}){
+  const cor = getColor(n);
+  const s = NUM_BALL[cor];
+  return (
+    <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+      width:size,height:size,borderRadius:"50%",
+      background:s.bg,border:`2px solid ${s.border}`,color:s.text,flexShrink:0}}>
+      <span style={{fontSize:size>22?10:9,fontWeight:"bold",lineHeight:1}}>{n}</span>
+    </div>
+  );
+}
+
+const CatalogTH = ({children}) => (
+  <th style={{background:"#CC0000",color:"#fff",padding:"5px 6px",textAlign:"center",
+    fontSize:9,fontWeight:"bold",letterSpacing:"0.07em",
+    borderBottom:"2px solid #000",borderRight:"1px solid #000",
+    whiteSpace:"nowrap",fontFamily:"Arial, sans-serif"}}>{children}</th>
+);
+
+function CatalogTableRow({n, rank, count, total, maxCount}){
+  const cor=getColor(n), corAbrev=getCorAbrev(cor), lado=getLado(n);
+  const regiao=getRegiao(n), duzia=getDuzia(n), paridade=getParidade(n);
+  const gp=getGP(n), rua=getRua(n), coluna=getColuna(n);
+  const parte=getParte(n), ab=getAltoBaixo(n);
+  const pct=total>0?(count/total*100):0;
+  const barPct=maxCount>0?Math.round(count/maxCount*100):0;
+  const gpScheme=GP_CELL[gp]||GP_CELL["—"];
+  return (
+    <tr>
+      <td style={{...TD_STYLE,background:"#0d0d0d",color:"#444",fontSize:10}}>#{rank}</td>
+      <td style={{...TD_STYLE,background:"#0d0d0d",padding:"0 4px"}}><CatalogNumBall n={n}/></td>
+      <td style={{...TD_STYLE,background:["d1V","d1P"].includes(gp)?gpScheme.bg:"#111",color:["d1V","d1P"].includes(gp)?gpScheme.text:"#333"}}>{["d1V","d1P"].includes(gp)?gp:"—"}</td>
+      <td style={{...TD_STYLE,background:["d2I","d2P"].includes(gp)?gpScheme.bg:"#111",color:["d2I","d2P"].includes(gp)?gpScheme.text:"#333"}}>{["d2I","d2P"].includes(gp)?gp:"—"}</td>
+      <td style={{...TD_STYLE,background:["d3V","d3P"].includes(gp)?gpScheme.bg:"#111",color:["d3V","d3P"].includes(gp)?gpScheme.text:"#333"}}>{["d3V","d3P"].includes(gp)?gp:"—"}</td>
+      <CatalogCell label={lado} scheme={LADO_CELL[lado]||LADO_CELL["—"]}/>
+      <CatalogCell label={coluna==="0"?"—":coluna} scheme={COLUNA_CELL[coluna]||{bg:"#111",text:"#444"}}/>
+      <CatalogCell label={parte} scheme={PARTE_CELL[parte]||PARTE_CELL["—"]}/>
+      <CatalogCell label={corAbrev} scheme={COR_CELL[cor]||{bg:"#111",text:"#444"}}/>
+      <CatalogCell label={ab} scheme={ALTOBAIXO_CELL[ab]||ALTOBAIXO_CELL["—"]}/>
+      <CatalogCell label={paridade==="—"?"—":paridade.toUpperCase()} scheme={PAR_CELL[paridade]||PAR_CELL["—"]}/>
+      <CatalogCell label={regiao.toUpperCase()} scheme={REGIAO_CELL[regiao]||{bg:"#111",text:"#fff"}}/>
+      <CatalogCell label={duzia} scheme={DUZIA_CELL[duzia]||DUZIA_CELL["—"]}/>
+      <CatalogCell label={rua} scheme={RUA_CELL[rua]||{bg:"#111",text:"#fff"}}/>
+      <td style={{...TD_STYLE,background:"#0d0d0d",color:"#fff",fontWeight:"bold",fontSize:12}}>{count}</td>
+      <td style={{...TD_STYLE,background:"#0d0d0d",color:"#888"}}>{pct.toFixed(1)}%</td>
+      <td style={{...TD_STYLE,background:"#0d0d0d",minWidth:70,padding:"0 6px"}}>
+        <div style={{background:"#1a1a1a",height:5,borderRadius:2}}>
+          <div style={{height:5,borderRadius:2,background:"#1e3a5f",width:`${barPct}%`}}/>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function PairCatalog({ sharedEntries }) {
+  const [catalog,      setCatalog]      = useState({});
+  const [totalSeq,     setTotalSeq]     = useState(0);
+  const [totalNum,     setTotalNum]     = useState(0);
+  const [status,       setStatus]       = useState("AGUARDANDO");
+  const [liveQuery,    setLiveQuery]    = useState(null);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [undoStack,    setUndoStack]    = useState([]);
+
+  // Load from storage on mount
+  useState(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get(SK);
+        if (r?.value) {
+          const d = JSON.parse(r.value);
+          setCatalog(d.catalog||{});
+          setTotalSeq(d.totalSeq||0);
+          setTotalNum(d.totalNum||0);
+        }
+      } catch(e) {}
+    })();
+  });
+
+  async function save(cat, ts, tn) {
+    setStatus("SALVANDO...");
+    try {
+      await window.storage.set(SK, JSON.stringify({catalog:cat, totalSeq:ts, totalNum:tn}));
+      setStatus("SINCRONIZADO ✓");
+    } catch { setStatus("ERRO"); }
+    setTimeout(()=>setStatus("AGUARDANDO"), 2000);
+  }
+
+  // Sync with sharedEntries from main table
+  const allNums = sharedEntries.map(e => e.num);
+  const liveQ = allNums.length > 0 ? allNums[allNums.length - 1] : null;
+
+  // Build catalog from sharedEntries live
+  const liveCatalog = {};
+  for (let i = 0; i < allNums.length - 1; i++) {
+    const a = allNums[i], b = allNums[i+1];
+    if (!liveCatalog[a]) liveCatalog[a] = {};
+    liveCatalog[a][b] = (liveCatalog[a][b]||0) + 1;
+  }
+
+  // Merge live catalog with stored catalog
+  const mergedCatalog = {...catalog};
+  Object.entries(liveCatalog).forEach(([a, bMap]) => {
+    Object.entries(bMap).forEach(([b, cnt]) => {
+      if (!mergedCatalog[a]) mergedCatalog[a] = {};
+      const existing = mergedCatalog[a][b];
+      if (!existing) mergedCatalog[a][b] = {count: cnt, firstIdx: 0};
+      else if (typeof existing === "number") mergedCatalog[a][b] = {count: existing + cnt, firstIdx: 0};
+      else mergedCatalog[a][b] = {...existing, count: existing.count + cnt};
+    });
+  });
+
+  const queryNum = liveQ;
+  const pairs = queryNum !== null ? (mergedCatalog[queryNum]||{}) : {};
+  const sorted = Object.entries(pairs).map(([k,v]) => {
+    const count = typeof v === "number" ? v : v.count;
+    const firstIdx = typeof v === "number" ? Infinity : v.firstIdx;
+    return {num:parseInt(k), count, firstIdx};
+  }).sort((a,b) => b.count !== a.count ? b.count-a.count : a.firstIdx-b.firstIdx);
+  const pTotal = sorted.reduce((s,x) => s+x.count, 0);
+  const pMax   = sorted.length ? sorted[0].count : 1;
+
+  function handleResetStored() {
+    if (!resetConfirm) { setResetConfirm(true); setTimeout(()=>setResetConfirm(false),3000); return; }
+    setCatalog({}); setTotalSeq(0); setTotalNum(0); setResetConfirm(false);
+    save({}, 0, 0);
+  }
+
+  const INP = {
+    background:"#111",border:"1px solid #2a2a2a",color:"#e5e5e5",
+    fontFamily:"Arial, sans-serif",fontSize:12,
+    padding:"6px 10px",outline:"none",borderRadius:2,
+  };
+
+  return (
+    <div style={{padding:"12px 16px",background:"#0d0d0d"}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:11,letterSpacing:"0.3em",color:"#CC0000",fontWeight:"bold"}}>DESTROYER</span>
+          <span style={{fontSize:9,letterSpacing:"0.2em",color:"#555"}}>PAIR CATALOG</span>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:9,padding:"2px 8px",border:"1px solid #2a2a2a",color:"#555",borderRadius:2}}>NÚM: {allNums.length}</span>
+          <span style={{fontSize:9,padding:"2px 8px",border:"1px solid #2a2a2a",color:"#555",borderRadius:2}}>STORED: {totalNum}</span>
+          <span style={{fontSize:9,padding:"2px 8px",border:"1px solid #2a2a2a",borderRadius:2,
+            color:status.includes("✓")?"#22c55e":status.includes("ERRO")?"#CC0000":"#facc15"}}>{status}</span>
+          <button onClick={handleResetStored}
+            style={{padding:"0 10px",height:24,borderRadius:2,fontSize:9,cursor:"pointer",
+              fontFamily:"Arial, sans-serif",fontWeight:"bold",
+              background:resetConfirm?"#CC0000":"transparent",
+              border:resetConfirm?"1px solid #ff6666":"1px solid #CC0000",
+              color:resetConfirm?"#fff":"#CC0000"}}>
+            {resetConfirm?"⚠ CONFIRMAR?":"RESET STORED"}
+          </button>
+        </div>
+      </div>
+
+      {/* Consulta automática */}
+      {queryNum !== null && (
+        <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:9,color:"#555"}}>Consultando:</span>
+          <CatalogNumBall n={queryNum} size={28}/>
+          <span style={{fontSize:10,color:"#888"}}>{pTotal} aparições como antecedente</span>
+        </div>
+      )}
+
+      {/* Resultado */}
+      {queryNum !== null ? (
+        sorted.length === 0 ? (
+          <div style={{textAlign:"center",color:"#333",padding:24,fontSize:11,
+            letterSpacing:"0.1em",border:"1px solid #1a1a1a",borderRadius:2,fontFamily:"Arial, sans-serif"}}>
+            NENHUM DADO AINDA PARA O NÚMERO {queryNum}
+          </div>
+        ) : (
+          <div style={{overflowX:"auto"}}>
+            <table style={{borderCollapse:"collapse",fontSize:11,width:"100%",borderLeft:"1px solid #000",borderTop:"1px solid #000"}}>
+              <thead>
+                <tr>
+                  <CatalogTH>RNK</CatalogTH><CatalogTH>NÚM</CatalogTH>
+                  <CatalogTH>D1</CatalogTH><CatalogTH>D2</CatalogTH><CatalogTH>D3</CatalogTH>
+                  <CatalogTH>LADO</CatalogTH><CatalogTH>COL</CatalogTH><CatalogTH>PARTE</CatalogTH>
+                  <CatalogTH>COR</CatalogTH><CatalogTH>A/B</CatalogTH><CatalogTH>PAR/ÍMP</CatalogTH>
+                  <CatalogTH>ZONA</CatalogTH><CatalogTH>DÚZIA</CatalogTH><CatalogTH>RUA</CatalogTH>
+                  <CatalogTH>VEZES</CatalogTH><CatalogTH>%</CatalogTH><CatalogTH>FREQ</CatalogTH>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((p,i) => (
+                  <CatalogTableRow key={p.num} n={p.num} rank={i+1}
+                    count={p.count} total={pTotal} maxCount={pMax}/>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : (
+        <div style={{textAlign:"center",color:"#222",padding:32,fontSize:11,
+          letterSpacing:"0.15em",border:"1px solid #1a1a1a",borderRadius:2,fontFamily:"Arial, sans-serif"}}>
+          AGUARDANDO NÚMEROS DA TABELA PRINCIPAL
+        </div>
+      )}
+    </div>
+  );
+}
+
 let idCounter = 0;
 
 export default function DestroyerRaceTable() {
@@ -435,6 +664,7 @@ export default function DestroyerRaceTable() {
 
   const [showRep, setShowRep] = useState(false);
   const [showAlt, setShowAlt] = useState(false);
+  const [activeTab, setActiveTab] = useState("table");
 
 
 
@@ -723,6 +953,46 @@ export default function DestroyerRaceTable() {
     return items.sort((a,b) => b.streak - a.streak);
   }, [entries]);
 
+  // Terminal prediction accuracy
+  const terminalStats = useMemo(() => {
+    if (entries.length < 3) return { acertos: 0, erros: 0, total: 0, taxa: 0, topTerminals: [] };
+    let acertos = 0, erros = 0;
+    const perTerminal = {};
+
+    for (let i = 0; i < entries.length - 1; i++) {
+      const hist = getHistorico(entries, i, entries[i].num);
+      const prediction = analyzeTerminal(hist);
+      if (!prediction) continue;
+      const t = prediction.terminal;
+      if (!perTerminal[t]) perTerminal[t] = { acertos: 0, erros: 0 };
+      const nextNum = entries[i + 1].num;
+      const nextTerminals = NUM_TO_TERMINALS[nextNum];
+      if (nextTerminals && nextTerminals.has(t)) {
+        acertos++;
+        perTerminal[t].acertos++;
+      } else {
+        erros++;
+        perTerminal[t].erros++;
+      }
+    }
+
+    const total = acertos + erros;
+    const taxa = total > 0 ? Math.round((acertos / total) * 100) : 0;
+
+    const topTerminals = Object.entries(perTerminal)
+      .filter(([,v]) => (v.acertos + v.erros) > 0)
+      .map(([t, v]) => ({
+        t: parseInt(t),
+        acertos: v.acertos,
+        total: v.acertos + v.erros,
+        taxa: Math.round(v.acertos / (v.acertos + v.erros) * 100)
+      }))
+      .sort((a,b) => b.acertos - a.acertos || b.taxa - a.taxa)
+      .slice(0, 3);
+
+    return { acertos, erros, total, taxa, topTerminals };
+  }, [entries]);
+
   // Top 3 stats from last 3 entries' puxou
   const top3Stats = useMemo(() => {
     if (entries.length === 0) return [];
@@ -840,6 +1110,7 @@ export default function DestroyerRaceTable() {
   };
 
   return (
+    <>
     <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
       <style>{`
         @keyframes pulseBorder {
@@ -1180,6 +1451,47 @@ export default function DestroyerRaceTable() {
             )}
           </div>
         )}
+        {/* Card de estatística do terminal */}
+        {entries.length > 0 && (
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
+            <span style={{fontSize:7,color:"#FFD700",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>terminal</span>
+            <div style={{display:"flex",alignItems:"center",gap:6,background:"#111",border:"1px solid #2a1a00",borderRadius:3,padding:"4px 10px"}}>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+                <span style={{fontSize:7,color:"#555",textTransform:"uppercase",letterSpacing:"0.06em"}}>prev</span>
+                <span style={{fontSize:13,fontWeight:"bold",color:"#FFD700"}}>{terminalStats.total}</span>
+              </div>
+              <div style={{width:"0.5px",height:24,background:"#2a2a2a"}}/>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+                <span style={{fontSize:7,color:"#22c55e",textTransform:"uppercase",letterSpacing:"0.06em"}}>acertos</span>
+                <span style={{fontSize:13,fontWeight:"bold",color:"#22c55e"}}>{terminalStats.acertos}</span>
+              </div>
+              <div style={{width:"0.5px",height:24,background:"#2a2a2a"}}/>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+                <span style={{fontSize:7,color:"#f87171",textTransform:"uppercase",letterSpacing:"0.06em"}}>erros</span>
+                <span style={{fontSize:13,fontWeight:"bold",color:"#f87171"}}>{terminalStats.erros}</span>
+              </div>
+              <div style={{width:"0.5px",height:24,background:"#2a2a2a"}}/>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+                <span style={{fontSize:7,color:"#555",textTransform:"uppercase",letterSpacing:"0.06em"}}>taxa</span>
+                <span style={{fontSize:13,fontWeight:"bold",color:terminalStats.taxa>=60?"#22c55e":terminalStats.taxa>=40?"#facc15":"#f87171"}}>{terminalStats.taxa}%</span>
+              </div>
+            </div>
+            {/* Top terminals */}
+            {terminalStats.topTerminals && terminalStats.topTerminals.length > 0 && (
+              <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                <span style={{fontSize:7,color:"#555",textTransform:"uppercase",letterSpacing:"0.06em",flexShrink:0}}>top</span>
+                {terminalStats.topTerminals.map(({t, acertos, total, taxa}) => (
+                  <div key={t} style={{display:"flex",flexDirection:"column",alignItems:"center",
+                    background:"#1a1a00",border:"1px solid #FFD700",borderRadius:3,padding:"2px 7px"}}>
+                    <span style={{fontSize:10,fontWeight:"bold",color:"#FFD700",lineHeight:1}}>T{t}</span>
+                    <span style={{fontSize:7,color: taxa>=60?"#22c55e":taxa>=40?"#facc15":"#f87171",lineHeight:1}}>{acertos}/{total}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Ranking de maior ausência */}
         {absenceRanking.length > 0 && (
           <div style={{marginBottom:8}}>
@@ -1240,8 +1552,37 @@ export default function DestroyerRaceTable() {
       </div>
       </div>{/* fim coluna central */}
 
-
-
     </div>
+
+    {/* ── Barra de abas ── */}
+    <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,
+      background:"#080808",borderTop:"2px solid #1a1a1a",
+      display:"flex",gap:0}}>
+      <button onClick={()=>setActiveTab("table")}
+        style={{flex:1,padding:"8px 0",background:activeTab==="table"?"#CC0000":"transparent",
+          border:"none",borderRight:"1px solid #1a1a1a",
+          color:activeTab==="table"?"#fff":"#555",
+          fontSize:10,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",
+          fontFamily:"Arial, sans-serif"}}>
+        ▲ RACE TABLE
+      </button>
+      <button onClick={()=>setActiveTab("catalog")}
+        style={{flex:1,padding:"8px 0",background:activeTab==="catalog"?"#1e3a5f":"transparent",
+          border:"none",
+          color:activeTab==="catalog"?"#93c5fd":"#555",
+          fontSize:10,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",
+          fontFamily:"Arial, sans-serif"}}>
+        ◆ PAIR CATALOG
+      </button>
+    </div>
+
+    {/* ── Painel Catalog (slide-up) ── */}
+    {activeTab==="catalog" && (
+      <div style={{position:"fixed",top:0,left:0,right:0,bottom:40,
+        overflowY:"auto",background:"#0d0d0d",zIndex:99}}>
+        <PairCatalog sharedEntries={entries}/>
+      </div>
+    )}
+    </>
   );
-}
+     }
