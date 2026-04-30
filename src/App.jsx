@@ -68,6 +68,14 @@ function getColuna(n) {
   const r = n%3;
   if (r===1) return "C1"; if (r===2) return "C2"; return "C3";
 }
+function getCavalo(n) {
+  if (n === 0) return "369"; // zero pertence ao cavalo 369
+  const t = n % 10;
+  if ([3,6,9,0].includes(t)) return "369";
+  if ([2,5,8].includes(t)) return "258";
+  if ([1,4,7].includes(t)) return "147";
+  return "—";
+}
 function getAltoBaixo(n) {
   if (n === 0) return "—";
   return n <= 18 ? "BAIXO" : "ALTO";
@@ -83,7 +91,7 @@ function getGP(n)       { return GP_MAP[n]||"—"; }
 function buildEntry(n, id) {
   return { id, num:n, cor:getColor(n), corAbrev:getCorAbrev(getColor(n)),
     lado:getLado(n), regiao:getRegiao(n), duzia:getDuzia(n),
-    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n) };
+    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n), cavalo:getCavalo(n) };
 }
 function parseInput(raw) {
   return raw.split(/[\s,;\n\r]+/).map(t=>parseInt(t.trim())).filter(n=>!isNaN(n)&&n>=0&&n<=36);
@@ -93,17 +101,6 @@ const NUM_BALL  = { Vermelho:{bg:"#CC0000",border:"#ff6666",text:"#fff"}, Preto:
 const COR_CELL  = { "Vermelho":{bg:"#CC0000",text:"#fff"}, "Preto":{bg:"#222222",text:"#e5e5e5"}, "Verde":{bg:"#1B7A3E",text:"#fff"} };
 const LADO_CELL = { "PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"}, "PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}, "—":{bg:"#111",text:"#444"} };
 
-// Números de transição (fronteira dos lados + vizinhos do zero)
-const TRANSICAO_PBVA = new Set([8,23,10,32,15,19]);
-const TRANSICAO_PAVB = new Set([5,24,16,26,3,35]);
-
-function getLadoCell(n) {
-  if (n === 0) return {bg:"#1B7A3E", text:"#fff", gradient:false};
-  if (TRANSICAO_PBVA.has(n)) return {bg:"linear-gradient(135deg, #6b0f1a 50%, #3a4a10 50%)", text:"#e5e5e5", gradient:true};
-  if (TRANSICAO_PAVB.has(n)) return {bg:"linear-gradient(135deg, #1e3a5f 50%, #3a4a10 50%)", text:"#e5e5e5", gradient:true};
-  const lado = getLado(n);
-  return LADO_CELL[lado] || LADO_CELL["—"];
-}
 const REGIAO_CELL = { Tier:{bg:"#7c2d12",text:"#fdba74"}, Orphelins:{bg:"#854d0e",text:"#fefce8"}, Voisins:{bg:"#166534",text:"#bbf7d0"} };
 const DUZIA_CELL  = { D1:{bg:"#1e3a8a",text:"#bfdbfe"}, D2:{bg:"#92400e",text:"#fde68a"}, D3:{bg:"#7f1d1d",text:"#fca5a5"}, "—":{bg:"#111",text:"#444"} };
 const PAR_CELL    = { "Par":{bg:"#0f1f5c",text:"#bfdbfe"}, "Ímpar":{bg:"#4b5563",text:"#e5e7eb"}, "—":{bg:"#111",text:"#444"} };
@@ -126,6 +123,12 @@ const PARTE_CELL = {
   "P2": { bg:"#14532d", text:"#bbf7d0" },  // verde claro
   "—":  { bg:"#111",   text:"#444"    },
 };
+const CAVALO_CELL = {
+  "369": {bg:"#7c3d00",text:"#fb923c"},
+  "258": {bg:"#0a1628",text:"#60a5fa"},
+  "147": {bg:"#4c1d95",text:"#ddd6fe"},
+  "—":   {bg:"#111",  text:"#444"},
+};
 const RUA_CELL    = { R1:{bg:"#4a0080",text:"#e9d5ff"}, R2:{bg:"#005a5a",text:"#99f6e4"}, R3:{bg:"#7a1c4b",text:"#fbcfe8"}, R4:{bg:"#1a3a1a",text:"#bbf7d0"}, "0":{bg:"#1B7A3E",text:"#fff"} };
 const COLUNA_CELL = { C1:{bg:"#4a5320",text:"#e5e5e5"}, C2:{bg:"#0891b2",text:"#0a0a0a"}, C3:{bg:"#ea580c",text:"#1a1a1a"}, "0":{bg:"#1B7A3E",text:"#fff"} };
 const RUA_PAR_CELL = { "R. Ímpar":{bg:"#4a0080",text:"#e9d5ff"}, "R. Par":{bg:"#005a5a",text:"#99f6e4"} };
@@ -141,6 +144,7 @@ const CELL_VAL = (e, key) => {
   if (key==="rua")      return e.rua;
   if (key==="regiao")   return e.regiao.toUpperCase();
   if (key==="parte")    return e.parte;
+  if (key==="cavalo")   return e.cavalo;
   if (key==="altobaixo") return e.altobaixo;
   if (key==="gp")        return e.gp;
   if (key==="gp_d1")     return ["d1V","d1P"].includes(e.gp) ? e.gp : "";
@@ -156,16 +160,14 @@ const CELL_VAL = (e, key) => {
 // CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
 const CELL_SCHEME = (e, key) => {
   if (key==="cor")      return COR_CELL[e.cor]         || {bg:"#111",text:"#fff"};
-  if (key==="lado")     {
-    const lc = getLadoCell(e.num);
-    return lc;
-  }
+  if (key==="lado")     return LADO_CELL[e.lado]        || LADO_CELL["—"];
   if (key==="duzia")    return DUZIA_CELL[e.duzia]      || DUZIA_CELL["—"];
   if (key==="paridade") return PAR_CELL[e.paridade||"—"]  || PAR_CELL["—"];
   if (key==="coluna")   return COLUNA_CELL[e.coluna]    || {bg:"#111",text:"#fff"};
   if (key==="rua")      return RUA_CELL[e.rua]          || {bg:"#111",text:"#fff"};
   if (key==="regiao")   return REGIAO_CELL[e.regiao]    || {bg:"#111",text:"#fff"};
   if (key==="parte")    return PARTE_CELL[e.parte||"—"]  || PARTE_CELL["—"];
+  if (key==="cavalo")   return CAVALO_CELL[e.cavalo]     || CAVALO_CELL["—"];
   if (key==="altobaixo") return ALTOBAIXO_CELL[e.altobaixo||"—"] || ALTOBAIXO_CELL["—"];
   if (key==="gp")        return GP_CELL[e.gp]           || GP_CELL["—"];
   if (key==="gp_d1")     {
@@ -246,6 +248,7 @@ const INIT_COLS = [
   { key:"col_c2",    label:"C2",        toggleable:true,  mode:"pinned"   },
   { key:"col_c3",    label:"C3",        toggleable:true,  mode:"pinned"   },
   { key:"parte",     label:"PARTE",     toggleable:true,  mode:"pinned"   },
+  { key:"cavalo",    label:"CAVALO",    toggleable:true,  mode:"pinned"   },
   { key:"cor",       label:"COR",       toggleable:true,  mode:"auto"     },
   { key:"altobaixo", label:"A/B",       toggleable:true,  mode:"auto"     },
   { key:"paridade",  label:"PAR/ÍMPAR", toggleable:true,  mode:"auto"     },
@@ -346,6 +349,7 @@ function RepAltPanel({ last14 }) {
           })}
         </div>
       ))}
+
     </div>
   );
 }
@@ -495,9 +499,7 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
     <tr>
       <td style={{...TD_STYLE,background:"#0d0d0d",color:"#444",fontSize:10}}>#{rank}</td>
       <td style={{...TD_STYLE,background:"#0d0d0d",padding:"0 4px"}}><CatalogNumBall n={n}/></td>
-      <td style={{...TD_STYLE,background:["d1V","d1P"].includes(gp)?gpScheme.bg:"#111",color:["d1V","d1P"].includes(gp)?gpScheme.text:"#333"}}>{["d1V","d1P"].includes(gp)?gp:"—"}</td>
-      <td style={{...TD_STYLE,background:["d2I","d2P"].includes(gp)?gpScheme.bg:"#111",color:["d2I","d2P"].includes(gp)?gpScheme.text:"#333"}}>{["d2I","d2P"].includes(gp)?gp:"—"}</td>
-      <td style={{...TD_STYLE,background:["d3V","d3P"].includes(gp)?gpScheme.bg:"#111",color:["d3V","d3P"].includes(gp)?gpScheme.text:"#333"}}>{["d3V","d3P"].includes(gp)?gp:"—"}</td>
+      <td style={{...TD_STYLE,background:gp!=="—"?gpScheme.bg:"#111",color:gp!=="—"?gpScheme.text:"#333",minWidth:36}}>{gp!=="—"?gp:"—"}</td>
       <CatalogCell label={lado} scheme={LADO_CELL[lado]||LADO_CELL["—"]}/>
       <CatalogCell label={coluna==="0"?"—":coluna} scheme={COLUNA_CELL[coluna]||{bg:"#111",text:"#444"}}/>
       <CatalogCell label={parte} scheme={PARTE_CELL[parte]||PARTE_CELL["—"]}/>
@@ -515,6 +517,70 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
         </div>
       </td>
     </tr>
+  );
+}
+
+
+function CatalogFooterStats({ entries }) {
+  const allNums = entries.map(e => e.num);
+  const queryNum = allNums.length > 0 ? allNums[allNums.length - 1] : null;
+  if (queryNum === null) return null;
+
+  // Build live catalog for this number
+  const pairs = {};
+  for (let i = 0; i < allNums.length - 1; i++) {
+    if (allNums[i] === queryNum) {
+      const b = allNums[i+1];
+      pairs[b] = (pairs[b]||0) + 1;
+    }
+  }
+  const sorted = Object.entries(pairs).map(([k,v])=>({num:parseInt(k),count:v}));
+  if (sorted.length === 0) return null;
+
+  const fields = [
+    {label:"Cor",   key:"cor",    vals:["Vermelho","Preto","Verde"],   pal:COR_CELL},
+    {label:"Lado",  key:"lado",   vals:["PB e VA","PA e VB"],          pal:LADO_CELL},
+    {label:"Par",   key:"par",    vals:["Par","Ímpar"],                pal:PAR_CELL},
+    {label:"Parte", key:"parte",  vals:["P1","P2"],                    pal:PARTE_CELL},
+    {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
+    {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
+  ];
+
+  const puxados = sorted.map(p => {
+    const arr = [];
+    for(let k=0;k<p.count;k++) arr.push({
+      cor:getColor(p.num), lado:getLado(p.num), par:getParidade(p.num),
+      parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num)
+    });
+    return arr;
+  }).flat();
+
+  const total = puxados.length;
+  const dominants = [];
+  fields.forEach(({label,key,vals,pal}) => {
+    const best = vals.map(val=>({val,cnt:puxados.filter(p=>p[key]===val).length}))
+      .sort((a,b)=>b.cnt-a.cnt)[0];
+    if (!best || best.cnt === 0) return;
+    const pct = Math.round(best.cnt/total*100);
+    if (pct >= 65) dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"}});
+  });
+
+  if (dominants.length === 0) return null;
+
+  return (
+    <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
+      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>PROBABILIDADE</div>
+      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+        {dominants.map(({label,val,pct,pal}) => (
+          <div key={label} style={{display:"flex",flexDirection:"column",alignItems:"center",
+            background:pal.bg,borderRadius:4,padding:"5px 10px",border:"2px solid "+pal.text+"88",minWidth:50,textAlign:"center"}}>
+            <span style={{fontSize:7,color:pal.text,opacity:0.7,textTransform:"uppercase",display:"block"}}>{label}</span>
+            <span style={{fontSize:13,fontWeight:"bold",color:pal.text,display:"block",lineHeight:1}}>{val}</span>
+            <span style={{fontSize:10,color:pal.text,fontWeight:"bold",display:"block"}}>{pct}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -598,35 +664,17 @@ function PairCatalog({ sharedEntries }) {
   };
 
   return (
-    <div style={{padding:"12px 16px",background:"#0d0d0d"}}>
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:11,letterSpacing:"0.3em",color:"#CC0000",fontWeight:"bold"}}>DESTROYER</span>
-          <span style={{fontSize:9,letterSpacing:"0.2em",color:"#555"}}>PAIR CATALOG</span>
-        </div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-          <span style={{fontSize:9,padding:"2px 8px",border:"1px solid #2a2a2a",color:"#555",borderRadius:2}}>NÚM: {allNums.length}</span>
-          <span style={{fontSize:9,padding:"2px 8px",border:"1px solid #2a2a2a",color:"#555",borderRadius:2}}>STORED: {totalNum}</span>
-          <span style={{fontSize:9,padding:"2px 8px",border:"1px solid #2a2a2a",borderRadius:2,
-            color:status.includes("✓")?"#22c55e":status.includes("ERRO")?"#CC0000":"#facc15"}}>{status}</span>
-          <button onClick={handleResetStored}
-            style={{padding:"0 10px",height:24,borderRadius:2,fontSize:9,cursor:"pointer",
-              fontFamily:"Arial, sans-serif",fontWeight:"bold",
-              background:resetConfirm?"#CC0000":"transparent",
-              border:resetConfirm?"1px solid #ff6666":"1px solid #CC0000",
-              color:resetConfirm?"#fff":"#CC0000"}}>
-            {resetConfirm?"⚠ CONFIRMAR?":"RESET STORED"}
-          </button>
-        </div>
-      </div>
+    <div style={{padding:"12px 16px",background:"#0d0d0d",display:"flex",flexDirection:"column",minHeight:"100vh"}}>
 
       {/* Consulta automática */}
       {queryNum !== null && (
-        <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:9,color:"#555"}}>Consultando:</span>
-          <CatalogNumBall n={queryNum} size={28}/>
-          <span style={{fontSize:10,color:"#888"}}>{pTotal} aparições como antecedente</span>
+        <div style={{marginBottom:6}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+            <span style={{fontSize:9,color:"#555"}}>Consultando:</span>
+            <CatalogNumBall n={queryNum} size={28}/>
+            <span style={{fontSize:10,color:"#888"}}>{pTotal} apariç.</span>
+          </div>
+
         </div>
       )}
 
@@ -643,7 +691,7 @@ function PairCatalog({ sharedEntries }) {
               <thead>
                 <tr>
                   <CatalogTH>RNK</CatalogTH><CatalogTH>NÚM</CatalogTH>
-                  <CatalogTH>D1</CatalogTH><CatalogTH>D2</CatalogTH><CatalogTH>D3</CatalogTH>
+                  <CatalogTH>GP</CatalogTH>
                   <CatalogTH>LADO</CatalogTH><CatalogTH>COL</CatalogTH><CatalogTH>PARTE</CatalogTH>
                   <CatalogTH>COR</CatalogTH><CatalogTH>A/B</CatalogTH><CatalogTH>PAR/ÍMP</CatalogTH>
                   <CatalogTH>ZONA</CatalogTH><CatalogTH>DÚZIA</CatalogTH><CatalogTH>RUA</CatalogTH>
@@ -679,7 +727,6 @@ export default function DestroyerRaceTable() {
 
   const [showRep, setShowRep] = useState(false);
   const [showAlt, setShowAlt] = useState(false);
-  const [activeTab, setActiveTab] = useState("table");
 
 
 
@@ -753,6 +800,7 @@ export default function DestroyerRaceTable() {
     col_c2:   countBy(last14,"coluna",   ["C2"]),
     col_c3:   countBy(last14,"coluna",   ["C3"]),
     parte:    countBy(last14,"parte",    ["P1","P2"]),
+    cavalo:   countBy(last14,"cavalo",   ["369","258","147"]),
     altobaixo: countBy(last14,"altobaixo", ["ALTO","BAIXO"]),
     gp_d1:     countBy(last14,"gp",        ["d1V","d1P"]),
     gp_d2:     countBy(last14,"gp",        ["d2I","d2P"]),
@@ -1125,7 +1173,6 @@ export default function DestroyerRaceTable() {
   };
 
   return (
-    <>
     <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
       <style>{`
         @keyframes pulseBorder {
@@ -1238,10 +1285,9 @@ export default function DestroyerRaceTable() {
                   const isSep = ckey === firstAlwaysKeyRow;
                   const isDuziaAlert = isLastRow && duziaAlert === ckey && CELL_VAL(e,ckey) === "";
                   const isColunaAlert = isLastRow && colunaAlert === ckey && CELL_VAL(e,ckey) === "";
-                  const isGradient = scheme.gradient === true;
                   return (
                     <td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
-                      style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : isGradient ? undefined : scheme.bg, backgroundImage: (!isDuziaAlert && !isColunaAlert && isGradient) ? scheme.bg : undefined, color:scheme.text,padding:"2px 5px",textAlign:"center",
+                      style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"2px 5px",textAlign:"center",
                       fontSize:10,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0.02em",whiteSpace:"nowrap",
                       borderTop: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
                       borderBottom: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
@@ -1395,7 +1441,7 @@ export default function DestroyerRaceTable() {
               padding:"7px 10px",fontSize:12,fontFamily:"Arial, sans-serif",resize:"none",outline:"none"}}/>
           <button onClick={addNumbers} style={{padding:"0 20px",background:"#CC0000",border:"none",borderRadius:2,
             color:"#fff",fontSize:11,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",fontFamily:"Arial, sans-serif"}}>ADD</button>
-          <button onClick={()=>setEntries([])} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",
+          <button onClick={()=>{ setEntries([]); try{ window.storage.set("destroyer-pair-v6", JSON.stringify({catalog:{},totalSeq:0,totalNum:0})); }catch(e){} }} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",
             borderRadius:2,color:"#666",fontSize:11,cursor:"pointer",fontFamily:"Arial, sans-serif"}}>CLR</button>
           <button onClick={()=>setEntries(prev=>prev.slice(0,-1))} disabled={entries.length===0} style={{padding:"0 14px",background:"transparent",border:"1px solid #444",
             borderRadius:2,color:entries.length===0?"#333":"#aaa",fontSize:11,cursor:entries.length===0?"default":"pointer",fontFamily:"Arial, sans-serif"}}>↩</button>
@@ -1552,6 +1598,8 @@ export default function DestroyerRaceTable() {
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="Parte"     data={stats.parte}       palette={PARTE_CELL}  />
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
+            <StatBlockH title="Cavalo"    data={stats.cavalo}      palette={CAVALO_CELL} />
+            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="A/B"       data={stats.altobaixo}   palette={ALTOBAIXO_CELL}/>
             <div style={{width:"0.5px",background:"#1e1e1e"}}/>
             <StatBlockH title="D1" data={stats.gp_d1} palette={{"d1P":{bg:"#111111",text:"#e5e5e5"},"d1V":{bg:"#CC0000",text:"#ffffff"}}} />
@@ -1568,37 +1616,15 @@ export default function DestroyerRaceTable() {
       </div>
       </div>{/* fim coluna central */}
 
-    </div>
-
-    {/* ── Barra de abas ── */}
-    <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,
-      background:"#080808",borderTop:"2px solid #1a1a1a",
-      display:"flex",gap:0}}>
-      <button onClick={()=>setActiveTab("table")}
-        style={{flex:1,padding:"8px 0",background:activeTab==="table"?"#CC0000":"transparent",
-          border:"none",borderRight:"1px solid #1a1a1a",
-          color:activeTab==="table"?"#fff":"#555",
-          fontSize:10,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",
-          fontFamily:"Arial, sans-serif"}}>
-        ▲ RACE TABLE
-      </button>
-      <button onClick={()=>setActiveTab("catalog")}
-        style={{flex:1,padding:"8px 0",background:activeTab==="catalog"?"#1e3a5f":"transparent",
-          border:"none",
-          color:activeTab==="catalog"?"#93c5fd":"#555",
-          fontSize:10,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",
-          fontFamily:"Arial, sans-serif"}}>
-        ◆ PAIR CATALOG
-      </button>
-    </div>
-
-    {/* ── Painel Catalog (slide-up) ── */}
-    {activeTab==="catalog" && (
-      <div style={{position:"fixed",top:0,left:0,right:0,bottom:40,
-        overflowY:"auto",background:"#0d0d0d",zIndex:99}}>
-        <PairCatalog sharedEntries={entries}/>
+      {/* ── Painel lateral: Pair Catalog ── */}
+      <div style={{width:320,background:"#080808",borderLeft:"1px solid #1e1e1e",
+        flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0}}>
+        <CatalogFooterStats entries={entries}/>
+        <div style={{flex:1,overflowY:"auto"}}>
+          <PairCatalog sharedEntries={entries}/>
+        </div>
       </div>
-    )}
-    </>
+
+    </div>
   );
 }
