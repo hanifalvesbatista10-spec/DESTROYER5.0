@@ -92,6 +92,18 @@ function parseInput(raw) {
 const NUM_BALL  = { Vermelho:{bg:"#CC0000",border:"#ff6666",text:"#fff"}, Preto:{bg:"#111",border:"#555",text:"#fff"}, Verde:{bg:"#1B7A3E",border:"#4ade80",text:"#fff"} };
 const COR_CELL  = { "Vermelho":{bg:"#CC0000",text:"#fff"}, "Preto":{bg:"#222222",text:"#e5e5e5"}, "Verde":{bg:"#1B7A3E",text:"#fff"} };
 const LADO_CELL = { "PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"}, "PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}, "—":{bg:"#111",text:"#444"} };
+
+// Números de transição (fronteira dos lados + vizinhos do zero)
+const TRANSICAO_PBVA = new Set([8,23,10,32,15,19]);
+const TRANSICAO_PAVB = new Set([5,24,16,26,3,35]);
+
+function getLadoCell(n) {
+  if (n === 0) return {bg:"#1B7A3E", text:"#fff", gradient:false};
+  if (TRANSICAO_PBVA.has(n)) return {bg:"linear-gradient(135deg, #6b0f1a 50%, #3a4a10 50%)", text:"#e5e5e5", gradient:true};
+  if (TRANSICAO_PAVB.has(n)) return {bg:"linear-gradient(135deg, #1e3a5f 50%, #3a4a10 50%)", text:"#e5e5e5", gradient:true};
+  const lado = getLado(n);
+  return LADO_CELL[lado] || LADO_CELL["—"];
+}
 const REGIAO_CELL = { Tier:{bg:"#7c2d12",text:"#fdba74"}, Orphelins:{bg:"#854d0e",text:"#fefce8"}, Voisins:{bg:"#166534",text:"#bbf7d0"} };
 const DUZIA_CELL  = { D1:{bg:"#1e3a8a",text:"#bfdbfe"}, D2:{bg:"#92400e",text:"#fde68a"}, D3:{bg:"#7f1d1d",text:"#fca5a5"}, "—":{bg:"#111",text:"#444"} };
 const PAR_CELL    = { "Par":{bg:"#0f1f5c",text:"#bfdbfe"}, "Ímpar":{bg:"#4b5563",text:"#e5e7eb"}, "—":{bg:"#111",text:"#444"} };
@@ -144,7 +156,10 @@ const CELL_VAL = (e, key) => {
 // CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
 const CELL_SCHEME = (e, key) => {
   if (key==="cor")      return COR_CELL[e.cor]         || {bg:"#111",text:"#fff"};
-  if (key==="lado")     return LADO_CELL[e.lado]        || LADO_CELL["—"];
+  if (key==="lado")     {
+    const lc = getLadoCell(e.num);
+    return lc;
+  }
   if (key==="duzia")    return DUZIA_CELL[e.duzia]      || DUZIA_CELL["—"];
   if (key==="paridade") return PAR_CELL[e.paridade||"—"]  || PAR_CELL["—"];
   if (key==="coluna")   return COLUNA_CELL[e.coluna]    || {bg:"#111",text:"#fff"};
@@ -1223,9 +1238,10 @@ export default function DestroyerRaceTable() {
                   const isSep = ckey === firstAlwaysKeyRow;
                   const isDuziaAlert = isLastRow && duziaAlert === ckey && CELL_VAL(e,ckey) === "";
                   const isColunaAlert = isLastRow && colunaAlert === ckey && CELL_VAL(e,ckey) === "";
+                  const isGradient = scheme.gradient === true;
                   return (
                     <td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
-                      style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"2px 5px",textAlign:"center",
+                      style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : isGradient ? undefined : scheme.bg, backgroundImage: (!isDuziaAlert && !isColunaAlert && isGradient) ? scheme.bg : undefined, color:scheme.text,padding:"2px 5px",textAlign:"center",
                       fontSize:10,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0.02em",whiteSpace:"nowrap",
                       borderTop: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
                       borderBottom: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
@@ -1585,4 +1601,4 @@ export default function DestroyerRaceTable() {
     )}
     </>
   );
-     }
+}
