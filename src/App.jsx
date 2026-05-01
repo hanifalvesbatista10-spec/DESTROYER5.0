@@ -235,6 +235,43 @@ function analyzeTerminal(puxouList) {
 }
 
 
+// Micro grupos: interseção Coluna × Dúzia com 1 viz cada lado no racetrack
+const MICRO_GROUPS = {
+  "C1D1": { nums:[1,4,7,10],   viz:{1:[33,20],  4:[19,21],  7:[29,28],  10:[23,5]}  },
+  "C2D1": { nums:[2,5,8,11],   viz:{2:[21,25],  5:[10,24],  8:[30,23],  11:[36,30]} },
+  "C3D1": { nums:[3,6,9,12],   viz:{3:[35,26],  6:[34,27],  9:[31,22],  12:[28,35]} },
+  "C1D2": { nums:[13,16,19,22],viz:{13:[27,36], 16:[24,33], 19:[15,4],  22:[9,18]}  },
+  "C2D2": { nums:[14,17,20,23],viz:{14:[20,31], 17:[25,34], 20:[1,14],  23:[8,10]}  },
+  "C3D2": { nums:[15,18,21,24],viz:{15:[32,19], 18:[22,29], 21:[4,2],   24:[5,16]}  },
+  "C1D3": { nums:[25,28,31,34],viz:{25:[2,17],  28:[7,12],  31:[14,9],  34:[17,6]}  },
+  "C2D3": { nums:[26,29,32,35],viz:{26:[3,0],   29:[18,7],  32:[0,15],  35:[12,3]}  },
+  "C3D3": { nums:[27,30,33,36],viz:{27:[6,13],  30:[11,8],  33:[16,1],  36:[13,11]} },
+};
+
+// Build reverse lookup: number -> which micro groups it belongs to
+const NUM_TO_MICRO = {};
+for (let i = 0; i <= 36; i++) NUM_TO_MICRO[i] = new Set();
+Object.entries(MICRO_GROUPS).forEach(([grp, {nums, viz}]) => {
+  nums.forEach(n => NUM_TO_MICRO[n].add(grp));
+  Object.values(viz).forEach(vs => vs.forEach(v => NUM_TO_MICRO[v].add(grp)));
+});
+
+function analyzeMicroGroup(last6) {
+  if (!last6 || last6.length === 0) return null;
+  const counts = {};
+  last6.forEach(n => {
+    NUM_TO_MICRO[n]?.forEach(grp => {
+      counts[grp] = (counts[grp]||0) + 1;
+    });
+  });
+  if (Object.keys(counts).length === 0) return null;
+  const best = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  const pct = Math.round(best[1] / last6.length * 100);
+  if (pct < 80) return null;
+  return { group: best[0], count: best[1], total: last6.length, pct };
+}
+
+
 const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false, mode:"fixed"    },
   { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"    },
@@ -521,7 +558,7 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
 }
 
 
-function CatalogFooterStats({ entries }) {
+function CatalogFooterStats({ entries, terminalStats }) {
   const allNums = entries.map(e => e.num);
   const queryNum = allNums.length > 0 ? allNums[allNums.length - 1] : null;
   if (queryNum === null) return null;
@@ -535,37 +572,70 @@ function CatalogFooterStats({ entries }) {
     }
   }
   const sorted = Object.entries(pairs).map(([k,v])=>({num:parseInt(k),count:v}));
-  if (sorted.length === 0) return null;
 
-  const fields = [
-    {label:"Cor",   key:"cor",    vals:["Vermelho","Preto","Verde"],   pal:COR_CELL},
-    {label:"Lado",  key:"lado",   vals:["PB e VA","PA e VB"],          pal:LADO_CELL},
-    {label:"Par",   key:"par",    vals:["Par","Ímpar"],                pal:PAR_CELL},
-    {label:"Parte", key:"parte",  vals:["P1","P2"],                    pal:PARTE_CELL},
-    {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
-    {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
-  ];
+  // Use terminalStats prop (same calculation as main table)
+  const termTop2 = terminalStats && terminalStats.topTerminals
+    ? terminalStats.topTerminals.slice(0,2).map(x=>x.t)
+    : [];
 
-  const puxados = sorted.map(p => {
-    const arr = [];
-    for(let k=0;k<p.count;k++) arr.push({
-      cor:getColor(p.num), lado:getLado(p.num), par:getParidade(p.num),
-      parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num)
-    });
-    return arr;
-  }).flat();
+  // VIZ terminal for current last number — use full historical puxou
+  const lastEntry = entries[entries.length - 1];
+  const lastHist = (() => {
+    // Same logic as getHistorico: find all numbers that came AFTER lastEntry.num
+    const hist = [];
+    for (let i = 0; i < entries.length - 1; i++) {
+      if (entries[i].num === lastEntry.num) hist.push(entries[i+1]);
+    }
+    return hist.slice(-5); // last 5 occurrences
+  })();
+  const vizResult = lastHist.length >= 1 ? analyzeTerminal(lastHist) : null;
+  const vizTerminal = vizResult ? vizResult.terminal : null;
 
-  const total = puxados.length;
+  // Check if vizTerminal is in top 2
+  const terminalInTop2 = vizTerminal !== null && termTop2.includes(vizTerminal);
+
   const dominants = [];
-  fields.forEach(({label,key,vals,pal}) => {
-    const best = vals.map(val=>({val,cnt:puxados.filter(p=>p[key]===val).length}))
-      .sort((a,b)=>b.cnt-a.cnt)[0];
-    if (!best || best.cnt === 0) return;
-    const pct = Math.round(best.cnt/total*100);
-    if (pct >= 65) dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"}});
-  });
+
+  // Add terminal card if it matches top 2
+  if (terminalInTop2) {
+    dominants.push({
+      label:"TERMINAL",
+      val:"T"+vizTerminal,
+      pct: vizResult.pct,
+      pal:{bg:"#1a1a00",text:"#FFD700"}
+    });
+  }
+
+  // Add characteristic dominants
+  if (sorted.length > 0) {
+    const fields = [
+      {label:"Cor",   key:"cor",    vals:["Vermelho","Preto","Verde"],   pal:COR_CELL},
+      {label:"Lado",  key:"lado",   vals:["PB e VA","PA e VB"],          pal:LADO_CELL},
+      {label:"Par",   key:"par",    vals:["Par","Ímpar"],                pal:PAR_CELL},
+      {label:"Parte", key:"parte",  vals:["P1","P2"],                    pal:PARTE_CELL},
+      {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
+      {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
+    ];
+    const puxados = sorted.map(p => {
+      const arr = [];
+      for(let k=0;k<p.count;k++) arr.push({
+        cor:getColor(p.num), lado:getLado(p.num), par:getParidade(p.num),
+        parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num)
+      });
+      return arr;
+    }).flat();
+    const total = puxados.length;
+    fields.forEach(({label,key,vals,pal}) => {
+      const best = vals.map(val=>({val,cnt:puxados.filter(p=>p[key]===val).length}))
+        .sort((a,b)=>b.cnt-a.cnt)[0];
+      if (!best || best.cnt === 0) return;
+      const pct = Math.round(best.cnt/total*100);
+      if (pct >= 65) dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"}});
+    });
+  }
 
   if (dominants.length === 0) return null;
+  dominants.sort((a,b)=>b.pct-a.pct);
 
   return (
     <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
@@ -579,6 +649,49 @@ function CatalogFooterStats({ entries }) {
             <span style={{fontSize:10,color:pal.text,fontWeight:"bold",display:"block"}}>{pct}%</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+
+function MicroGroupCard({ entries }) {
+  if (!entries || entries.length < 3) return null;
+  const last6 = entries.slice(-6).map(e => e.num);
+  const result = analyzeMicroGroup(last6);
+  if (!result) return null;
+
+  const grpData = MICRO_GROUPS[result.group];
+  const col = result.group.substring(0,2); // C1, C2, C3
+  const duz = result.group.substring(2);   // D1, D2, D3
+
+  const colScheme = COLUNA_CELL[col] || {bg:"#111",text:"#aaa"};
+  const duzScheme = DUZIA_CELL[duz]  || {bg:"#111",text:"#aaa"};
+
+  return (
+    <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#0a0a0a",flexShrink:0}}>
+      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>micro grupo ativo</div>
+      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:2}}>
+          <span style={{fontSize:12,fontWeight:"bold",color:colScheme.text,background:colScheme.bg,
+            padding:"2px 7px",borderRadius:3}}>{col}</span>
+          <span style={{fontSize:12,fontWeight:"bold",color:duzScheme.text,background:duzScheme.bg,
+            padding:"2px 7px",borderRadius:3}}>{duz}</span>
+        </div>
+        <span style={{fontSize:11,fontWeight:"bold",color:"#FFD700"}}>{result.pct}%</span>
+        <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
+          {grpData.nums.map(n => {
+            const c = getColor(n);
+            return (
+              <div key={n} style={{width:20,height:20,borderRadius:"50%",display:"flex",
+                alignItems:"center",justifyContent:"center",
+                background:NUM_BALL[c].bg,border:"1px solid "+NUM_BALL[c].border,
+                color:"#fff",fontSize:8,fontWeight:"bold",flexShrink:0}}>
+                {n}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -1054,6 +1167,13 @@ export default function DestroyerRaceTable() {
       .slice(0, 3);
 
     return { acertos, erros, total, taxa, topTerminals };
+  }, [entries]);
+
+  // Micro group analysis (last 6 numbers)
+  const microGroupResult = useMemo(() => {
+    if (entries.length < 3) return null;
+    const last6nums = entries.slice(-6).map(e => e.num);
+    return analyzeMicroGroup(last6nums);
   }, [entries]);
 
   // Top 3 stats from last 3 entries' puxou
@@ -1619,10 +1739,11 @@ export default function DestroyerRaceTable() {
       {/* ── Painel lateral: Pair Catalog ── */}
       <div style={{width:320,background:"#080808",borderLeft:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0}}>
-        <CatalogFooterStats entries={entries}/>
+        <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
         <div style={{flex:1,overflowY:"auto"}}>
           <PairCatalog sharedEntries={entries}/>
         </div>
+        <MicroGroupCard entries={entries}/>
       </div>
 
     </div>
