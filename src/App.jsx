@@ -527,6 +527,7 @@ const CatalogTH = ({children}) => (
 function CatalogTableRow({n, rank, count, total, maxCount}){
   const cor=getColor(n), corAbrev=getCorAbrev(cor), lado=getLado(n);
   const regiao=getRegiao(n), duzia=getDuzia(n), paridade=getParidade(n);
+  const cavalo=getCavalo(n);
   const gp=getGP(n), rua=getRua(n), coluna=getColuna(n);
   const parte=getParte(n), ab=getAltoBaixo(n);
   const pct=total>0?(count/total*100):0;
@@ -540,6 +541,7 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
       <CatalogCell label={lado} scheme={LADO_CELL[lado]||LADO_CELL["—"]}/>
       <CatalogCell label={coluna==="0"?"—":coluna} scheme={COLUNA_CELL[coluna]||{bg:"#111",text:"#444"}}/>
       <CatalogCell label={parte} scheme={PARTE_CELL[parte]||PARTE_CELL["—"]}/>
+      <CatalogCell label={cavalo} scheme={CAVALO_CELL[cavalo]||CAVALO_CELL["—"]}/>
       <CatalogCell label={corAbrev} scheme={COR_CELL[cor]||{bg:"#111",text:"#444"}}/>
       <CatalogCell label={ab} scheme={ALTOBAIXO_CELL[ab]||ALTOBAIXO_CELL["—"]}/>
       <CatalogCell label={paridade==="—"?"—":paridade.toUpperCase()} scheme={PAR_CELL[paridade]||PAR_CELL["—"]}/>
@@ -615,12 +617,13 @@ function CatalogFooterStats({ entries, terminalStats }) {
       {label:"Parte", key:"parte",  vals:["P1","P2"],                    pal:PARTE_CELL},
       {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
       {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
+    {label:"Cavalo", key:"cavalo", vals:["369","258","147"], pal:CAVALO_CELL},
     ];
     const puxados = sorted.map(p => {
       const arr = [];
       for(let k=0;k<p.count;k++) arr.push({
         cor:getColor(p.num), lado:getLado(p.num), par:getParidade(p.num),
-        parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num)
+        parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num), cavalo:getCavalo(p.num), cavalo:getCavalo(p.num)
       });
       return arr;
     }).flat();
@@ -806,6 +809,7 @@ function PairCatalog({ sharedEntries }) {
                   <CatalogTH>RNK</CatalogTH><CatalogTH>NÚM</CatalogTH>
                   <CatalogTH>GP</CatalogTH>
                   <CatalogTH>LADO</CatalogTH><CatalogTH>COL</CatalogTH><CatalogTH>PARTE</CatalogTH>
+                  <CatalogTH>CAVALO</CatalogTH>
                   <CatalogTH>COR</CatalogTH><CatalogTH>A/B</CatalogTH><CatalogTH>PAR/ÍMP</CatalogTH>
                   <CatalogTH>ZONA</CatalogTH><CatalogTH>DÚZIA</CatalogTH><CatalogTH>RUA</CatalogTH>
                   <CatalogTH>VEZES</CatalogTH><CatalogTH>%</CatalogTH><CatalogTH>FREQ</CatalogTH>
@@ -1737,7 +1741,7 @@ export default function DestroyerRaceTable() {
       </div>{/* fim coluna central */}
 
       {/* ── Painel lateral: Pair Catalog ── */}
-      <div style={{width:320,background:"#080808",borderLeft:"1px solid #1e1e1e",
+      <div style={{width:420,background:"#080808",borderLeft:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",
         position:"sticky",top:0,alignSelf:"flex-start"}}>
         <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
