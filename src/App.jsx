@@ -639,17 +639,18 @@ function CatalogFooterStats({ entries, terminalStats }) {
 
   if (dominants.length === 0) return null;
   dominants.sort((a,b)=>b.pct-a.pct);
+  const top3 = dominants.slice(0,3);
 
   return (
     <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
       <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>PROBABILIDADE</div>
       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-        {dominants.map(({label,val,pct,pal}) => (
+        {top3.map(({label,val,pct,pal}) => (
           <div key={label} style={{display:"flex",flexDirection:"column",alignItems:"center",
-            background:pal.bg,borderRadius:4,padding:"5px 10px",border:"2px solid "+pal.text+"88",minWidth:50,textAlign:"center"}}>
+            background:pal.bg,borderRadius:3,padding:"3px 7px",border:"1px solid "+pal.text+"88",minWidth:40,textAlign:"center"}}>
             <span style={{fontSize:7,color:pal.text,opacity:0.7,textTransform:"uppercase",display:"block"}}>{label}</span>
-            <span style={{fontSize:13,fontWeight:"bold",color:pal.text,display:"block",lineHeight:1}}>{val}</span>
-            <span style={{fontSize:10,color:pal.text,fontWeight:"bold",display:"block"}}>{pct}%</span>
+            <span style={{fontSize:11,fontWeight:"bold",color:pal.text,display:"block",lineHeight:1}}>{val}</span>
+            <span style={{fontSize:9,color:pal.text,fontWeight:"bold",display:"block"}}>{pct}%</span>
           </div>
         ))}
       </div>
@@ -1741,7 +1742,7 @@ export default function DestroyerRaceTable() {
       </div>{/* fim coluna central */}
 
       {/* ── Painel lateral: Pair Catalog ── */}
-      <div style={{width:420,background:"#080808",borderLeft:"1px solid #1e1e1e",
+      <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",
         position:"sticky",top:0,alignSelf:"flex-start"}}>
         <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
