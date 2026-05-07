@@ -1160,18 +1160,50 @@ export default function DestroyerRaceTable() {
     const total = acertos + erros;
     const taxa = total > 0 ? Math.round((acertos / total) * 100) : 0;
 
-    const topTerminals = Object.entries(perTerminal)
-      .filter(([,v]) => (v.acertos + v.erros) > 0)
-      .map(([t, v]) => ({
-        t: parseInt(t),
-        acertos: v.acertos,
-        total: v.acertos + v.erros,
-        taxa: Math.round(v.acertos / (v.acertos + v.erros) * 100)
-      }))
-      .sort((a,b) => b.acertos - a.acertos || b.taxa - a.taxa)
-      .slice(0, 3);
+    // Build signalsByTerminal first (used for both top and recent)
+    const signalsByTerminalPre = {};
+    for (let si = 1; si < entries.length; si++) {
+      const sn = entries[si].num;
+      const shist = [];
+      for (let sj = 0; sj < si; sj++) {
+        if (entries[sj].num === sn && sj+1 < si) shist.push(entries[sj+1]);
+      }
+      const spred = shist.length >= 1 ? analyzeTerminal(shist.slice(-5)) : null;
+      if (!spred) continue;
+      const st = spred.terminal;
+      if (si < entries.length - 1) {
+        const snext = NUM_TO_TERMINALS[entries[si+1].num];
+        const shit = !!(snext && snext.has(st));
+        if (!signalsByTerminalPre[st]) signalsByTerminalPre[st] = [];
+        signalsByTerminalPre[st].push(shit);
+      }
+    }
+    const topTerminals = Object.entries(signalsByTerminalPre)
+      .map(([t, hits]) => {
+        const last10 = hits.slice(-10);
+        const ac = last10.filter(Boolean).length;
+        const total = last10.length;
+        const taxa = total > 0 ? Math.round(ac/total*100) : 0;
+        return { t:parseInt(t), acertos:ac, total, taxa };
+      })
+      .filter(x => x.total >= 2)
+      .sort((a,b) => b.taxa - a.taxa || b.acertos - a.acertos)
+      .slice(0,3);
 
-    return { acertos, erros, total, taxa, topTerminals };
+    // recentTop3: same as topTerminals but sorted by taxa of last 10
+    const recentTop3 = Object.entries(signalsByTerminalPre)
+      .map(([t, hits]) => {
+        const last10 = hits.slice(-10);
+        const ac = last10.filter(Boolean).length;
+        const total2 = last10.length;
+        const taxa2 = total2 > 0 ? Math.round(ac/total2*100) : 0;
+        return { t:parseInt(t), ac, total:total2, taxa:taxa2 };
+      })
+      .filter(x => x.total >= 2)
+      .sort((a,b) => b.taxa - a.taxa || b.ac - a.ac)
+      .slice(0,3);
+
+    return { acertos, erros, total, taxa, topTerminals, recentTop3 };
   }, [entries]);
 
   // Micro group analysis (last 6 numbers)
@@ -1179,6 +1211,42 @@ export default function DestroyerRaceTable() {
     if (entries.length < 3) return null;
     const last6nums = entries.slice(-6).map(e => e.num);
     return analyzeMicroGroup(last6nums);
+  }, [entries]);
+
+  // Column dominance arrows (last 5, >=80%)
+  const colDominance = useMemo(() => {
+    if (entries.length < 3) return {};
+    const last5 = entries.slice(-5);
+    const result = {};
+    const checks = {
+      cor:       ["Vermelho","Preto","Verde"],
+      lado:      ["PB e VA","PA e VB"],
+      altobaixo: ["ALTO","BAIXO"],
+      paridade:  ["Par","Ímpar"],
+      parte:     ["P1","P2"],
+      cavalo:    ["369","258","147"],
+      regiao:    ["Tier","Orphelins","Voisins"],
+      duzia:     ["D1","D2","D3"],
+      coluna:    ["C1","C2","C3"],
+      gp_d1:     ["d1V","d1P"],
+      gp_d2:     ["d2I","d2P"],
+      gp_d3:     ["d3V","d3P"],
+    };
+    Object.entries(checks).forEach(([field, vals]) => {
+      const getVal = (e) => {
+        if (field==="gp_d1") return ["d1V","d1P"].includes(e.gp) ? e.gp : null;
+        if (field==="gp_d2") return ["d2I","d2P"].includes(e.gp) ? e.gp : null;
+        if (field==="gp_d3") return ["d3V","d3P"].includes(e.gp) ? e.gp : null;
+        return e[field]||null;
+      };
+      vals.forEach(val => {
+        const cnt = last5.filter(e => getVal(e) === val).length;
+        if (cnt / last5.length >= 0.8) {
+          result[field] = { val, pct: Math.round(cnt/last5.length*100) };
+        }
+      });
+    });
+    return result;
   }, [entries]);
 
   // Top 3 stats from last 3 entries' puxou
@@ -1351,6 +1419,7 @@ export default function DestroyerRaceTable() {
                   const isSeparator      = col.key === firstAlwaysKey;
                   const isPrioritySep    = col.key === lastPriorityKey;
                   const isPinnedSep      = col.key === lastPinnedKey;
+
                   return (
                     <th
                       key={col.key}
@@ -1526,7 +1595,25 @@ export default function DestroyerRaceTable() {
           </table>
         </div>
 
-        {/* Barra de toggle de colunas + PDF */}
+        {/* Barra de dominância — setas por coluna */}
+        {Object.keys(colDominance).length > 0 && (
+          <div style={{display:"flex",gap:3,padding:"3px 0",flexWrap:"wrap",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",marginTop:2,marginBottom:2}}>
+            {visibleCols.filter(c=>c.toggleable).map(col => {
+              const dom = colDominance[col.key];
+              if (!dom) return null;
+              return (
+                <div key={col.key} style={{display:"flex",flexDirection:"column",alignItems:"center",
+                  background:"#001a1f",border:"1px solid #00e5ff",borderRadius:2,padding:"1px 5px"}}>
+                  <span style={{fontSize:7,color:"#555",lineHeight:1}}>{col.label}</span>
+                  <span style={{fontSize:8,fontWeight:"bold",color:"#00e5ff",lineHeight:1}}>▼ {dom.val}</span>
+                  <span style={{fontSize:7,color:"#00e5ff",opacity:0.7,lineHeight:1}}>{dom.pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+      {/* Barra de toggle de colunas + PDF */}
         <div style={{display:"flex",gap:3,padding:"4px 0",flexWrap:"wrap",borderTop:"1px solid #1a1a1a",marginTop:4,alignItems:"center"}}>
           <button onClick={exportPDF}
             style={{padding:"1px 10px",background:"#7c0000",border:"1px solid #CC0000",borderRadius:2,
@@ -1740,11 +1827,12 @@ export default function DestroyerRaceTable() {
         )}
       </div>
       </div>{/* fim coluna central */}
+      <div style={{width:220,flexShrink:0}}/>
 
       {/* ── Painel lateral: Pair Catalog ── */}
       <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",
-        position:"sticky",top:0,alignSelf:"flex-start"}}>
+        position:"fixed",top:0,right:0,zIndex:50}}>
         <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
         <div style={{flex:1,overflowY:"auto"}}>
           <PairCatalog sharedEntries={entries}/>
