@@ -68,6 +68,11 @@ function getColuna(n) {
   const r = n%3;
   if (r===1) return "C1"; if (r===2) return "C2"; return "C3";
 }
+function getRuaParidade(n) {
+  if (n === 0) return "—";
+  const r = getRua(n);
+  return (r==="R1"||r==="R3") ? "R.Ímpar" : "R.Par";
+}
 function getCavalo(n) {
   if (n === 0) return "369"; // zero pertence ao cavalo 369
   const t = n % 10;
@@ -857,6 +862,7 @@ function SignalsPanel({ entries, terminalStats }) {
     regiao:    n => getRegiao(n),
     duzia:     n => getDuzia(n),
     coluna:    n => getColuna(n),
+    ruaPar:    n => getRuaParidade(n),
   };
 
   // STEP 1: Dominant fields from historical puxou >=70%
@@ -872,7 +878,7 @@ function SignalsPanel({ entries, terminalStats }) {
       {k:"cavalo",   fn:e=>e.cavalo},
       {k:"regiao",   fn:e=>e.regiao},
       {k:"duzia",    fn:e=>e.duzia},
-      {k:"coluna",   fn:e=>e.coluna},
+      {k:"ruaPar",   fn:e=>getRuaParidade(e.num)},
     ];
     fieldChecks.forEach(({k,fn}) => {
       const cnt = {};
@@ -901,6 +907,7 @@ function SignalsPanel({ entries, terminalStats }) {
       {k:"cor",fn:e=>e.cor},{k:"lado",fn:e=>e.lado},{k:"altobaixo",fn:e=>e.altobaixo},
       {k:"paridade",fn:e=>e.paridade},{k:"parte",fn:e=>e.parte},{k:"cavalo",fn:e=>e.cavalo},
       {k:"regiao",fn:e=>e.regiao},{k:"duzia",fn:e=>e.duzia},{k:"coluna",fn:e=>e.coluna},
+      {k:"ruaPar",fn:e=>getRuaParidade(e.num)},
     ];
     fieldChecks5.forEach(({k,fn}) => {
       const cnt = {};
@@ -1359,9 +1366,11 @@ export default function DestroyerRaceTable() {
       gp_d1:     ["d1V","d1P"],
       gp_d2:     ["d2I","d2P"],
       gp_d3:     ["d3V","d3P"],
+      ruaPar:    ["R.Ímpar","R.Par"],
     };
     Object.entries(checks).forEach(([field, vals]) => {
       const getVal = (e) => {
+        if (field==="ruaPar") return getRuaParidade(e.num);
         if (field==="gp_d1") return ["d1V","d1P"].includes(e.gp) ? e.gp : null;
         if (field==="gp_d2") return ["d2I","d2P"].includes(e.gp) ? e.gp : null;
         if (field==="gp_d3") return ["d3V","d3P"].includes(e.gp) ? e.gp : null;
@@ -1766,6 +1775,19 @@ export default function DestroyerRaceTable() {
                 </div>
               );
             })}
+            {/* ruaPar extra card - not a column but needs display */}
+            {colDominance.ruaPar && (
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+                background:colDominance.ruaPar.val==="R.Par"?"#005a5a":"#4a0080",
+                border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
+                <span style={{fontSize:7,color:"#aaa",lineHeight:1,textTransform:"uppercase"}}>RUA</span>
+                <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,color:"#fff",
+                  padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
+                  {colDominance.ruaPar.val}
+                </span>
+                <span style={{fontSize:8,color:"#aaa",lineHeight:1}}>{colDominance.ruaPar.pct}%</span>
+              </div>
+            )}
           </div>
         )}
 
