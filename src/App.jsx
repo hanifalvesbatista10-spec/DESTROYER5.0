@@ -835,6 +835,134 @@ function PairCatalog({ sharedEntries }) {
   );
 }
 
+
+function SignalsPanel({ entries, terminalStats }) {
+  if (entries.length === 0) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%"}}>
+      <span style={{fontSize:9,color:"#333",textTransform:"uppercase",letterSpacing:"0.1em",writingMode:"vertical-rl"}}>SINAIS</span>
+    </div>
+  );
+
+  // Compute dominance from HISTORICAL PUXOU of last number (same as PROBABILIDADE)
+  const lastEntry = entries[entries.length - 1]; // most recent
+  const puxadoHist = getHistorico(entries, entries.length - 1, lastEntry.num);
+
+  const NFIELD = {
+    cor:       n => getColor(n),
+    lado:      n => getLado(n),
+    altobaixo: n => getAltoBaixo(n),
+    paridade:  n => getParidade(n),
+    parte:     n => getParte(n),
+    cavalo:    n => getCavalo(n),
+    regiao:    n => getRegiao(n),
+    duzia:     n => getDuzia(n),
+    coluna:    n => getColuna(n),
+  };
+
+  // STEP 1: Dominant fields from historical puxou >=70%
+  const probDomVals = {};
+  if (puxadoHist.length > 0) {
+    const total = puxadoHist.length;
+    const fieldChecks = [
+      {k:"cor",      fn:e=>e.cor},
+      {k:"lado",     fn:e=>e.lado},
+      {k:"altobaixo",fn:e=>e.altobaixo},
+      {k:"paridade", fn:e=>e.paridade},
+      {k:"parte",    fn:e=>e.parte},
+      {k:"cavalo",   fn:e=>e.cavalo},
+      {k:"regiao",   fn:e=>e.regiao},
+      {k:"duzia",    fn:e=>e.duzia},
+      {k:"coluna",   fn:e=>e.coluna},
+    ];
+    fieldChecks.forEach(({k,fn}) => {
+      const cnt = {};
+      puxadoHist.forEach(e => { const v=fn(e); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
+      const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+      if (best && best[1]/total >= 0.70) probDomVals[k] = best[0];
+    });
+  }
+
+  // STEP 2: Get all numbers matching PROB dominants (>=70%)
+  const probKeys = Object.keys(probDomVals);
+  let step1 = [];
+  for (let n = 0; n <= 36; n++) {
+    if (probKeys.length === 0) break;
+    if (probKeys.every(k => NFIELD[k] && NFIELD[k](n) === probDomVals[k])) {
+      step1.push(n);
+    }
+  }
+
+  // STEP 3: Filter by last 5 entries dominants (>=80%)
+  const last5 = entries.slice(-5);
+  const repDomVals = {};
+  if (last5.length > 0) {
+    const total5 = last5.length;
+    const fieldChecks5 = [
+      {k:"cor",fn:e=>e.cor},{k:"lado",fn:e=>e.lado},{k:"altobaixo",fn:e=>e.altobaixo},
+      {k:"paridade",fn:e=>e.paridade},{k:"parte",fn:e=>e.parte},{k:"cavalo",fn:e=>e.cavalo},
+      {k:"regiao",fn:e=>e.regiao},{k:"duzia",fn:e=>e.duzia},{k:"coluna",fn:e=>e.coluna},
+    ];
+    fieldChecks5.forEach(({k,fn}) => {
+      const cnt = {};
+      last5.forEach(e => { const v=fn(e); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
+      const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+      if (best && best[1]/total5 >= 0.80) repDomVals[k] = best[0];
+    });
+  }
+  const repKeys = Object.keys(repDomVals);
+  const step2 = repKeys.length > 0
+    ? step1.filter(n => repKeys.every(k => NFIELD[k] && NFIELD[k](n) === repDomVals[k]))
+    : step1;
+
+  // VIZ terminal
+  const vizResult = puxadoHist.length >= 1 ? analyzeTerminal(puxadoHist) : null;
+  const vizTerminal = vizResult ? vizResult.terminal : null;
+  const termTop2 = terminalStats?.topTerminals?.slice(0,2).map(x=>x.t) || [];
+  const terminalActive = vizTerminal !== null && termTop2.includes(vizTerminal);
+
+  const candidates = step2.map(n => ({
+    n,
+    inTerminal: terminalActive && vizTerminal !== null && !!NUM_TO_TERMINALS[n]?.has(vizTerminal)
+  }));
+
+  if (candidates.length === 0) return (
+    <div style={{padding:8,textAlign:"center"}}>
+      <span style={{fontSize:9,color:"#333",writingMode:"vertical-rl"}}>SEM SINAIS</span>
+    </div>
+  );
+
+  return (
+    <div style={{padding:"8px 4px"}}>
+      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#CC0000",fontWeight:"bold",
+        textTransform:"uppercase",marginBottom:6,textAlign:"center"}}>SINAIS</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:4,justifyContent:"center"}}>
+        {candidates.map(({n, inTerminal}) => {
+          const cor = getColor(n);
+          const s = NUM_BALL[cor];
+          return (
+            <div key={n}
+              className={inTerminal ? "pulse-cell" : ""}
+              style={{
+                display:"flex",alignItems:"center",justifyContent:"center",
+                width:28,height:28,borderRadius:"50%",
+                background: s.bg,
+                border: inTerminal ? "2px solid #FFD700" : `2px solid ${s.border}`,
+                boxShadow: inTerminal ? "0 0 8px #FFD700" : "none",
+                color: s.text, flexShrink:0,
+              }}>
+              <span style={{fontSize:10,fontWeight:"bold"}}>{n}</span>
+            </div>
+          );
+        })}
+      </div>
+      {terminalActive && (
+        <div style={{marginTop:6,textAlign:"center",fontSize:7,color:"#FFD700"}}>T{vizTerminal}</div>
+      )}
+    </div>
+  );
+}
+
+
 let idCounter = 0;
 
 export default function DestroyerRaceTable() {
@@ -1367,6 +1495,12 @@ export default function DestroyerRaceTable() {
 
   return (
     <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
+      {/* ── Painel lateral esquerdo: Sinais ── */}
+      <div style={{width:80,background:"#080808",borderRight:"1px solid #1e1e1e",
+        flexShrink:0,display:"flex",flexDirection:"column",
+        height:"100vh",position:"sticky",top:0,alignSelf:"flex-start",overflowY:"auto"}}>
+        <SignalsPanel entries={entries} terminalStats={terminalStats}/>
+      </div>
       <style>{`
         @keyframes pulseBorder {
           0%,100% { box-shadow: inset 0 0 0 2px #FFD700, inset 0 0 8px #FFD700; }
@@ -1603,10 +1737,32 @@ export default function DestroyerRaceTable() {
               if (!dom) return null;
               return (
                 <div key={col.key} style={{display:"flex",flexDirection:"column",alignItems:"center",
-                  background:"#001a1f",border:"1px solid #00e5ff",borderRadius:2,padding:"1px 5px"}}>
-                  <span style={{fontSize:7,color:"#555",lineHeight:1}}>{col.label}</span>
-                  <span style={{fontSize:8,fontWeight:"bold",color:"#00e5ff",lineHeight:1}}>▼ {dom.val}</span>
-                  <span style={{fontSize:7,color:"#00e5ff",opacity:0.7,lineHeight:1}}>{dom.pct}%</span>
+                  background: (() => { const s = CELL_SCHEME({...buildEntry(0,'x'), gp:"—", cavalo:"—"}, col.key); return "#0a0a0a"; })(),
+                  border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
+                  <span style={{fontSize:7,color:"#777",lineHeight:1,textTransform:"uppercase"}}>{col.label}</span>
+                  <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,
+                    color: col.key==="cor" ? (dom.val==="Vermelho"?"#ff6666":dom.val==="Verde"?"#4ade80":"#e5e5e5") :
+                           col.key==="cavalo" ? (CAVALO_CELL[dom.val]?.text||"#fff") :
+                           col.key==="paridade" ? (PAR_CELL[dom.val]?.text||"#fff") :
+                           col.key==="parte" ? (PARTE_CELL[dom.val]?.text||"#fff") :
+                           col.key==="lado" ? (LADO_CELL[dom.val]?.text||"#fff") :
+                           col.key==="altobaixo" ? (ALTOBAIXO_CELL[dom.val]?.text||"#fff") :
+                           col.key==="regiao" ? (REGIAO_CELL[dom.val]?.text||"#fff") :
+                           col.key==="duzia" ? (DUZIA_CELL[dom.val]?.text||"#fff") :
+                           "#00e5ff",
+                    background: col.key==="cor" ? (dom.val==="Vermelho"?"#CC0000":dom.val==="Verde"?"#1B7A3E":"#222") :
+                                col.key==="cavalo" ? (CAVALO_CELL[dom.val]?.bg||"#111") :
+                                col.key==="paridade" ? (PAR_CELL[dom.val]?.bg||"#111") :
+                                col.key==="parte" ? (PARTE_CELL[dom.val]?.bg||"#111") :
+                                col.key==="lado" ? (LADO_CELL[dom.val]?.bg||"#111") :
+                                col.key==="altobaixo" ? (ALTOBAIXO_CELL[dom.val]?.bg||"#111") :
+                                col.key==="regiao" ? (REGIAO_CELL[dom.val]?.bg||"#111") :
+                                col.key==="duzia" ? (DUZIA_CELL[dom.val]?.bg||"#111") :
+                                "transparent",
+                    padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
+                    {dom.val}
+                  </span>
+                  <span style={{fontSize:8,color:"#aaa",lineHeight:1}}>{dom.pct}%</span>
                 </div>
               );
             })}
@@ -1766,30 +1922,7 @@ export default function DestroyerRaceTable() {
           </div>
         )}
 
-        {/* Ranking de maior ausência */}
-        {absenceRanking.length > 0 && (
-          <div style={{marginBottom:8}}>
-            <div style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:5}}>ranking ausência</div>
-            <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-              {absenceRanking.map((item,idx) => {
-                const palette = item.type === "duzia" ? DUZIA_CELL : COLUNA_CELL;
-                const p = palette[item.val] || {bg:"#222",text:"#aaa"};
-                const isTop = idx === 0;
-                return (
-                  <div key={idx} style={{
-                    display:"flex",alignItems:"center",gap:4,
-                    background:"#111",borderRadius:3,padding:"3px 8px",
-                    border: isTop ? "1px solid #FFD700" : "0.5px solid #2a2a2a",
-                  }}>
-                    <span style={{fontSize:7,color: isTop ? "#FFD700" : "#444",fontWeight:"bold",minWidth:10}}>{idx+1}</span>
-                    <span style={{fontSize:10,fontWeight:"bold",color:p.text,background:p.bg,padding:"1px 5px",borderRadius:2}}>{item.val}</span>
-                    <span style={{fontSize:10,fontWeight:"bold",color: isTop ? "#FFD700" : "#888"}}>{item.streak}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        
 
         {last14.length>0&&(
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
