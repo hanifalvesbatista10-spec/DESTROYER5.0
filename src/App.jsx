@@ -1508,7 +1508,7 @@ export default function DestroyerRaceTable() {
   };
 
   return (
-    <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",width:"100%",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
+    <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",width:"100vw",maxWidth:"100vw",margin:0,padding:0,background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
       {/* ── Painel lateral esquerdo: Sinais ── */}
       <div style={{width:80,background:"#080808",borderRight:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",
@@ -1516,6 +1516,8 @@ export default function DestroyerRaceTable() {
         <SignalsPanel entries={entries} terminalStats={terminalStats}/>
       </div>
       <style>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; overflow-x: hidden; }
         @keyframes pulseBorder {
           0%,100% { box-shadow: inset 0 0 0 2px #FFD700, inset 0 0 8px #FFD700; }
           50%      { box-shadow: inset 0 0 0 2px #fff5a0, inset 0 0 16px #FFD700; }
