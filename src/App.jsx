@@ -1512,7 +1512,7 @@ export default function DestroyerRaceTable() {
       {/* ── Painel lateral esquerdo: Sinais ── */}
       <div style={{width:80,background:"#080808",borderRight:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",
-        height:"100vh",position:"sticky",top:0,overflowY:"auto"}}>
+        height:"100vh",position:"fixed",top:0,left:0,zIndex:50,overflowY:"auto"}}>
         <SignalsPanel entries={entries} terminalStats={terminalStats}/>
       </div>
       <style>{`
@@ -2002,7 +2002,7 @@ export default function DestroyerRaceTable() {
       {/* ── Painel lateral: Pair Catalog ── */}
       <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",
-        position:"sticky",top:0,alignSelf:"flex-start"}}>
+        position:"fixed",top:0,right:0,zIndex:50}}>
         <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
         <div style={{flex:1,overflowY:"auto"}}>
           <PairCatalog sharedEntries={entries}/>
