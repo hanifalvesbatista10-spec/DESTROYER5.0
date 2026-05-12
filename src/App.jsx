@@ -1589,6 +1589,7 @@ export default function DestroyerRaceTable() {
                                ["seq"].includes(col.key) ? 24 :
                                ["num"].includes(col.key) ? 32 :
                                ["viz"].includes(col.key) ? 32 :
+                               ["hist"].includes(col.key) ? 70 :
                                ["lado","cor","altobaixo","paridade","parte","cavalo","regiao","duzia","rua"].includes(col.key) ? 54 : undefined,
                         minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 36 : 32,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
@@ -1695,7 +1696,7 @@ export default function DestroyerRaceTable() {
                         const isLast3General = posFromLast >= 1 && posFromLast <= 4;
                         return (
                           <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:40}}>
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:70,maxWidth:70,overflow:"hidden"}}>
                             <div style={{display:"flex",alignItems:"center",gap:1,flexWrap:"nowrap"}}>
                               {hist.length===0
                                 ? <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
