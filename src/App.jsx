@@ -655,7 +655,7 @@ function CatalogFooterStats({ entries, terminalStats }) {
             background:pal.bg,borderRadius:3,padding:"3px 7px",border:"1px solid "+pal.text+"88",minWidth:40,textAlign:"center"}}>
             <span style={{fontSize:7,color:pal.text,opacity:0.7,textTransform:"uppercase",display:"block"}}>{label}</span>
             <span style={{fontSize:11,fontWeight:"bold",color:pal.text,display:"block",lineHeight:1}}>{val}</span>
-            <span style={{fontSize:9,color:pal.text,fontWeight:"bold",display:"block"}}>{pct}%</span>
+            <span style={{fontSize:12,color:pal.text,fontWeight:"900",display:"block"}}>{pct}%</span>
           </div>
         ))}
       </div>
@@ -1583,8 +1583,14 @@ export default function DestroyerRaceTable() {
                       style={{
                         background: isBeingDragged ? "#990000" : "#CC0000",
                         color:"#ffffff", padding:"3px 2px", textAlign:"center",
-                        fontSize:8, fontWeight:"bold", letterSpacing:"0em",
-                        borderBottom:"2px solid #000", borderRight:"1px solid #000", minWidth:32,
+                        fontSize:10, fontWeight:"bold", letterSpacing:"0em",
+                        borderBottom:"2px solid #000", borderRight:"1px solid #000",
+                        width: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 36 :
+                               ["seq"].includes(col.key) ? 24 :
+                               ["num"].includes(col.key) ? 32 :
+                               ["viz"].includes(col.key) ? 32 :
+                               ["lado","cor","altobaixo","paridade","parte","cavalo","regiao","duzia","rua"].includes(col.key) ? 54 : undefined,
+                        minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 36 : 32,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
                         whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
@@ -1632,7 +1638,7 @@ export default function DestroyerRaceTable() {
                   return (
                     <td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
                       style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"1px 3px",textAlign:"center",
-                      fontSize:9,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",
+                      fontSize:11,fontWeight:"700",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",
                       borderTop: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
                       borderBottom: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
                       borderLeft: isSep ? "3px solid #FFD700" : "none",
@@ -1778,7 +1784,7 @@ export default function DestroyerRaceTable() {
                     padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
                     {dom.val}
                   </span>
-                  <span style={{fontSize:8,color:"#aaa",lineHeight:1}}>{dom.pct}%</span>
+                  <span style={{fontSize:11,fontWeight:"bold",color:"#fff",lineHeight:1}}>{dom.pct}%</span>
                 </div>
               );
             })}
