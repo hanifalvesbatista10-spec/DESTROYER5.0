@@ -319,7 +319,7 @@ function getHistorico(entries, currentIndex, num) {
       nexts.push(entries[i + 1]);
     }
   }
-  return nexts.slice(-3);
+  return nexts.slice(-5);
 }
 
 
@@ -1585,14 +1585,14 @@ export default function DestroyerRaceTable() {
                         color:"#ffffff", padding:"2px 1px", textAlign:"center",
                         fontSize:9, fontWeight:"bold", letterSpacing:"0em",
                         borderBottom:"2px solid #000", borderRight:"1px solid #000",
-                        width: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 32 :
-                               ["seq"].includes(col.key) ? 22 :
-                               ["num"].includes(col.key) ? 28 :
-                               ["viz"].includes(col.key) ? 28 :
-                               ["hist"].includes(col.key) ? 65 :
-                               ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 48 :
-                               ["duzia","rua"].includes(col.key) ? 36 : undefined,
-                        minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 32 : 22,
+                        width: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 :
+                               ["seq"].includes(col.key) ? 20 :
+                               ["num"].includes(col.key) ? 34 :
+                               ["viz"].includes(col.key) ? 34 :
+                               ["hist"].includes(col.key) ? 114 :
+                               ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 42 :
+                               ["duzia","rua"].includes(col.key) ? 32 : undefined,
+                        minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 : 20,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
                         whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
@@ -1681,11 +1681,11 @@ export default function DestroyerRaceTable() {
                             <div
                               className={isCharMatch ? "pulse-cell" : ""}
                               style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-                              width:20,height:20,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
+                              width:26,height:26,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
                               border: isCharMatch ? "2px solid #FFD700" : repAltBorder || (gpBall ? "2px solid #3b82f6" : `2px solid ${NUM_BALL[e.cor].border}`),
                               boxShadow: isCharMatch ? "0 0 8px #FFD700" : repAltShadow || (gpBall ? "0 0 6px #3b82f6" : "none"),
                               color:NUM_BALL[e.cor].text,fontFamily:"Arial, sans-serif"}}>
-                              <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>{e.num}</span>
+                              <span style={{fontSize:11,fontWeight:"bold",lineHeight:1}}>{e.num}</span>
                               {e.gp!=="—"&&<span style={{fontSize:6,fontWeight:"normal",opacity:0.85,lineHeight:1}}>{e.gp}</span>}
                             </div>
                           </td>
@@ -1697,7 +1697,7 @@ export default function DestroyerRaceTable() {
                         const isLast3General = posFromLast >= 1 && posFromLast <= 4;
                         return (
                           <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:65,maxWidth:65,overflow:"hidden"}}>
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:114,maxWidth:114}}>
                             <div style={{display:"flex",alignItems:"center",gap:1,flexWrap:"nowrap"}}>
                               {hist.length===0
                                 ? <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
@@ -2002,7 +2002,7 @@ export default function DestroyerRaceTable() {
       {/* ── Painel lateral: Pair Catalog ── */}
       <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",
-        position:"fixed",top:0,right:0,zIndex:50}}>
+        position:"sticky",top:0,alignSelf:"flex-start"}}>
         <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
         <div style={{flex:1,overflowY:"auto"}}>
           <PairCatalog sharedEntries={entries}/>
