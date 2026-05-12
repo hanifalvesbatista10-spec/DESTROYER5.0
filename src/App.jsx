@@ -280,22 +280,22 @@ function analyzeMicroGroup(last6) {
 const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false, mode:"fixed"    },
   { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"    },
-  { key:"hist",      label:"PUXOU",     toggleable:false, mode:"fixed"    },
+  { key:"hist",      label:"PUX",     toggleable:false, mode:"fixed"    },
   { key:"viz",       label:"VIZ",       toggleable:false, mode:"fixed"    },
   { key:"gp_d1",     label:"D1",        toggleable:true,  mode:"priority" },
   { key:"gp_d2",     label:"D2",        toggleable:true,  mode:"priority" },
   { key:"gp_d3",     label:"D3",        toggleable:true,  mode:"priority" },
-  { key:"lado",      label:"LADO RACE", toggleable:true,  mode:"pinned"   },
+  { key:"lado",      label:"LADO", toggleable:true,  mode:"pinned"   },
   { key:"col_c1",    label:"C1",        toggleable:true,  mode:"pinned"   },
   { key:"col_c2",    label:"C2",        toggleable:true,  mode:"pinned"   },
   { key:"col_c3",    label:"C3",        toggleable:true,  mode:"pinned"   },
-  { key:"parte",     label:"PARTE",     toggleable:true,  mode:"pinned"   },
-  { key:"cavalo",    label:"CAVALO",    toggleable:true,  mode:"pinned"   },
+  { key:"parte",     label:"PTE",     toggleable:true,  mode:"pinned"   },
+  { key:"cavalo",    label:"CAV",    toggleable:true,  mode:"pinned"   },
   { key:"cor",       label:"COR",       toggleable:true,  mode:"auto"     },
   { key:"altobaixo", label:"A/B",       toggleable:true,  mode:"auto"     },
-  { key:"paridade",  label:"PAR/ÍMPAR", toggleable:true,  mode:"auto"     },
-  { key:"regiao",    label:"ZONA",      toggleable:true,  mode:"auto"     },
-  { key:"duzia",     label:"DÚZIA",     toggleable:true,  mode:"always"   },
+  { key:"paridade",  label:"P/I", toggleable:true,  mode:"auto"     },
+  { key:"regiao",    label:"ZNA",      toggleable:true,  mode:"auto"     },
+  { key:"duzia",     label:"DUZ",     toggleable:true,  mode:"always"   },
   { key:"rua",       label:"RUA",       toggleable:true,  mode:"always"   },
 ];
 
@@ -1362,7 +1362,9 @@ export default function DestroyerRaceTable() {
       cavalo:    ["369","258","147"],
       regiao:    ["Tier","Orphelins","Voisins"],
       duzia:     ["D1","D2","D3"],
-      coluna:    ["C1","C2","C3"],
+      col_c1:    ["C1"],
+      col_c2:    ["C2"],
+      col_c3:    ["C3"],
       gp_d1:     ["d1V","d1P"],
       gp_d2:     ["d2I","d2P"],
       gp_d3:     ["d3V","d3P"],
@@ -1371,6 +1373,9 @@ export default function DestroyerRaceTable() {
     Object.entries(checks).forEach(([field, vals]) => {
       const getVal = (e) => {
         if (field==="ruaPar") return getRuaParidade(e.num);
+        if (field==="col_c1") return e.coluna==="C1" ? "C1" : null;
+        if (field==="col_c2") return e.coluna==="C2" ? "C2" : null;
+        if (field==="col_c3") return e.coluna==="C3" ? "C3" : null;
         if (field==="gp_d1") return ["d1V","d1P"].includes(e.gp) ? e.gp : null;
         if (field==="gp_d2") return ["d2I","d2P"].includes(e.gp) ? e.gp : null;
         if (field==="gp_d3") return ["d3V","d3P"].includes(e.gp) ? e.gp : null;
@@ -1547,7 +1552,7 @@ export default function DestroyerRaceTable() {
 
         </div>
 
-        <div id="destroyer-table-wrap" style={{flex:1,overflowY:"auto",marginBottom:8}}>
+        <div id="destroyer-table-wrap" style={{flex:1,overflowY:"auto",overflowX:"auto",marginBottom:8}}>
           <table id="destroyer-table" style={{width:"100%",borderCollapse:"collapse",borderTop:"1px solid #000",borderLeft:"1px solid #000"}}>
             <thead>
               <tr>
@@ -1575,9 +1580,9 @@ export default function DestroyerRaceTable() {
                       title={col.toggleable ? "Arraste para mover • 2x clique para ocultar" : ""}
                       style={{
                         background: isBeingDragged ? "#990000" : "#CC0000",
-                        color:"#ffffff", padding:"5px 6px", textAlign:"center",
-                        fontSize:9, fontWeight:"bold", letterSpacing:"0.07em",
-                        borderBottom:"2px solid #000", borderRight:"1px solid #000",
+                        color:"#ffffff", padding:"3px 2px", textAlign:"center",
+                        fontSize:8, fontWeight:"bold", letterSpacing:"0em",
+                        borderBottom:"2px solid #000", borderRight:"1px solid #000", minWidth:32,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
                         whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
@@ -1624,8 +1629,8 @@ export default function DestroyerRaceTable() {
                   const isColunaAlert = isLastRow && colunaAlert === ckey && CELL_VAL(e,ckey) === "";
                   return (
                     <td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
-                      style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"2px 5px",textAlign:"center",
-                      fontSize:10,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0.02em",whiteSpace:"nowrap",
+                      style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"1px 3px",textAlign:"center",
+                      fontSize:9,fontWeight:"600",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",
                       borderTop: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
                       borderBottom: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
                       borderLeft: isSep ? "3px solid #FFD700" : "none",
@@ -1666,7 +1671,7 @@ export default function DestroyerRaceTable() {
                             <div
                               className={isCharMatch ? "pulse-cell" : ""}
                               style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-                              width:24,height:24,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
+                              width:22,height:22,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
                               border: isCharMatch ? "2px solid #FFD700" : repAltBorder || (gpBall ? "2px solid #3b82f6" : `2px solid ${NUM_BALL[e.cor].border}`),
                               boxShadow: isCharMatch ? "0 0 8px #FFD700" : repAltShadow || (gpBall ? "0 0 6px #3b82f6" : "none"),
                               color:NUM_BALL[e.cor].text,fontFamily:"Arial, sans-serif"}}>
@@ -1682,8 +1687,8 @@ export default function DestroyerRaceTable() {
                         const isLast3General = posFromLast >= 1 && posFromLast <= 4;
                         return (
                           <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:82}}>
-                            <div style={{display:"flex",alignItems:"center",gap:2,flexWrap:"nowrap"}}>
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:60}}>
+                            <div style={{display:"flex",alignItems:"center",gap:1,flexWrap:"nowrap"}}>
                               {hist.length===0
                                 ? <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
                                 : hist.map((h,hi) => {
@@ -1709,8 +1714,8 @@ export default function DestroyerRaceTable() {
                         const hist = getHistorico(entries, i, e.num);
                         const result = analyzeTerminal(hist);
                         return (
-                          <td key="viz" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"center",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:36}}>
+                          <td key="viz" style={{background:"#0d0d0d",padding:"1px 3px",textAlign:"center",
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:28}}>
                             {result ? (
                               <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
                                 width:28,height:28,borderRadius:"50%",
