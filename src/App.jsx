@@ -1582,16 +1582,17 @@ export default function DestroyerRaceTable() {
                       title={col.toggleable ? "Arraste para mover • 2x clique para ocultar" : ""}
                       style={{
                         background: isBeingDragged ? "#990000" : "#CC0000",
-                        color:"#ffffff", padding:"3px 2px", textAlign:"center",
-                        fontSize:10, fontWeight:"bold", letterSpacing:"0em",
+                        color:"#ffffff", padding:"2px 1px", textAlign:"center",
+                        fontSize:9, fontWeight:"bold", letterSpacing:"0em",
                         borderBottom:"2px solid #000", borderRight:"1px solid #000",
-                        width: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 36 :
-                               ["seq"].includes(col.key) ? 24 :
-                               ["num"].includes(col.key) ? 32 :
-                               ["viz"].includes(col.key) ? 32 :
-                               ["hist"].includes(col.key) ? 70 :
-                               ["lado","cor","altobaixo","paridade","parte","cavalo","regiao","duzia","rua"].includes(col.key) ? 54 : undefined,
-                        minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 36 : 32,
+                        width: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 32 :
+                               ["seq"].includes(col.key) ? 22 :
+                               ["num"].includes(col.key) ? 28 :
+                               ["viz"].includes(col.key) ? 28 :
+                               ["hist"].includes(col.key) ? 65 :
+                               ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 48 :
+                               ["duzia","rua"].includes(col.key) ? 36 : undefined,
+                        minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 32 : 22,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
                         whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
@@ -1638,7 +1639,7 @@ export default function DestroyerRaceTable() {
                   const isColunaAlert = isLastRow && colunaAlert === ckey && CELL_VAL(e,ckey) === "";
                   return (
                     <td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
-                      style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"1px 3px",textAlign:"center",
+                      style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"1px 2px",textAlign:"center",
                       fontSize:11,fontWeight:"700",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",
                       borderTop: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
                       borderBottom: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
@@ -1675,12 +1676,12 @@ export default function DestroyerRaceTable() {
                         const isPos513 = posFromLast === 5 || posFromLast === 13;
                         const isCharMatch = isPos513 && matchesTop2(e);
                         return (
-                          <td key="num" style={{background:"#0d0d0d",padding:"1px 3px",textAlign:"center",
+                          <td key="num" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",
                             borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:40}}>
                             <div
                               className={isCharMatch ? "pulse-cell" : ""}
                               style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-                              width:22,height:22,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
+                              width:20,height:20,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
                               border: isCharMatch ? "2px solid #FFD700" : repAltBorder || (gpBall ? "2px solid #3b82f6" : `2px solid ${NUM_BALL[e.cor].border}`),
                               boxShadow: isCharMatch ? "0 0 8px #FFD700" : repAltShadow || (gpBall ? "0 0 6px #3b82f6" : "none"),
                               color:NUM_BALL[e.cor].text,fontFamily:"Arial, sans-serif"}}>
@@ -1696,7 +1697,7 @@ export default function DestroyerRaceTable() {
                         const isLast3General = posFromLast >= 1 && posFromLast <= 4;
                         return (
                           <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:70,maxWidth:70,overflow:"hidden"}}>
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:65,maxWidth:65,overflow:"hidden"}}>
                             <div style={{display:"flex",alignItems:"center",gap:1,flexWrap:"nowrap"}}>
                               {hist.length===0
                                 ? <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
@@ -1723,7 +1724,7 @@ export default function DestroyerRaceTable() {
                         const hist = getHistorico(entries, i, e.num);
                         const result = analyzeTerminal(hist);
                         return (
-                          <td key="viz" style={{background:"#0d0d0d",padding:"1px 3px",textAlign:"center",
+                          <td key="viz" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",
                             borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:28}}>
                             {result ? (
                               <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
