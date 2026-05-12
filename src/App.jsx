@@ -1515,6 +1515,7 @@ export default function DestroyerRaceTable() {
         height:"100vh",position:"fixed",top:0,left:0,zIndex:50,overflowY:"auto"}}>
         <SignalsPanel entries={entries} terminalStats={terminalStats}/>
       </div>
+      <div style={{width:80,flexShrink:0}}/>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; overflow-x: hidden; }
@@ -1999,6 +2000,7 @@ export default function DestroyerRaceTable() {
       </div>{/* fim coluna central */}
       
 
+      <div style={{width:220,flexShrink:0}}/>
       {/* ── Painel lateral: Pair Catalog ── */}
       <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",
