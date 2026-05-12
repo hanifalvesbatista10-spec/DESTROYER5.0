@@ -1543,7 +1543,7 @@ export default function DestroyerRaceTable() {
       {/* ── Coluna central (tabela + rodapé) ── */}
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
 
-      <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",padding:"8px 4px 0 4px",marginLeft:80,marginRight:220}}>
+      <div style={{width:"calc(100vw - 300px)",marginLeft:80,display:"flex",flexDirection:"column",padding:"8px 4px 0 4px"}}>
 
         <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:13,letterSpacing:"0.3em",color:"#CC0000",fontWeight:"bold"}}>DESTROYER</span>
