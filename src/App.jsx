@@ -1512,7 +1512,7 @@ export default function DestroyerRaceTable() {
       {/* ── Painel lateral esquerdo: Sinais ── */}
       <div style={{width:80,background:"#080808",borderRight:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",
-        height:"100vh",position:"sticky",top:0,alignSelf:"flex-start",overflowY:"auto"}}>
+        height:"100vh",position:"fixed",top:0,left:0,zIndex:50,overflowY:"auto"}}>
         <SignalsPanel entries={entries} terminalStats={terminalStats}/>
       </div>
       <style>{`
@@ -1543,7 +1543,7 @@ export default function DestroyerRaceTable() {
       {/* ── Coluna central (tabela + rodapé) ── */}
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
 
-      <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",padding:"8px 4px 0 4px",marginRight:220}}>
+      <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",padding:"8px 4px 0 4px",marginLeft:80,marginRight:220}}>
 
         <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:13,letterSpacing:"0.3em",color:"#CC0000",fontWeight:"bold"}}>DESTROYER</span>
