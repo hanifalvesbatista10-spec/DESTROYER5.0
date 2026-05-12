@@ -319,7 +319,7 @@ function getHistorico(entries, currentIndex, num) {
       nexts.push(entries[i + 1]);
     }
   }
-  return nexts.slice(-5);
+  return nexts.slice(-3);
 }
 
 
@@ -1508,11 +1508,11 @@ export default function DestroyerRaceTable() {
   };
 
   return (
-    <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
+    <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",width:"100%",background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
       {/* ── Painel lateral esquerdo: Sinais ── */}
       <div style={{width:80,background:"#080808",borderRight:"1px solid #1e1e1e",
         flexShrink:0,display:"flex",flexDirection:"column",
-        height:"100vh",position:"fixed",top:0,left:0,zIndex:50,overflowY:"auto"}}>
+        height:"100vh",position:"sticky",top:0,overflowY:"auto"}}>
         <SignalsPanel entries={entries} terminalStats={terminalStats}/>
       </div>
       <style>{`
@@ -1543,7 +1543,7 @@ export default function DestroyerRaceTable() {
       {/* ── Coluna central (tabela + rodapé) ── */}
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
 
-      <div style={{width:"calc(100vw - 300px)",marginLeft:80,display:"flex",flexDirection:"column",padding:"8px 4px 0 4px"}}>
+      <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",padding:"8px 8px 0 8px"}}>
 
         <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:13,letterSpacing:"0.3em",color:"#CC0000",fontWeight:"bold"}}>DESTROYER</span>
@@ -1687,7 +1687,7 @@ export default function DestroyerRaceTable() {
                         const isLast3General = posFromLast >= 1 && posFromLast <= 4;
                         return (
                           <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:60}}>
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:40}}>
                             <div style={{display:"flex",alignItems:"center",gap:1,flexWrap:"nowrap"}}>
                               {hist.length===0
                                 ? <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
