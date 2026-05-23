@@ -277,6 +277,19 @@ function analyzeMicroGroup(last6) {
 }
 
 
+// Racetrack order for signal feedback
+const RACETRACK = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+function getRaceNeighbors(n) {
+  const idx = RACETRACK.indexOf(n);
+  if (idx === -1) return new Set();
+  const len = RACETRACK.length;
+  return new Set([
+    RACETRACK[(idx-1+len)%len],
+    RACETRACK[(idx+1)%len],
+  ]);
+}
+
+
 const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false, mode:"fixed"    },
   { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"    },
@@ -932,6 +945,67 @@ function SignalsPanel({ entries, terminalStats }) {
     inTerminal: terminalActive && vizTerminal !== null && !!NUM_TO_TERMINALS[n]?.has(vizTerminal)
   }));
 
+  // Signal feedback: check historical signal accuracy
+  const feedback = useMemo ? (() => {
+    let wins = 0, losses = 0, vizHits = 0;
+    for (let i = 1; i < entries.length - 1; i++) {
+      const e = entries[i];
+      const hist = getHistorico(entries, i, e.num);
+      if (hist.length === 0) continue;
+      // Compute what signals would have been at this point
+      const pHist = hist;
+      const total = pHist.length;
+      const pDom = {};
+      const fc2 = [
+        {k:"cor",fn:h=>h.cor},{k:"lado",fn:h=>h.lado},{k:"altobaixo",fn:h=>h.altobaixo},
+        {k:"paridade",fn:h=>h.paridade},{k:"parte",fn:h=>h.parte},{k:"cavalo",fn:h=>h.cavalo},
+        {k:"regiao",fn:h=>h.regiao},{k:"duzia",fn:h=>h.duzia},{k:"coluna",fn:h=>h.coluna},
+        {k:"ruaPar",fn:h=>getRuaParidade(h.num)},
+      ];
+      fc2.forEach(({k,fn}) => {
+        const cnt = {};
+        pHist.forEach(h => { const v=fn(h); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
+        const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+        if (best && best[1]/total >= 0.70) pDom[k] = best[0];
+      });
+      const pKeys = Object.keys(pDom);
+      if (pKeys.length === 0) continue;
+      // Get last5 before this point
+      const prev5 = entries.slice(Math.max(0,i-5), i);
+      const rDom = {};
+      if (prev5.length > 0) {
+        fc2.forEach(({k,fn}) => {
+          const cnt = {};
+          prev5.forEach(h => { const v=fn(h); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
+          const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+          if (best && best[1]/prev5.length >= 0.80) rDom[k] = best[0];
+        });
+      }
+      const rKeys = Object.keys(rDom);
+      // Build signal candidates
+      const sigNums = [];
+      for (let n = 0; n <= 36; n++) {
+        const pm = pKeys.every(k => NFIELD[k] && NFIELD[k](n) === pDom[k]);
+        if (!pm) continue;
+        if (rKeys.length > 0 && !rKeys.every(k => NFIELD[k] && NFIELD[k](n) === rDom[k])) continue;
+        sigNums.push(n);
+      }
+      if (sigNums.length === 0) continue;
+      // Check next number
+      const nextNum = entries[i+1].num;
+      const neighbors = getRaceNeighbors(nextNum);
+      const hitAlvo = sigNums.includes(nextNum);
+      const hitViz = !hitAlvo && sigNums.some(n => {
+        const nNeigh = getRaceNeighbors(n);
+        return nNeigh.has(nextNum);
+      });
+      if (hitAlvo) wins++;
+      else if (hitViz) vizHits++;
+      else losses++;
+    }
+    return { wins, losses, vizHits, total: wins+losses+vizHits };
+  })() : { wins:0, losses:0, total:0 };
+
   if (candidates.length === 0) return (
     <div style={{padding:8,textAlign:"center"}}>
       <span style={{fontSize:9,color:"#333",writingMode:"vertical-rl"}}>SEM SINAIS</span>
@@ -941,7 +1015,8 @@ function SignalsPanel({ entries, terminalStats }) {
   return (
     <div style={{padding:"8px 4px"}}>
       <div style={{fontSize:7,letterSpacing:"0.1em",color:"#CC0000",fontWeight:"bold",
-        textTransform:"uppercase",marginBottom:6,textAlign:"center"}}>SINAIS</div>
+        textTransform:"uppercase",marginBottom:4,textAlign:"center"}}>SINAIS</div>
+
       <div style={{display:"flex",flexWrap:"wrap",gap:4,justifyContent:"center"}}>
         {candidates.map(({n, inTerminal}) => {
           const cor = getColor(n);
@@ -963,7 +1038,27 @@ function SignalsPanel({ entries, terminalStats }) {
         })}
       </div>
       {terminalActive && (
-        <div style={{marginTop:6,textAlign:"center",fontSize:7,color:"#FFD700"}}>T{vizTerminal}</div>
+        <div style={{marginTop:4,textAlign:"center",fontSize:7,color:"#FFD700"}}>T{vizTerminal}</div>
+      )}
+      {/* Counters at bottom */}
+      {feedback.total > 0 && (
+        <div style={{marginTop:"auto",paddingTop:6,display:"flex",flexDirection:"column",gap:3,alignItems:"center"}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+            background:"#0a2000",border:"1px solid #22c55e",borderRadius:2,padding:"2px 8px",width:"100%",textAlign:"center"}}>
+            <span style={{fontSize:7,color:"#22c55e",letterSpacing:"0.05em"}}>ALVO</span>
+            <span style={{fontSize:14,fontWeight:"bold",color:"#22c55e"}}>{feedback.wins}</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+            background:"#001a1f",border:"1px solid #00e5ff",borderRadius:2,padding:"2px 8px",width:"100%",textAlign:"center"}}>
+            <span style={{fontSize:7,color:"#00e5ff",letterSpacing:"0.05em"}}>VIZ</span>
+            <span style={{fontSize:14,fontWeight:"bold",color:"#00e5ff"}}>{feedback.vizHits}</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+            background:"#1a0000",border:"1px solid #f87171",borderRadius:2,padding:"2px 8px",width:"100%",textAlign:"center"}}>
+            <span style={{fontSize:7,color:"#f87171",letterSpacing:"0.05em"}}>LOSS</span>
+            <span style={{fontSize:14,fontWeight:"bold",color:"#f87171"}}>{feedback.losses}</span>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1755,9 +1850,34 @@ export default function DestroyerRaceTable() {
         </div>
 
         {/* Barra de dominância — setas por coluna */}
-        {Object.keys(colDominance).length > 0 && (
-          <div style={{display:"flex",gap:3,padding:"3px 0",flexWrap:"wrap",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",marginTop:2,marginBottom:2}}>
-            {visibleCols.filter(c=>c.toggleable).map(col => {
+        {Object.keys(colDominance).length > 0 && (() => {
+          // Sort cols by pct descending
+          const sortedDomCols = visibleCols.filter(c=>c.toggleable&&colDominance[c.key])
+            .sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));
+
+          // Build matching numbers from ALL dominants
+          const allDomVals = {};
+          Object.entries(colDominance).forEach(([k,v]) => { allDomVals[k] = v.val; });
+          const NFIELDX = {
+            cor:n=>getColor(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
+            paridade:n=>getParidade(n), parte:n=>getParte(n), cavalo:n=>getCavalo(n),
+            regiao:n=>getRegiao(n), duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
+            ruaPar:n=>getRuaParidade(n),
+            col_c1:n=>getColuna(n)==="C1"?"C1":null, col_c2:n=>getColuna(n)==="C2"?"C2":null,
+            col_c3:n=>getColuna(n)==="C3"?"C3":null,
+            gp_d1:n=>{const g=getGP(n);return["d1V","d1P"].includes(g)?g:null;},
+            gp_d2:n=>{const g=getGP(n);return["d2I","d2P"].includes(g)?g:null;},
+            gp_d3:n=>{const g=getGP(n);return["d3V","d3P"].includes(g)?g:null;},
+          };
+          const domKeys = Object.keys(allDomVals).filter(k=>NFIELDX[k]);
+          const matchNums = [];
+          for(let n=0;n<=36;n++){
+            if(domKeys.length>0 && domKeys.every(k=>NFIELDX[k](n)===allDomVals[k])) matchNums.push(n);
+          }
+
+          return (
+          <div style={{display:"flex",gap:3,padding:"3px 0",flexWrap:"wrap",alignItems:"center",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",marginTop:2,marginBottom:2}}>
+            {sortedDomCols.map(col => {
               const dom = colDominance[col.key];
               if (!dom) return null;
               return (
@@ -1804,8 +1924,26 @@ export default function DestroyerRaceTable() {
                 <span style={{fontSize:8,color:"#aaa",lineHeight:1}}>{colDominance.ruaPar.pct}%</span>
               </div>
             )}
+            {/* Matching numbers */}
+            {matchNums.length > 0 && matchNums.length <= 12 && (
+              <div style={{display:"flex",gap:2,alignItems:"center",marginLeft:4,flexWrap:"wrap"}}>
+                <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
+                {matchNums.map(n=>{
+                  const cor=getColor(n);
+                  return (
+                    <div key={n} style={{width:20,height:20,borderRadius:"50%",display:"flex",
+                      alignItems:"center",justifyContent:"center",
+                      background:NUM_BALL[cor].bg,border:"1px solid "+NUM_BALL[cor].border,
+                      color:"#fff",fontSize:9,fontWeight:"bold",flexShrink:0}}>
+                      {n}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
 
       {/* Barra de toggle de colunas + PDF */}
         <div style={{display:"flex",gap:3,padding:"4px 0",flexWrap:"wrap",borderTop:"1px solid #1a1a1a",marginTop:4,alignItems:"center"}}>
