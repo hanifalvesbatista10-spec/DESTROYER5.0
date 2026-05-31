@@ -1042,19 +1042,25 @@ function SignalsPanel({ entries, terminalStats }) {
       )}
       {/* Counters at bottom */}
       {feedback.total > 0 && (
-        <div style={{marginTop:"auto",paddingTop:6,display:"flex",flexDirection:"column",gap:3,alignItems:"center"}}>
+        <div style={{marginTop:"auto",paddingTop:6,display:"flex",flexDirection:"column",gap:2,alignItems:"center"}}>
+          <span style={{fontSize:6,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>ult {feedback.total} sinais</span>
           <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-            background:"#0a2000",border:"1px solid #22c55e",borderRadius:2,padding:"2px 8px",width:"100%",textAlign:"center"}}>
+            background:"#0a2000",border:"1px solid #22c55e",borderRadius:2,padding:"2px 6px",width:"100%",textAlign:"center"}}>
             <span style={{fontSize:7,color:"#22c55e",letterSpacing:"0.05em"}}>ALVO</span>
             <span style={{fontSize:14,fontWeight:"bold",color:"#22c55e"}}>{feedback.wins}</span>
           </div>
           <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-            background:"#001a1f",border:"1px solid #00e5ff",borderRadius:2,padding:"2px 8px",width:"100%",textAlign:"center"}}>
+            background:"#001a1f",border:"1px solid #00e5ff",borderRadius:2,padding:"2px 6px",width:"100%",textAlign:"center"}}>
             <span style={{fontSize:7,color:"#00e5ff",letterSpacing:"0.05em"}}>VIZ</span>
             <span style={{fontSize:14,fontWeight:"bold",color:"#00e5ff"}}>{feedback.vizHits}</span>
           </div>
           <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-            background:"#1a0000",border:"1px solid #f87171",borderRadius:2,padding:"2px 8px",width:"100%",textAlign:"center"}}>
+            background:"#1a0a00",border:"1px solid #facc15",borderRadius:2,padding:"2px 6px",width:"100%",textAlign:"center"}}>
+            <span style={{fontSize:7,color:"#facc15",letterSpacing:"0.05em"}}>2ª TENT</span>
+            <span style={{fontSize:14,fontWeight:"bold",color:"#facc15"}}>{feedback.sec}</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+            background:"#1a0000",border:"1px solid #f87171",borderRadius:2,padding:"2px 6px",width:"100%",textAlign:"center"}}>
             <span style={{fontSize:7,color:"#f87171",letterSpacing:"0.05em"}}>LOSS</span>
             <span style={{fontSize:14,fontWeight:"bold",color:"#f87171"}}>{feedback.losses}</span>
           </div>
@@ -1924,23 +1930,111 @@ export default function DestroyerRaceTable() {
                 <span style={{fontSize:8,color:"#aaa",lineHeight:1}}>{colDominance.ruaPar.pct}%</span>
               </div>
             )}
-            {/* Matching numbers */}
-            {matchNums.length > 0 && matchNums.length <= 12 && (
-              <div style={{display:"flex",gap:2,alignItems:"center",marginLeft:4,flexWrap:"wrap"}}>
-                <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
-                {matchNums.map(n=>{
-                  const cor=getColor(n);
-                  return (
-                    <div key={n} style={{width:20,height:20,borderRadius:"50%",display:"flex",
-                      alignItems:"center",justifyContent:"center",
-                      background:NUM_BALL[cor].bg,border:"1px solid "+NUM_BALL[cor].border,
-                      color:"#fff",fontSize:9,fontWeight:"bold",flexShrink:0}}>
-                      {n}
+            {/* Matching numbers + feedback */}
+            {matchNums.length > 0 && matchNums.length <= 12 && (() => {
+              // Compute feedback: at each point in history, recompute matchNums and check next number
+              let mWins=0, mViz=0, mSec=0, mLoss=0;
+              const fc3 = [
+                {k:"cor",fn:h=>h.cor},{k:"lado",fn:h=>h.lado},{k:"altobaixo",fn:h=>h.altobaixo},
+                {k:"paridade",fn:h=>h.paridade},{k:"parte",fn:h=>h.parte},{k:"cavalo",fn:h=>h.cavalo},
+                {k:"regiao",fn:h=>h.regiao},{k:"duzia",fn:h=>h.duzia},{k:"coluna",fn:h=>h.coluna},
+                {k:"ruaPar",fn:h=>getRuaParidade(h.num)},
+              ];
+              const NFX = {
+                cor:n=>getColor(n),lado:n=>getLado(n),altobaixo:n=>getAltoBaixo(n),
+                paridade:n=>getParidade(n),parte:n=>getParte(n),cavalo:n=>getCavalo(n),
+                regiao:n=>getRegiao(n),duzia:n=>getDuzia(n),coluna:n=>getColuna(n),
+                ruaPar:n=>getRuaParidade(n),
+              };
+              for (let hi = 1; hi < entries.length - 1; hi++) {
+                // Compute last5 dominants at position hi
+                const l5 = entries.slice(Math.max(0,hi-5), hi);
+                if (l5.length < 3) continue;
+                const hDom = {};
+                fc3.forEach(({k,fn}) => {
+                  const cnt = {};
+                  l5.forEach(h => { const v=fn(h); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
+                  const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+                  if (best && best[1]/l5.length >= 0.80) hDom[k] = best[0];
+                });
+                const hKeys = Object.keys(hDom);
+                if (hKeys.length === 0) continue;
+                // Also need puxou dominants (prob)
+                const pHist = getHistorico(entries, hi, entries[hi].num);
+                if (pHist.length === 0) continue;
+                const pDom = {};
+                fc3.forEach(({k,fn}) => {
+                  const cnt = {};
+                  pHist.forEach(h => { const v=fn(h); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
+                  const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+                  if (best && best[1]/pHist.length >= 0.70) pDom[k] = best[0];
+                });
+                const pKeys = Object.keys(pDom);
+                if (pKeys.length === 0) continue;
+                // Build historic matchNums
+                const hMatch = [];
+                for (let n=0;n<=36;n++) {
+                  if (!pKeys.every(k=>NFX[k]&&NFX[k](n)===pDom[k])) continue;
+                  if (hKeys.length>0 && !hKeys.every(k=>NFX[k]&&NFX[k](n)===hDom[k])) continue;
+                  hMatch.push(n);
+                }
+                if (hMatch.length===0 || hMatch.length>15) continue;
+                // Check outcome
+                const n1 = entries[hi+1].num;
+                const hit1 = hMatch.includes(n1);
+                const viz1 = !hit1 && hMatch.some(s=>getRaceNeighbors(s).has(n1));
+                if (hit1) { mWins++; continue; }
+                if (viz1) { mViz++; continue; }
+                if (hi+2 < entries.length) {
+                  const n2 = entries[hi+2].num;
+                  const hit2 = hMatch.includes(n2);
+                  const viz2 = !hit2 && hMatch.some(s=>getRaceNeighbors(s).has(n2));
+                  if (hit2||viz2) { mSec++; continue; }
+                }
+                mLoss++;
+              }
+              const mTotal = mWins+mViz+mSec+mLoss;
+              return (
+                <div style={{display:"flex",gap:2,alignItems:"center",marginLeft:4,flexWrap:"wrap"}}>
+                  <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
+                  {matchNums.map(n=>{
+                    const cor=getColor(n);
+                    return (
+                      <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",
+                        alignItems:"center",justifyContent:"center",
+                        background:NUM_BALL[cor].bg,border:"2px solid "+NUM_BALL[cor].border,
+                        color:"#fff",fontSize:11,fontWeight:"bold",flexShrink:0}}>
+                        {n}
+                      </div>
+                    );
+                  })}
+                  {mTotal > 0 && (
+                    <div style={{display:"flex",gap:3,alignItems:"center",marginLeft:6}}>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+                        background:"#0a2000",border:"1px solid #22c55e",borderRadius:2,padding:"1px 5px"}}>
+                        <span style={{fontSize:6,color:"#22c55e"}}>ALV</span>
+                        <span style={{fontSize:11,fontWeight:"bold",color:"#22c55e"}}>{mWins}</span>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+                        background:"#001a1f",border:"1px solid #00e5ff",borderRadius:2,padding:"1px 5px"}}>
+                        <span style={{fontSize:6,color:"#00e5ff"}}>VIZ</span>
+                        <span style={{fontSize:11,fontWeight:"bold",color:"#00e5ff"}}>{mViz}</span>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+                        background:"#1a0a00",border:"1px solid #facc15",borderRadius:2,padding:"1px 5px"}}>
+                        <span style={{fontSize:6,color:"#facc15"}}>2ª</span>
+                        <span style={{fontSize:11,fontWeight:"bold",color:"#facc15"}}>{mSec}</span>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+                        background:"#1a0000",border:"1px solid #f87171",borderRadius:2,padding:"1px 5px"}}>
+                        <span style={{fontSize:6,color:"#f87171"}}>LOSS</span>
+                        <span style={{fontSize:11,fontWeight:"bold",color:"#f87171"}}>{mLoss}</span>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })()}
           </div>
           );
         })()}
