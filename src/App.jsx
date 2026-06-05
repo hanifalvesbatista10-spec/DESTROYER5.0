@@ -1694,6 +1694,7 @@ export default function DestroyerRaceTable() {
                                ["num"].includes(col.key) ? 34 :
                                ["viz"].includes(col.key) ? 34 :
                                ["hist"].includes(col.key) ? 114 :
+                               ["vn"].includes(col.key) ? 34 :
                                ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 42 :
                                ["duzia","rua"].includes(col.key) ? 32 : undefined,
                         minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 : 20,
@@ -1835,7 +1836,7 @@ export default function DestroyerRaceTable() {
                         return (
                           <td key="vn" style={{background:bg,padding:"1px 3px",textAlign:"center",
                             borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",
-                            minWidth:28,fontSize:10,fontWeight:"bold",color:tx,fontFamily:"Arial, sans-serif"}}>
+                            width:34,maxWidth:34,fontSize:10,fontWeight:"bold",color:tx,fontFamily:"Arial, sans-serif"}}>
                             {vnText}
                           </td>
                         );
