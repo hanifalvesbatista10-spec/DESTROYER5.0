@@ -156,10 +156,12 @@ const CELL_VAL = (e, key) => {
   if (key==="gp_d2")     return ["d2I","d2P"].includes(e.gp) ? e.gp : "";
   if (key==="gp_d3")     return ["d3V","d3P"].includes(e.gp) ? e.gp : "";
   if (key==="viz")       return "";
+  if (key==="vn")        return "";
   if (key==="col_c1")    return e.coluna==="C1" ? "C1" : "";
   if (key==="col_c2")    return e.coluna==="C2" ? "C2" : "";
   if (key==="col_c3")    return e.coluna==="C3" ? "C3" : "";
   if (key==="viz")       return "";
+  if (key==="vn")        return "";
   return "";
 };
 // CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
@@ -195,6 +197,7 @@ const CELL_SCHEME = (e, key) => {
   if (key==="col_c2")    { return e.coluna==="C2" ? {bg:"#0891b2",text:"#0a0a0a"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
   if (key==="col_c3")    { return e.coluna==="C3" ? {bg:"#ea580c",text:"#1a1a1a"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
   if (key==="viz")       return {bg:"#0d0d0d",text:"#e5e5e5"};
+  if (key==="vn")        return {bg:"#0d0d0d",text:"#e5e5e5"};
   return {bg:"#111",text:"#fff"};
 };
 
@@ -290,10 +293,33 @@ function getRaceNeighbors(n) {
 }
 
 
+// VN: Vizinhos do Numeral — quais bases (0-9) um número é vizinho
+const VN_MAP = {
+  0: [26,32], 1:[33,20], 2:[21,25], 3:[35,26], 4:[19,21],
+  5:[10,24],  6:[34,27], 7:[29,28], 8:[30,23], 9:[31,22],
+};
+// Reverse: number -> which bases it's a neighbor of
+const NUM_TO_VN = {};
+for(let i=0;i<=36;i++) NUM_TO_VN[i]=[];
+Object.entries(VN_MAP).forEach(([base,vizs])=>{
+  const b=parseInt(base);
+  vizs.forEach(v=>{ if(!NUM_TO_VN[v].includes(b)) NUM_TO_VN[v].push(b); });
+  // base itself maps to itself
+  if(!NUM_TO_VN[b].includes(b)) NUM_TO_VN[b].push(b);
+});
+
+function getVN(n) {
+  const bases = NUM_TO_VN[n] || [];
+  if(bases.length===0) return null;
+  return bases.sort((a,b)=>a-b);
+}
+
+
 const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false, mode:"fixed"    },
   { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"    },
   { key:"hist",      label:"PUX",     toggleable:false, mode:"fixed"    },
+  { key:"vn",        label:"VN",        toggleable:false, mode:"fixed"    },
   { key:"viz",       label:"VIZ",       toggleable:false, mode:"fixed"    },
   { key:"gp_d1",     label:"D1",        toggleable:true,  mode:"priority" },
   { key:"gp_d2",     label:"D2",        toggleable:true,  mode:"priority" },
@@ -1018,7 +1044,8 @@ function SignalsPanel({ entries, terminalStats }) {
         textTransform:"uppercase",marginBottom:4,textAlign:"center"}}>SINAIS</div>
 
       <div style={{display:"flex",flexWrap:"wrap",gap:4,justifyContent:"center"}}>
-        {candidates.map(({n, inTerminal}) => {
+        {candidates.map((c) => {
+          const {n, inTerminal} = c;
           const cor = getColor(n);
           const s = NUM_BALL[cor];
           return (
@@ -1040,32 +1067,7 @@ function SignalsPanel({ entries, terminalStats }) {
       {terminalActive && (
         <div style={{marginTop:4,textAlign:"center",fontSize:7,color:"#FFD700"}}>T{vizTerminal}</div>
       )}
-      {/* Counters at bottom */}
-      {feedback.total > 0 && (
-        <div style={{marginTop:"auto",paddingTop:6,display:"flex",flexDirection:"column",gap:2,alignItems:"center"}}>
-          <span style={{fontSize:6,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase"}}>ult {feedback.total} sinais</span>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-            background:"#0a2000",border:"1px solid #22c55e",borderRadius:2,padding:"2px 6px",width:"100%",textAlign:"center"}}>
-            <span style={{fontSize:7,color:"#22c55e",letterSpacing:"0.05em"}}>ALVO</span>
-            <span style={{fontSize:14,fontWeight:"bold",color:"#22c55e"}}>{feedback.wins}</span>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-            background:"#001a1f",border:"1px solid #00e5ff",borderRadius:2,padding:"2px 6px",width:"100%",textAlign:"center"}}>
-            <span style={{fontSize:7,color:"#00e5ff",letterSpacing:"0.05em"}}>VIZ</span>
-            <span style={{fontSize:14,fontWeight:"bold",color:"#00e5ff"}}>{feedback.vizHits}</span>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-            background:"#1a0a00",border:"1px solid #facc15",borderRadius:2,padding:"2px 6px",width:"100%",textAlign:"center"}}>
-            <span style={{fontSize:7,color:"#facc15",letterSpacing:"0.05em"}}>2ª TENT</span>
-            <span style={{fontSize:14,fontWeight:"bold",color:"#facc15"}}>{feedback.sec}</span>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-            background:"#1a0000",border:"1px solid #f87171",borderRadius:2,padding:"2px 6px",width:"100%",textAlign:"center"}}>
-            <span style={{fontSize:7,color:"#f87171",letterSpacing:"0.05em"}}>LOSS</span>
-            <span style={{fontSize:14,fontWeight:"bold",color:"#f87171"}}>{feedback.losses}</span>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
@@ -1822,6 +1824,22 @@ export default function DestroyerRaceTable() {
                           </td>
                         );
                       }
+                      if (col.key==="vn") {
+                        const vnBases = getVN(e.num);
+                        const vnText = vnBases && vnBases.length > 0 ? vnBases.join(",") : "—";
+                        // Color: if all bases even → blue, all odd → orange, mixed → split
+                        const allEven = vnBases && vnBases.every(b=>b%2===0||b===0);
+                        const allOdd  = vnBases && vnBases.every(b=>b%2!==0);
+                        const bg = !vnBases||vnBases.length===0?"#0d0d0d":allEven?"#1e3a8a":allOdd?"#7c2d12":"#374151";
+                        const tx = !vnBases||vnBases.length===0?"#333":allEven?"#bfdbfe":allOdd?"#fdba74":"#e5e5e5";
+                        return (
+                          <td key="vn" style={{background:bg,padding:"1px 3px",textAlign:"center",
+                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",
+                            minWidth:28,fontSize:10,fontWeight:"bold",color:tx,fontFamily:"Arial, sans-serif"}}>
+                            {vnText}
+                          </td>
+                        );
+                      }
                       if (col.key==="viz") {
                         const hist = getHistorico(entries, i, e.num);
                         const result = analyzeTerminal(hist);
@@ -2008,30 +2026,7 @@ export default function DestroyerRaceTable() {
                       </div>
                     );
                   })}
-                  {mTotal > 0 && (
-                    <div style={{display:"flex",gap:3,alignItems:"center",marginLeft:6}}>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-                        background:"#0a2000",border:"1px solid #22c55e",borderRadius:2,padding:"1px 5px"}}>
-                        <span style={{fontSize:6,color:"#22c55e"}}>ALV</span>
-                        <span style={{fontSize:11,fontWeight:"bold",color:"#22c55e"}}>{mWins}</span>
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-                        background:"#001a1f",border:"1px solid #00e5ff",borderRadius:2,padding:"1px 5px"}}>
-                        <span style={{fontSize:6,color:"#00e5ff"}}>VIZ</span>
-                        <span style={{fontSize:11,fontWeight:"bold",color:"#00e5ff"}}>{mViz}</span>
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-                        background:"#1a0a00",border:"1px solid #facc15",borderRadius:2,padding:"1px 5px"}}>
-                        <span style={{fontSize:6,color:"#facc15"}}>2ª</span>
-                        <span style={{fontSize:11,fontWeight:"bold",color:"#facc15"}}>{mSec}</span>
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-                        background:"#1a0000",border:"1px solid #f87171",borderRadius:2,padding:"1px 5px"}}>
-                        <span style={{fontSize:6,color:"#f87171"}}>LOSS</span>
-                        <span style={{fontSize:11,fontWeight:"bold",color:"#f87171"}}>{mLoss}</span>
-                      </div>
-                    </div>
-                  )}
+
                 </div>
               );
             })()}
@@ -2152,83 +2147,52 @@ export default function DestroyerRaceTable() {
           </div>
         )}
         {/* Card de estatística do terminal */}
-        {entries.length > 0 && (
-          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
-            <span style={{fontSize:7,color:"#FFD700",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>terminal</span>
-            <div style={{display:"flex",alignItems:"center",gap:6,background:"#111",border:"1px solid #2a1a00",borderRadius:3,padding:"4px 10px"}}>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-                <span style={{fontSize:7,color:"#555",textTransform:"uppercase",letterSpacing:"0.06em"}}>prev</span>
-                <span style={{fontSize:13,fontWeight:"bold",color:"#FFD700"}}>{terminalStats.total}</span>
-              </div>
-              <div style={{width:"0.5px",height:24,background:"#2a2a2a"}}/>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-                <span style={{fontSize:7,color:"#22c55e",textTransform:"uppercase",letterSpacing:"0.06em"}}>acertos</span>
-                <span style={{fontSize:13,fontWeight:"bold",color:"#22c55e"}}>{terminalStats.acertos}</span>
-              </div>
-              <div style={{width:"0.5px",height:24,background:"#2a2a2a"}}/>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-                <span style={{fontSize:7,color:"#f87171",textTransform:"uppercase",letterSpacing:"0.06em"}}>erros</span>
-                <span style={{fontSize:13,fontWeight:"bold",color:"#f87171"}}>{terminalStats.erros}</span>
-              </div>
-              <div style={{width:"0.5px",height:24,background:"#2a2a2a"}}/>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-                <span style={{fontSize:7,color:"#555",textTransform:"uppercase",letterSpacing:"0.06em"}}>taxa</span>
-                <span style={{fontSize:13,fontWeight:"bold",color:terminalStats.taxa>=60?"#22c55e":terminalStats.taxa>=40?"#facc15":"#f87171"}}>{terminalStats.taxa}%</span>
-              </div>
-            </div>
-            {/* Top terminals */}
-            {terminalStats.topTerminals && terminalStats.topTerminals.length > 0 && (
-              <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                <span style={{fontSize:7,color:"#555",textTransform:"uppercase",letterSpacing:"0.06em",flexShrink:0}}>top</span>
-                {terminalStats.topTerminals.map(({t, acertos, total, taxa}) => (
-                  <div key={t} style={{display:"flex",flexDirection:"column",alignItems:"center",
-                    background:"#1a1a00",border:"1px solid #FFD700",borderRadius:3,padding:"2px 7px"}}>
-                    <span style={{fontSize:10,fontWeight:"bold",color:"#FFD700",lineHeight:1}}>T{t}</span>
-                    <span style={{fontSize:7,color: taxa>=60?"#22c55e":taxa>=40?"#facc15":"#f87171",lineHeight:1}}>{acertos}/{total}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         
-
-        {last14.length>0&&(
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <div style={{fontSize:7,letterSpacing:"0.15em",color:"#CC0000",fontWeight:"bold",textTransform:"uppercase",writingMode:"vertical-rl",transform:"rotate(180deg)",alignSelf:"center"}}>ult 14</div>
-            <StatBlockH title="Cor"       data={stats.cor}         palette={COR_CELL}    />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="Lado"      data={stats.lado}        palette={LADO_CELL}   />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="Dúzia"     data={stats.duzia}       palette={DUZIA_CELL}  />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="Par/Ímpar" data={stats.paridade}    palette={PAR_CELL}    />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="C1" data={stats.col_c1} palette={{"C1":{bg:"#4a5320",text:"#e5e5e5"}}} />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="C2" data={stats.col_c2} palette={{"C2":{bg:"#0891b2",text:"#0a0a0a"}}} />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="C3" data={stats.col_c3} palette={{"C3":{bg:"#ea580c",text:"#1a1a1a"}}} />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="Parte"     data={stats.parte}       palette={PARTE_CELL}  />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="Cavalo"    data={stats.cavalo}      palette={CAVALO_CELL} />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="A/B"       data={stats.altobaixo}   palette={ALTOBAIXO_CELL}/>
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="D1" data={stats.gp_d1} palette={{"d1P":{bg:"#111111",text:"#e5e5e5"},"d1V":{bg:"#CC0000",text:"#ffffff"}}} />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="D2" data={stats.gp_d2} palette={{"d2P":{bg:"#1e3a8a",text:"#bfdbfe"},"d2I":{bg:"#4b5563",text:"#e5e7eb"}}} />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="D3" data={stats.gp_d3} palette={{"d3P":{bg:"#1f2937",text:"#9ca3af"},"d3V":{bg:"#991b1b",text:"#fecaca"}}} />
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="Rua"       data={stats.ruaParidade} palette={RUA_PAR_CELL}/>
-            <div style={{width:"0.5px",background:"#1e1e1e"}}/>
-            <StatBlockH title="Região"    data={stats.regiao}      palette={REGIAO_CELL} />
+      {/* Top 5 números e top 2 grupos - últimos 50 */}
+      {entries.length >= 5 && (() => {
+        const last50 = entries.slice(-50);
+        const numCnt = {};
+        last50.forEach(e => { numCnt[e.num]=(numCnt[e.num]||0)+1; });
+        const top5 = Object.entries(numCnt).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,c])=>({n:parseInt(n),c}));
+        const gpCnt = {};
+        last50.forEach(e => { if(e.gp&&e.gp!=="—") gpCnt[e.gp]=(gpCnt[e.gp]||0)+1; });
+        const top2gp = Object.entries(gpCnt).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([g,c])=>({g,c}));
+        return (
+          <div style={{padding:"4px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
+            <div style={{display:"flex",gap:6,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}}>
+              <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0}}>TOP 5 ULT 50</span>
+              {top5.map(({n,c},i)=>{
+                const cor=getColor(n); const s=NUM_BALL[cor];
+                return (
+                  <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+                    <span style={{fontSize:7,color:"#FFD700",fontWeight:"bold"}}>#{i+1}</span>
+                    <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",
+                      justifyContent:"center",background:s.bg,border:"2px solid "+s.border,
+                      color:s.text,fontSize:10,fontWeight:"bold"}}>{n}</div>
+                    <span style={{fontSize:7,color:"#888"}}>{c}x</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0}}>TOP 2 GP</span>
+              {top2gp.map(({g,c},i)=>{
+                const sch=GP_CELL[g]||{bg:"#111",text:"#aaa"};
+                return (
+                  <div key={g} style={{display:"flex",alignItems:"center",gap:4,
+                    background:sch.bg,borderRadius:3,padding:"3px 10px",
+                    border:"1px solid "+sch.text+"88"}}>
+                    <span style={{fontSize:8,color:sch.text,opacity:0.7}}>#{i+1}</span>
+                    <span style={{fontSize:11,fontWeight:"bold",color:sch.text}}>{g}</span>
+                    <span style={{fontSize:8,color:sch.text,opacity:0.8}}>{c}x</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        )}
-      </div>
+        );
+      })()}
+      </div>{/* fim rodapé */}
       </div>{/* fim coluna central */}
       
 
