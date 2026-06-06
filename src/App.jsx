@@ -436,21 +436,7 @@ function detectRules(entries) {
       }
     }
 
-    // ── REGRA 4: Espelho — bloco de 2 após bloco de 3+ ──
-    // Detect: [3+ of X][2 of Y] → mirror signals continuation of X pattern
-    if(n >= 7) {
-      const y = seq[n-1];
-      const x = seq[n-3];
-      if(
-        seq[n-1]===y && seq[n-2]===y && // 2 Y's
-        seq[n-3]===x && seq[n-4]===x && seq[n-5]===x && // 3+ X's
-        x !== y
-      ) {
-        // Check what came before the X block — mirror projects X next
-        const palEntry = pal[x] || {bg:"#222",text:"#aaa"};
-        signals.push({rule:4, label, val:x, pal:palEntry, desc:"Espelho → próx "+x});
-      }
-    }
+
   });
 
   // ── REGRA 3: Intervalo entre pares ──
@@ -529,7 +515,6 @@ const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false, mode:"fixed"    },
   { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"    },
   { key:"hist",      label:"PUX",     toggleable:false, mode:"fixed"    },
-  { key:"vn",        label:"VN",        toggleable:false, mode:"fixed"    },
   { key:"viz",       label:"VIZ",       toggleable:false, mode:"fixed"    },
   { key:"gp_d1",     label:"D1",        toggleable:true,  mode:"priority" },
   { key:"gp_d2",     label:"D2",        toggleable:true,  mode:"priority" },
@@ -2045,22 +2030,6 @@ export default function DestroyerRaceTable() {
                                   })
                               }
                             </div>
-                          </td>
-                        );
-                      }
-                      if (col.key==="vn") {
-                        const vnBases = getVN(e.num);
-                        const vnText = vnBases && vnBases.length > 0 ? vnBases.join(",") : "—";
-                        // Color: if all bases even → blue, all odd → orange, mixed → split
-                        const allEven = vnBases && vnBases.every(b=>b%2===0||b===0);
-                        const allOdd  = vnBases && vnBases.every(b=>b%2!==0);
-                        const bg = !vnBases||vnBases.length===0?"#0d0d0d":allEven?"#1e3a8a":allOdd?"#7c2d12":"#374151";
-                        const tx = !vnBases||vnBases.length===0?"#333":allEven?"#bfdbfe":allOdd?"#fdba74":"#e5e5e5";
-                        return (
-                          <td key="vn" style={{background:bg,padding:"1px 3px",textAlign:"center",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",
-                            width:34,maxWidth:34,fontSize:10,fontWeight:"bold",color:tx,fontFamily:"Arial, sans-serif"}}>
-                            {vnText}
                           </td>
                         );
                       }
