@@ -124,6 +124,10 @@ const SETOR_CELL = {
   S6: {bg:"#5d4037", text:"#ffe0b2"},
 };
 
+const COL_C1_CELL = {bg:"#4a5320",text:"#d9f99d"};
+const COL_C2_CELL = {bg:"#0891b2",text:"#ffffff"};
+const COL_C3_CELL = {bg:"#ea580c",text:"#ffffff"};
+
 const GP_CELL = {
   "d1V": { bg:"#713f00", text:"#fef08a" },  // amarelo       — PA e VB
   "d2P": { bg:"#44180a", text:"#d4a574" },  // marrom        — PA e VB
@@ -336,6 +340,188 @@ function getSetor(n) {
   if (n >= 25 && n <= 30) return "S5";
   if (n >= 31 && n <= 36) return "S6";
   return "—";
+}
+
+
+// ── SISTEMA DE REGRAS ─────────────────────────────────────────────
+
+// Colunas binárias (2 categorias)
+const BINARY_FIELDS = [
+  {k:"parte",   fn:e=>e.parte,   label:"PTE", vals:["P1","P2"],           pal:PARTE_CELL},
+  {k:"lado",    fn:e=>e.lado,    label:"LADO",vals:["PB e VA","PA e VB"], pal:LADO_CELL},
+  {k:"altobaixo",fn:e=>e.altobaixo,label:"A/B",vals:["ALTO","BAIXO"],    pal:ALTOBAIXO_CELL},
+  {k:"paridade",fn:e=>e.paridade,label:"P/I", vals:["Par","Ímpar"],       pal:PAR_CELL},
+];
+
+// Colunas 2-3 categorias (regras 1+2)
+const MULTI_FIELDS = [
+  {k:"regiao",  fn:e=>e.regiao,  label:"ZNA", pal:REGIAO_CELL},
+  {k:"gp",      fn:e=>e.gp,      label:"GP",  pal:GP_CELL},
+  {k:"setor",   fn:e=>e.setor,   label:"SET", pal:SETOR_CELL},
+];
+
+// Colunas com regra 3 (intervalo entre pares)
+const PAIR_INTERVAL_FIELDS = [
+  {k:"coluna",  fn:e=>e.coluna,  label:"COL", pal:{C1:COL_C1_CELL,C2:COL_C2_CELL,C3:COL_C3_CELL}},
+  {k:"rua",     fn:e=>e.rua,     label:"RUA", pal:RUA_CELL},
+  {k:"regiao",  fn:e=>e.regiao,  label:"ZNA", pal:REGIAO_CELL},
+  {k:"cavalo",  fn:e=>e.cavalo,  label:"CAV", pal:CAVALO_CELL},
+];
+
+function detectRules(entries) {
+  const signals = [];
+  if(entries.length < 6) return signals;
+  const last20 = entries.slice(-20);
+  const allFields = [...BINARY_FIELDS, ...MULTI_FIELDS];
+
+  allFields.forEach(({k,fn,label,pal,vals}) => {
+    const seq = last20.map(fn).filter(v=>v&&v!=="—");
+    if(seq.length < 5) return;
+    const n = seq.length;
+
+    // ── REGRA 1: X X X (isolados) Y Y → sinaliza Y ──
+    // Need: seq[n-5] !== X, seq[n-4]=X, seq[n-3]=X, seq[n-2]=X, seq[n-1]=Y, seq[n-1]=Y... wait
+    // Pattern: ?≠X X X X Y Y → at position of 2nd Y, signal Y
+    if(n >= 6) {
+      const y = seq[n-1];
+      const x = seq[n-2];
+      if(y === seq[n-2] && seq[n-3]===x) {
+        // last 2 are Y Y, check if before that were exactly 3 X (isolated)
+        // y is the dominant, x is the one before
+        // actually: last2 = y, check [n-4],[n-3],[n-2] not equal
+        // Redefine: A=seq[n-1]=seq[n-2] (the Y), B=seq[n-3]=seq[n-4]=seq[n-5] (the X)
+      }
+      // Pattern: B≠A A A A B B
+      const A = seq[n-1]; // last value (2nd Y)
+      const B = seq[n-4]; // value before the 3 A's
+      if(
+        seq[n-1]===A && seq[n-2]===A && // 2 A's at end
+        seq[n-3]===B && seq[n-4]===B && seq[n-5]===B && // exactly 3 B's
+        (n<6 || seq[n-6]!==B) // isolated: nothing before the 3 B's
+      ) {
+        const palEntry = pal[A] || {bg:"#222",text:"#aaa"};
+        signals.push({rule:1, label, val:A, pal:palEntry, desc:"3+2 → próx "+A});
+      }
+    }
+
+    // ── REGRA 2: A BB A BB → sinaliza B ──
+    if(n >= 6) {
+      const A = seq[n-5];
+      const B = seq[n-4];
+      if(
+        seq[n-5]===A && seq[n-4]===B && seq[n-3]===B &&
+        seq[n-2]===A && seq[n-1]===B && seq[n-1]===B
+      ) {
+        // Pattern A BB A B_ → signal B
+      }
+      // A BB A BB pattern: last 6
+      const a = seq[n-6]; const b = seq[n-5];
+      if(n>=6 &&
+        seq[n-6]===a && seq[n-5]===b && seq[n-4]===b &&
+        seq[n-3]===a && seq[n-2]===b && seq[n-1]===b &&
+        a !== b
+      ) {
+        const palEntry = pal[b] || {bg:"#222",text:"#aaa"};
+        signals.push({rule:2, label, val:b, pal:palEntry, desc:"ABBA → próx "+b});
+      }
+      // Also detect A BB A B (5 items, 2nd B just arrived)
+      if(n>=5 &&
+        seq[n-5]===seq[n-2] && // A matches
+        seq[n-4]===seq[n-3] && seq[n-4]===seq[n-1] && // B matches
+        seq[n-5]!==seq[n-4]
+      ) {
+        const bVal = seq[n-1];
+        const palEntry = pal[bVal] || {bg:"#222",text:"#aaa"};
+        signals.push({rule:2, label, val:bVal, pal:palEntry, desc:"A BB A B → próx "+bVal});
+      }
+    }
+
+    // ── REGRA 4: Espelho — bloco de 2 após bloco de 3+ ──
+    // Detect: [3+ of X][2 of Y] → mirror signals continuation of X pattern
+    if(n >= 7) {
+      const y = seq[n-1];
+      const x = seq[n-3];
+      if(
+        seq[n-1]===y && seq[n-2]===y && // 2 Y's
+        seq[n-3]===x && seq[n-4]===x && seq[n-5]===x && // 3+ X's
+        x !== y
+      ) {
+        // Check what came before the X block — mirror projects X next
+        const palEntry = pal[x] || {bg:"#222",text:"#aaa"};
+        signals.push({rule:4, label, val:x, pal:palEntry, desc:"Espelho → próx "+x});
+      }
+    }
+  });
+
+  // ── REGRA 3: Intervalo entre pares ──
+  PAIR_INTERVAL_FIELDS.forEach(({k,fn,label,pal}) => {
+    const seq = last20.map(fn).filter(v=>v&&v!=="—");
+    const n = seq.length;
+    if(n < 8) return;
+
+    // Find all pairs (consecutive same value)
+    const pairs = [];
+    for(let i=0;i<n-1;i++) {
+      if(seq[i]===seq[i+1]) pairs.push({val:seq[i], pos:i});
+    }
+    if(pairs.length < 2) return;
+
+    // Group by value
+    const pairsByVal = {};
+    pairs.forEach(p => {
+      if(!pairsByVal[p.val]) pairsByVal[p.val]=[];
+      pairsByVal[p.val].push(p.pos);
+    });
+
+    Object.entries(pairsByVal).forEach(([val, positions]) => {
+      if(positions.length < 2) return;
+      // Calculate intervals between consecutive pairs
+      const intervals = [];
+      for(let i=1;i<positions.length;i++) {
+        intervals.push(positions[i]-positions[i-1]);
+      }
+      // Check if intervals are consistent (within 1)
+      const lastInterval = intervals[intervals.length-1];
+      const consistent = intervals.every(iv=>Math.abs(iv-lastInterval)<=1);
+      if(!consistent) return;
+
+      // Project next pair position
+      const lastPairPos = positions[positions.length-1];
+      const projectedPos = lastPairPos + lastInterval;
+      const distanceToNext = projectedPos - (n-1);
+
+      if(distanceToNext >= 0 && distanceToNext <= 2) {
+        const palMap = typeof pal === 'object' && pal[val] ? pal[val] : (pal[val]||{bg:"#222",text:"#aaa"});
+        signals.push({
+          rule:3, label, val, pal:palMap,
+          desc: distanceToNext===0 ? "Par "+val+" AGORA!" : "Par "+val+" em "+distanceToNext
+        });
+      }
+    });
+  });
+
+  // Deduplicate - keep highest priority per label+val
+  const seen = new Set();
+  return signals.filter(s => {
+    const key = s.label+s.val+s.rule;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// Get candidate numbers for a signal
+function getSignalCandidates(signal, entries) {
+  const NFIELD = {
+    parte:n=>getParte(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
+    paridade:n=>getParidade(n), regiao:n=>getRegiao(n), gp:n=>getGP(n),
+    setor:n=>getSetor(n), coluna:n=>getColuna(n), rua:n=>getRua(n), cavalo:n=>getCavalo(n),
+  };
+  const fn = NFIELD[signal.k||Object.keys(NFIELD).find(k=>
+    [...BINARY_FIELDS,...MULTI_FIELDS,...PAIR_INTERVAL_FIELDS].find(f=>f.label===signal.label&&f.k===k)
+  )];
+  if(!fn) return [];
+  return Array.from({length:37},(_,i)=>i).filter(n=>fn(n)===signal.val);
 }
 
 
@@ -599,6 +785,7 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
   const gp=getGP(n), rua=getRua(n), coluna=getColuna(n);
   const parte=getParte(n), ab=getAltoBaixo(n);
   const pct=total>0?(count/total*100):0;
+  const isRepeat = count > 1;
   const barPct=maxCount>0?Math.round(count/maxCount*100):0;
   const gpScheme=GP_CELL[gp]||GP_CELL["—"];
   return (
@@ -1825,6 +2012,15 @@ export default function DestroyerRaceTable() {
                       }
                       if (col.key==="hist") {
                         const hist = getHistorico(entries, i, e.num);
+                        // Compute full history to detect repeats
+                        const histFullNums = [];
+                        for(let j=0;j<i;j++){
+                          if(entries[j].num===e.num && j+1<entries.length) histFullNums.push(entries[j+1].num);
+                        }
+                        const histRepeatNums = new Set(
+                          Object.entries(histFullNums.reduce((a,n)=>{a[n]=(a[n]||0)+1;return a;},{}))
+                            .filter(([,c])=>c>1).map(([n])=>parseInt(n))
+                        );
                         const lastGp = entries.length > 0 ? entries[entries.length-1].gp : "—";
                         const isLast3General = posFromLast >= 1 && posFromLast <= 4;
                         return (
@@ -2217,6 +2413,69 @@ export default function DestroyerRaceTable() {
                 );
               })}
             </div>
+          </div>
+        );
+      })()}
+      
+      {/* Regras detectadas */}
+      {entries.length >= 6 && (() => {
+        const signals = detectRules(entries);
+        if(signals.length === 0) return null;
+
+        // Build candidate numbers per signal
+        const fieldMap = {
+          PTE:  n=>getParte(n),    LADO: n=>getLado(n),
+          "A/B":n=>getAltoBaixo(n),"P/I":n=>getParidade(n),
+          ZNA:  n=>getRegiao(n),   GP:   n=>getGP(n),
+          SET:  n=>getSetor(n),    COL:  n=>getColuna(n),
+          RUA:  n=>getRua(n),      CAV:  n=>getCavalo(n),
+        };
+
+        // Build intersection of all signal candidates
+        const allCandidateSets = signals.map(sig => {
+          const fn = fieldMap[sig.label];
+          return fn ? new Set(Array.from({length:37},(_,i)=>i).filter(n=>fn(n)===sig.val&&n>0)) : new Set();
+        }).filter(s=>s.size>0);
+
+        const intersection = allCandidateSets.length > 0
+          ? Array.from({length:37},(_,i)=>i).filter(n=>allCandidateSets.every(s=>s.has(n)))
+          : [];
+
+        return (
+          <div style={{padding:"4px 0",borderTop:"1px solid #CC0000",marginTop:4}}>
+            <div style={{fontSize:7,color:"#CC0000",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4,fontWeight:"bold"}}>
+              ◆ REGRAS ATIVAS
+            </div>
+            {/* Individual rule badges */}
+            <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+              {signals.map((sig,si) => (
+                <div key={si} style={{display:"flex",flexDirection:"column",alignItems:"center",
+                  background:sig.pal.bg,borderRadius:3,padding:"2px 6px",
+                  border:"1px solid "+sig.pal.text,minWidth:44,textAlign:"center",flexShrink:0}}>
+                  <span style={{fontSize:6,color:sig.pal.text,opacity:0.7}}>R{sig.rule} {sig.label}</span>
+                  <span style={{fontSize:11,fontWeight:"bold",color:sig.pal.text}}>{sig.val}</span>
+                  <span style={{fontSize:6,color:sig.pal.text,opacity:0.8}}>{sig.desc}</span>
+                </div>
+              ))}
+            </div>
+            {/* Intersection candidates */}
+            {intersection.length > 0 && (
+              <div style={{display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:7,color:"#CC0000",fontWeight:"bold",flexShrink:0}}>▶</span>
+                {intersection.map(n=>{
+                  const cor=getColor(n); const s=NUM_BALL[cor];
+                  return (
+                    <div key={n} style={{width:26,height:26,borderRadius:"50%",
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      background:s.bg,border:"2px solid "+s.border,
+                      color:s.text,fontSize:10,fontWeight:"bold",flexShrink:0,
+                      boxShadow:"0 0 4px "+s.border}}>
+                      {n}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })()}
