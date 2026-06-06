@@ -96,7 +96,7 @@ function getGP(n)       { return GP_MAP[n]||"—"; }
 function buildEntry(n, id) {
   return { id, num:n, cor:getColor(n), corAbrev:getCorAbrev(getColor(n)),
     lado:getLado(n), regiao:getRegiao(n), duzia:getDuzia(n),
-    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n), cavalo:getCavalo(n) };
+    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n), setor:getSetor(n), cavalo:getCavalo(n) };
 }
 function parseInput(raw) {
   return raw.split(/[\s,;\n\r]+/).map(t=>parseInt(t.trim())).filter(n=>!isNaN(n)&&n>=0&&n<=36);
@@ -114,6 +114,16 @@ const ALTOBAIXO_CELL = {
   "BAIXO": { bg:"#0c4a6e", text:"#7dd3fc" },  // azul profundo
   "—":     { bg:"#111",   text:"#444"    },
 };
+
+const SETOR_CELL = {
+  S1: {bg:"#0c2461", text:"#ffffff"},
+  S2: {bg:"#7d6608", text:"#fef9c3"},
+  S3: {bg:"#1a6b8a", text:"#ffffff"},
+  S4: {bg:"#935116", text:"#fef9c3"},
+  S5: {bg:"#0a3d62", text:"#90caf9"},
+  S6: {bg:"#5d4037", text:"#ffe0b2"},
+};
+
 const GP_CELL = {
   "d1V": { bg:"#713f00", text:"#fef08a" },  // amarelo       — PA e VB
   "d2P": { bg:"#44180a", text:"#d4a574" },  // marrom        — PA e VB
@@ -144,6 +154,7 @@ const CELL_VAL = (e, key) => {
   if (key==="cor")      return e.corAbrev;
   if (key==="lado")     return e.lado;
   if (key==="duzia")    return e.duzia;
+  if (key==="setor")    return e.setor;
   if (key==="paridade") return (e.paridade||"—").toUpperCase();
   if (key==="coluna")   return e.coluna;
   if (key==="rua")      return e.rua;
@@ -169,6 +180,7 @@ const CELL_SCHEME = (e, key) => {
   if (key==="cor")      return COR_CELL[e.cor]         || {bg:"#111",text:"#fff"};
   if (key==="lado")     return LADO_CELL[e.lado]        || LADO_CELL["—"];
   if (key==="duzia")    return DUZIA_CELL[e.duzia]      || DUZIA_CELL["—"];
+  if (key==="setor")    return SETOR_CELL[e.setor]      || {bg:"#111",text:"#aaa"};
   if (key==="paridade") return PAR_CELL[e.paridade||"—"]  || PAR_CELL["—"];
   if (key==="coluna")   return COLUNA_CELL[e.coluna]    || {bg:"#111",text:"#fff"};
   if (key==="rua")      return RUA_CELL[e.rua]          || {bg:"#111",text:"#fff"};
@@ -315,6 +327,18 @@ function getVN(n) {
 }
 
 
+function getSetor(n) {
+  if (n === 0) return "—";
+  if (n >= 1  && n <= 6)  return "S1";
+  if (n >= 7  && n <= 12) return "S2";
+  if (n >= 13 && n <= 18) return "S3";
+  if (n >= 19 && n <= 24) return "S4";
+  if (n >= 25 && n <= 30) return "S5";
+  if (n >= 31 && n <= 36) return "S6";
+  return "—";
+}
+
+
 const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false, mode:"fixed"    },
   { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"    },
@@ -334,7 +358,7 @@ const INIT_COLS = [
   { key:"altobaixo", label:"A/B",       toggleable:true,  mode:"auto"     },
   { key:"paridade",  label:"P/I", toggleable:true,  mode:"auto"     },
   { key:"regiao",    label:"ZNA",      toggleable:true,  mode:"auto"     },
-  { key:"duzia",     label:"DUZ",     toggleable:true,  mode:"always"   },
+  { key:"setor",     label:"SET",      toggleable:true,  mode:"always"   },
   { key:"rua",       label:"RUA",       toggleable:true,  mode:"always"   },
 ];
 
@@ -947,6 +971,7 @@ function SignalsPanel({ entries, terminalStats }) {
       {k:"paridade",fn:e=>e.paridade},{k:"parte",fn:e=>e.parte},{k:"cavalo",fn:e=>e.cavalo},
       {k:"regiao",fn:e=>e.regiao},{k:"duzia",fn:e=>e.duzia},{k:"coluna",fn:e=>e.coluna},
       {k:"ruaPar",fn:e=>getRuaParidade(e.num)},
+      {k:"setor",fn:e=>getSetor(e.num)},
     ];
     fieldChecks5.forEach(({k,fn}) => {
       const cnt = {};
@@ -1464,7 +1489,7 @@ export default function DestroyerRaceTable() {
       parte:     ["P1","P2"],
       cavalo:    ["369","258","147"],
       regiao:    ["Tier","Orphelins","Voisins"],
-      duzia:     ["D1","D2","D3"],
+      setor:     ["S1","S2","S3","S4","S5","S6"],
       col_c1:    ["C1"],
       col_c2:    ["C2"],
       col_c3:    ["C3"],
@@ -1476,6 +1501,7 @@ export default function DestroyerRaceTable() {
     Object.entries(checks).forEach(([field, vals]) => {
       const getVal = (e) => {
         if (field==="ruaPar") return getRuaParidade(e.num);
+        if (field==="setor") return getSetor(e.num);
         if (field==="col_c1") return e.coluna==="C1" ? "C1" : null;
         if (field==="col_c2") return e.coluna==="C2" ? "C2" : null;
         if (field==="col_c3") return e.coluna==="C3" ? "C3" : null;
@@ -1696,7 +1722,8 @@ export default function DestroyerRaceTable() {
                                ["hist"].includes(col.key) ? 114 :
                                ["vn"].includes(col.key) ? 34 :
                                ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 42 :
-                               ["duzia","rua"].includes(col.key) ? 32 : undefined,
+                               ["duzia","rua"].includes(col.key) ? 32 :
+                               ["setor"].includes(col.key) ? 32 : undefined,
                         minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 : 20,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
