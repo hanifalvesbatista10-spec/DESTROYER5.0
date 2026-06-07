@@ -96,7 +96,7 @@ function getGP(n)       { return GP_MAP[n]||"—"; }
 function buildEntry(n, id) {
   return { id, num:n, cor:getColor(n), corAbrev:getCorAbrev(getColor(n)),
     lado:getLado(n), regiao:getRegiao(n), duzia:getDuzia(n),
-    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n), setor:getSetor(n), cavalo:getCavalo(n) };
+    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n), setor:getSetor(n), regtrack:getRegTrack(n), cavalo:getCavalo(n) };
 }
 function parseInput(raw) {
   return raw.split(/[\s,;\n\r]+/).map(t=>parseInt(t.trim())).filter(n=>!isNaN(n)&&n>=0&&n<=36);
@@ -127,6 +127,13 @@ const SETOR_CELL = {
 const COL_C1_CELL = {bg:"#4a5320",text:"#d9f99d"};
 const COL_C2_CELL = {bg:"#0891b2",text:"#ffffff"};
 const COL_C3_CELL = {bg:"#ea580c",text:"#ffffff"};
+
+const REGTRACK_CELL = {
+  "32-29": {bg:"#0e4f6b", text:"#00e5ff"},  // azul ciano
+  "6-10":  {bg:"#7c2d00", text:"#fb923c"},  // laranja
+  "15-34": {bg:"#2d1b69", text:"#c4b5fd"},  // roxo
+  "5-18":  {bg:"#022c1e", text:"#34d399"},  // verde escuro
+};
 
 const GP_CELL = {
   "d1V": { bg:"#713f00", text:"#fef08a" },  // amarelo       — PA e VB
@@ -159,6 +166,7 @@ const CELL_VAL = (e, key) => {
   if (key==="lado")     return e.lado;
   if (key==="duzia")    return e.duzia;
   if (key==="setor")    return e.setor;
+  if (key==="regtrack")  return e.regtrack;
   if (key==="paridade") return (e.paridade||"—").toUpperCase();
   if (key==="coluna")   return e.coluna;
   if (key==="rua")      return e.rua;
@@ -185,6 +193,7 @@ const CELL_SCHEME = (e, key) => {
   if (key==="lado")     return LADO_CELL[e.lado]        || LADO_CELL["—"];
   if (key==="duzia")    return DUZIA_CELL[e.duzia]      || DUZIA_CELL["—"];
   if (key==="setor")    return SETOR_CELL[e.setor]      || {bg:"#111",text:"#aaa"};
+  if (key==="regtrack")  return REGTRACK_CELL[e.regtrack] || {bg:"#111",text:"#aaa"};
   if (key==="paridade") return PAR_CELL[e.paridade||"—"]  || PAR_CELL["—"];
   if (key==="coluna")   return COLUNA_CELL[e.coluna]    || {bg:"#111",text:"#fff"};
   if (key==="rua")      return RUA_CELL[e.rua]          || {bg:"#111",text:"#fff"};
@@ -358,6 +367,7 @@ const MULTI_FIELDS = [
   {k:"regiao",  fn:e=>e.regiao,  label:"ZNA", pal:REGIAO_CELL},
   {k:"gp",      fn:e=>e.gp,      label:"GP",  pal:GP_CELL},
   {k:"setor",   fn:e=>e.setor,   label:"SET", pal:SETOR_CELL},
+  {k:"regtrack", fn:e=>e.regtrack, label:"RGT", pal:REGTRACK_CELL},
 ];
 
 // Colunas com regra 3 (intervalo entre pares)
@@ -511,6 +521,24 @@ function getSignalCandidates(signal, entries) {
 }
 
 
+// Região do Racetrack
+const REGTRACK_MAP = {
+  "32-29": new Set([29,7,28,12,35,3,26,0,32]),
+  "6-10":  new Set([6,27,13,36,11,30,8,23,10]),
+  "15-34": new Set([15,19,4,21,2,25,17,34]),
+  "5-18":  new Set([18,22,9,31,14,20,1,33,16,24,5]),
+};
+
+
+
+function getRegTrack(n) {
+  for(const [key, set] of Object.entries(REGTRACK_MAP)) {
+    if(set.has(n)) return key;
+  }
+  return "—";
+}
+
+
 const INIT_COLS = [
   { key:"seq",       label:"#",         toggleable:false, mode:"fixed"    },
   { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"    },
@@ -523,6 +551,7 @@ const INIT_COLS = [
   { key:"col_c1",    label:"C1",        toggleable:true,  mode:"pinned"   },
   { key:"col_c2",    label:"C2",        toggleable:true,  mode:"pinned"   },
   { key:"col_c3",    label:"C3",        toggleable:true,  mode:"pinned"   },
+  { key:"regtrack",  label:"RGT",       toggleable:true,  mode:"pinned"   },
   { key:"parte",     label:"PTE",     toggleable:true,  mode:"pinned"   },
   { key:"cavalo",    label:"CAV",    toggleable:true,  mode:"pinned"   },
   { key:"cor",       label:"COR",       toggleable:true,  mode:"auto"     },
@@ -1144,6 +1173,7 @@ function SignalsPanel({ entries, terminalStats }) {
       {k:"regiao",fn:e=>e.regiao},{k:"duzia",fn:e=>e.duzia},{k:"coluna",fn:e=>e.coluna},
       {k:"ruaPar",fn:e=>getRuaParidade(e.num)},
       {k:"setor",fn:e=>getSetor(e.num)},
+      {k:"regtrack",fn:e=>getRegTrack(e.num)},
     ];
     fieldChecks5.forEach(({k,fn}) => {
       const cnt = {};
@@ -1184,6 +1214,7 @@ function SignalsPanel({ entries, terminalStats }) {
         {k:"paridade",fn:h=>h.paridade},{k:"parte",fn:h=>h.parte},{k:"cavalo",fn:h=>h.cavalo},
         {k:"regiao",fn:h=>h.regiao},{k:"duzia",fn:h=>h.duzia},{k:"coluna",fn:h=>h.coluna},
         {k:"ruaPar",fn:h=>getRuaParidade(h.num)},
+      {k:"regtrack",fn:h=>getRegTrack(h.num)},
       ];
       fc2.forEach(({k,fn}) => {
         const cnt = {};
@@ -1662,6 +1693,7 @@ export default function DestroyerRaceTable() {
       cavalo:    ["369","258","147"],
       regiao:    ["Tier","Orphelins","Voisins"],
       setor:     ["S1","S2","S3","S4","S5","S6"],
+      regtrack:  ["32-29","6-10","15-34","5-18"],
       col_c1:    ["C1"],
       col_c2:    ["C2"],
       col_c3:    ["C3"],
@@ -1674,6 +1706,7 @@ export default function DestroyerRaceTable() {
       const getVal = (e) => {
         if (field==="ruaPar") return getRuaParidade(e.num);
         if (field==="setor") return getSetor(e.num);
+        if (field==="regtrack") return getRegTrack(e.num);
         if (field==="col_c1") return e.coluna==="C1" ? "C1" : null;
         if (field==="col_c2") return e.coluna==="C2" ? "C2" : null;
         if (field==="col_c3") return e.coluna==="C3" ? "C3" : null;
@@ -1895,7 +1928,8 @@ export default function DestroyerRaceTable() {
                                ["vn"].includes(col.key) ? 34 :
                                ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 42 :
                                ["duzia","rua"].includes(col.key) ? 32 :
-                               ["setor"].includes(col.key) ? 32 : undefined,
+                               ["setor"].includes(col.key) ? 32 :
+                               ["regtrack"].includes(col.key) ? 36 : undefined,
                         minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 : 20,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
@@ -2398,6 +2432,7 @@ export default function DestroyerRaceTable() {
           ZNA:  n=>getRegiao(n),   GP:   n=>getGP(n),
           SET:  n=>getSetor(n),    COL:  n=>getColuna(n),
           RUA:  n=>getRua(n),      CAV:  n=>getCavalo(n),
+          RGT:  n=>getRegTrack(n),
         };
 
         // Build intersection of all signal candidates
