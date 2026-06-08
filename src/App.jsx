@@ -800,6 +800,7 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
   const cavalo=getCavalo(n);
   const gp=getGP(n), rua=getRua(n), coluna=getColuna(n);
   const parte=getParte(n), ab=getAltoBaixo(n);
+  const setor=getSetor(n), regtrack=getRegTrack(n);
   const pct=total>0?(count/total*100):0;
   const isRepeat = count > 1;
   const barPct=maxCount>0?Math.round(count/maxCount*100):0;
@@ -819,6 +820,8 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
       <CatalogCell label={regiao.toUpperCase()} scheme={REGIAO_CELL[regiao]||{bg:"#111",text:"#fff"}}/>
       <CatalogCell label={duzia} scheme={DUZIA_CELL[duzia]||DUZIA_CELL["—"]}/>
       <CatalogCell label={rua} scheme={RUA_CELL[rua]||{bg:"#111",text:"#fff"}}/>
+      <CatalogCell label={setor} scheme={SETOR_CELL[setor]||{bg:"#111",text:"#aaa"}}/>
+      <CatalogCell label={regtrack} scheme={REGTRACK_CELL[regtrack]||{bg:"#111",text:"#aaa"}}/>
       <td style={{...TD_STYLE,background:"#0d0d0d",color:"#fff",fontWeight:"bold",fontSize:12}}>{count}</td>
       <td style={{...TD_STYLE,background:"#0d0d0d",color:"#888"}}>{pct.toFixed(1)}%</td>
       <td style={{...TD_STYLE,background:"#0d0d0d",minWidth:70,padding:"0 6px"}}>
@@ -904,19 +907,19 @@ function CatalogFooterStats({ entries, terminalStats }) {
         .sort((a,b)=>b.cnt-a.cnt)[0];
       if (!best || best.cnt === 0) return;
       const pct = Math.round(best.cnt/total*100);
-      if (pct >= 65) dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"}});
+      if (pct >= 50) dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"}});
     });
   }
 
   if (dominants.length === 0) return null;
   dominants.sort((a,b)=>b.pct-a.pct);
-  const top3 = dominants.slice(0,3);
+  const top5cards = dominants.slice(0,5);
 
   return (
     <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
       <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>PROBABILIDADE</div>
       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-        {top3.map(({label,val,pct,pal}) => (
+        {top5cards.map(({label,val,pct,pal}) => (
           <div key={label} style={{display:"flex",flexDirection:"column",alignItems:"center",
             background:pal.bg,borderRadius:3,padding:"3px 7px",border:"1px solid "+pal.text+"88",minWidth:40,textAlign:"center"}}>
             <span style={{fontSize:7,color:pal.text,opacity:0.7,textTransform:"uppercase",display:"block"}}>{label}</span>
@@ -1297,6 +1300,66 @@ function SignalsPanel({ entries, terminalStats }) {
       {terminalActive && (
         <div style={{marginTop:4,textAlign:"center",fontSize:7,color:"#FFD700"}}>T{vizTerminal}</div>
       )}
+
+      {/* Absent column signal */}
+      {(() => {
+        if(entries.length < 6) return null;
+        // Find absent column (C1/C2/C3) for more than 5 numbers
+        const last10 = entries.slice(-10);
+        const colCnt = {C1:0,C2:0,C3:0};
+        last10.forEach(e=>{ if(colCnt[e.coluna]!==undefined) colCnt[e.coluna]++; });
+        const absent = Object.entries(colCnt).filter(([,c])=>c===0).map(([k])=>k);
+        const present = Object.entries(colCnt).filter(([,c])=>c>0).map(([k])=>k);
+        if(absent.length !== 1 || present.length !== 2) return null;
+
+        // Find 100% characteristics in last 5
+        const last5 = entries.slice(-5);
+        const invictaFields = [
+          {k:"cor",fn:e=>e.cor},{k:"lado",fn:e=>e.lado},{k:"altobaixo",fn:e=>e.altobaixo},
+          {k:"paridade",fn:e=>e.paridade},{k:"parte",fn:e=>e.parte},
+        ];
+        const invictas = {};
+        invictaFields.forEach(({k,fn})=>{
+          const vals = last5.map(fn).filter(v=>v&&v!=="—");
+          if(vals.length===0) return;
+          const first = vals[0];
+          if(vals.every(v=>v===first)) invictas[k]=first;
+        });
+        if(Object.keys(invictas).length===0) return null;
+
+        // Get candidates: numbers in present columns matching all invictas
+        const NFLD = {
+          cor:n=>getColor(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
+          paridade:n=>getParidade(n), parte:n=>getParte(n),
+        };
+        const candidates = [];
+        for(let n=1;n<=36;n++){
+          if(!present.includes(getColuna(n))) continue;
+          if(Object.entries(invictas).every(([k,v])=>NFLD[k]&&NFLD[k](n)===v)) candidates.push(n);
+        }
+        if(candidates.length===0) return null;
+
+        return (
+          <div style={{marginTop:8,borderTop:"1px solid #1a1a1a",paddingTop:6}}>
+            <div style={{fontSize:7,color:"#00e5ff",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4,textAlign:"center"}}>
+              COL AUSENTE: {absent[0]}
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:3,justifyContent:"center"}}>
+              {candidates.map(n=>{
+                const cor=getColor(n); const s=NUM_BALL[cor];
+                return (
+                  <div key={n} style={{width:24,height:24,borderRadius:"50%",display:"flex",
+                    alignItems:"center",justifyContent:"center",
+                    background:s.bg,border:"2px solid #00e5ff",
+                    color:s.text,fontSize:9,fontWeight:"bold"}}>
+                    {n}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
@@ -2389,31 +2452,45 @@ export default function DestroyerRaceTable() {
         return (
           <div style={{padding:"4px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
             <div style={{display:"flex",gap:6,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}}>
-              <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0}}>TOP 5 ULT 50</span>
+              <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 5 ULT 50</span>
               {top5.map(({n,c},i)=>{
                 const cor=getColor(n); const s=NUM_BALL[cor];
                 return (
                   <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-                    <span style={{fontSize:7,color:"#FFD700",fontWeight:"bold"}}>#{i+1}</span>
+                    <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>#{i+1}</span>
                     <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",
                       justifyContent:"center",background:s.bg,border:"2px solid "+s.border,
                       color:s.text,fontSize:10,fontWeight:"bold"}}>{n}</div>
-                    <span style={{fontSize:7,color:"#888"}}>{c}x</span>
+                    <span style={{fontSize:9,color:"#888",fontWeight:"bold"}}>{c}x</span>
                   </div>
                 );
               })}
             </div>
+            {/* GP popup when top2gp has 3+ in last 5 */}
+            {(() => {
+              const last5gp = entries.slice(-5).map(e=>e.gp).filter(v=>v&&v!=="—");
+              const gpAlert = top2gp.find(({g})=>last5gp.filter(v=>v===g).length>=3);
+              return gpAlert ? (
+                <div style={{display:"flex",alignItems:"center",gap:6,background:"#1a0a00",
+                  border:"2px solid #FFD700",borderRadius:4,padding:"4px 10px",marginBottom:4,
+                  animation:"pulse 1s infinite"}}>
+                  <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>⚡ TAKE</span>
+                  <span style={{fontSize:12,fontWeight:"bold",color:GP_CELL[gpAlert.g]?.text||"#fff"}}>{gpAlert.g}</span>
+                  <span style={{fontSize:9,color:"#FFD700"}}>{last5gp.filter(v=>v===gpAlert.g).length}/5</span>
+                </div>
+              ) : null;
+            })()}
             <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0}}>TOP 2 GP</span>
+              <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 2 GP</span>
               {top2gp.map(({g,c},i)=>{
                 const sch=GP_CELL[g]||{bg:"#111",text:"#aaa"};
                 return (
                   <div key={g} style={{display:"flex",alignItems:"center",gap:4,
                     background:sch.bg,borderRadius:3,padding:"3px 10px",
                     border:"1px solid "+sch.text+"88"}}>
-                    <span style={{fontSize:8,color:sch.text,opacity:0.7}}>#{i+1}</span>
-                    <span style={{fontSize:11,fontWeight:"bold",color:sch.text}}>{g}</span>
-                    <span style={{fontSize:8,color:sch.text,opacity:0.8}}>{c}x</span>
+                    <span style={{fontSize:9,color:sch.text,opacity:0.7}}>#{i+1}</span>
+                    <span style={{fontSize:13,fontWeight:"bold",color:sch.text}}>{g}</span>
+                    <span style={{fontSize:10,color:sch.text,opacity:0.9}}>{c}x</span>
                   </div>
                 );
               })}
