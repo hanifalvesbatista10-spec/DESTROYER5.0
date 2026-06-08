@@ -129,10 +129,11 @@ const COL_C2_CELL = {bg:"#0891b2",text:"#ffffff"};
 const COL_C3_CELL = {bg:"#ea580c",text:"#ffffff"};
 
 const REGTRACK_CELL = {
-  "32-29": {bg:"#0e4f6b", text:"#00e5ff"},  // azul ciano
-  "6-10":  {bg:"#7c2d00", text:"#fb923c"},  // laranja
-  "15-34": {bg:"#2d1b69", text:"#c4b5fd"},  // roxo
-  "5-18":  {bg:"#022c1e", text:"#34d399"},  // verde escuro
+  "32-29": {bg:"#0e4f6b", text:"#00e5ff"},
+  "25-30": {bg:"#7c2d00", text:"#fb923c"},
+  "15-2":  {bg:"#2d1b69", text:"#c4b5fd"},
+  "8-24":  {bg:"#4a0020", text:"#f9a8d4"},
+  "16-18": {bg:"#022c1e", text:"#34d399"},
 };
 
 const GP_CELL = {
@@ -523,10 +524,11 @@ function getSignalCandidates(signal, entries) {
 
 // Região do Racetrack
 const REGTRACK_MAP = {
-  "32-29": new Set([29,7,28,12,35,3,26,0,32]),
-  "6-10":  new Set([6,27,13,36,11,30,8,23,10]),
-  "15-34": new Set([15,19,4,21,2,25,17,34]),
-  "5-18":  new Set([18,22,9,31,14,20,1,33,16,24,5]),
+  "32-29": new Set([32,0,26,3,35,12,28,7,29]),
+  "25-30": new Set([25,17,34,6,27,13,36,11,30]),
+  "15-2":  new Set([15,19,4,21,2]),
+  "8-24":  new Set([8,23,10,5,24]),
+  "16-18": new Set([16,33,1,20,14,31,9,22,18]),
 };
 
 
@@ -1693,7 +1695,7 @@ export default function DestroyerRaceTable() {
       cavalo:    ["369","258","147"],
       regiao:    ["Tier","Orphelins","Voisins"],
       setor:     ["S1","S2","S3","S4","S5","S6"],
-      regtrack:  ["32-29","6-10","15-34","5-18"],
+      regtrack:  ["32-29","25-30","15-2","8-24","16-18"],
       col_c1:    ["C1"],
       col_c2:    ["C2"],
       col_c3:    ["C3"],
