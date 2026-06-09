@@ -25,33 +25,6 @@ const GP_MAP = {
    2:"d1P", 4:"d1P", 6:"d1P", 8:"d1P",10:"d1P",11:"d1P",
 };
 
-
-// Vizinhos diretos no racetrack para números base 1-9 (2 de cada lado)
-const VIZINHOS = {
-  1: [33,16,20,14],
-  2: [21,4,25,17],
-  3: [35,12,26,0],
-  4: [15,19,21,2],
-  5: [10,23,24,16],
-  6: [17,34,27,13],
-  7: [18,29,28,12],
-  8: [11,30,23,10],
-  9: [14,31,22,18],
-};
-
-// For a given entry, analyze its puxou history and return which base number (1-9)
-// has the most vizinhos represented among the puxados
-function getVizScore(puxados) {
-  if (!puxados || puxados.length === 0) return null;
-  const puxNums = puxados.map(p => p.num);
-  let best = null, bestScore = 0;
-  Object.entries(VIZINHOS).forEach(([base, vizs]) => {
-    const score = puxNums.filter(n => vizs.includes(n)).length;
-    if (score > bestScore) { bestScore = score; best = { base: parseInt(base), score, total: puxados.length }; }
-  });
-  return bestScore > 0 ? best : null;
-}
-
 function getRua(n) {
   if (n===0) return "0";
   const pos = (n-1)%12;
@@ -74,7 +47,7 @@ function getRuaParidade(n) {
   return (r==="R1"||r==="R3") ? "R.Ímpar" : "R.Par";
 }
 function getCavalo(n) {
-  if (n === 0) return "369"; // zero pertence ao cavalo 369
+  if (n === 0) return "369";
   const t = n % 10;
   if ([3,6,9,0].includes(t)) return "369";
   if ([2,5,8].includes(t)) return "258";
@@ -93,6 +66,32 @@ function getParidade(n) { if(n===0) return "—"; return n%2===0?"Par":"Ímpar";
 function getCorAbrev(c) { return c==="Vermelho"?"VRM":c==="Preto"?"PRT":"VRD"; }
 function getGP(n)       { return GP_MAP[n]||"—"; }
 
+function getSetor(n) {
+  if (n === 0) return "—";
+  if (n >= 1  && n <= 6)  return "S1";
+  if (n >= 7  && n <= 12) return "S2";
+  if (n >= 13 && n <= 18) return "S3";
+  if (n >= 19 && n <= 24) return "S4";
+  if (n >= 25 && n <= 30) return "S5";
+  if (n >= 31 && n <= 36) return "S6";
+  return "—";
+}
+
+const REGTRACK_MAP = {
+  "32-29": new Set([32,0,26,3,35,12,28,7,29]),
+  "25-30": new Set([25,17,34,6,27,13,36,11,30]),
+  "15-2":  new Set([15,19,4,21,2]),
+  "8-24":  new Set([8,23,10,5,24]),
+  "16-18": new Set([16,33,1,20,14,31,9,22,18]),
+};
+
+function getRegTrack(n) {
+  for(const [key, set] of Object.entries(REGTRACK_MAP)) {
+    if(set.has(n)) return key;
+  }
+  return "—";
+}
+
 function buildEntry(n, id) {
   return { id, num:n, cor:getColor(n), corAbrev:getCorAbrev(getColor(n)),
     lado:getLado(n), regiao:getRegiao(n), duzia:getDuzia(n),
@@ -105,25 +104,11 @@ function parseInput(raw) {
 const NUM_BALL  = { Vermelho:{bg:"#CC0000",border:"#ff6666",text:"#fff"}, Preto:{bg:"#111",border:"#555",text:"#fff"}, Verde:{bg:"#1B7A3E",border:"#4ade80",text:"#fff"} };
 const COR_CELL  = { "Vermelho":{bg:"#CC0000",text:"#fff"}, "Preto":{bg:"#222222",text:"#e5e5e5"}, "Verde":{bg:"#1B7A3E",text:"#fff"} };
 const LADO_CELL = { "PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"}, "PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}, "—":{bg:"#111",text:"#444"} };
-
 const REGIAO_CELL = { Tier:{bg:"#7c2d12",text:"#fdba74"}, Orphelins:{bg:"#854d0e",text:"#fefce8"}, Voisins:{bg:"#166534",text:"#bbf7d0"} };
 const DUZIA_CELL  = { D1:{bg:"#1e3a8a",text:"#bfdbfe"}, D2:{bg:"#92400e",text:"#fde68a"}, D3:{bg:"#7f1d1d",text:"#fca5a5"}, "—":{bg:"#111",text:"#444"} };
 const PAR_CELL    = { "Par":{bg:"#0f1f5c",text:"#bfdbfe"}, "Ímpar":{bg:"#4b5563",text:"#e5e7eb"}, "—":{bg:"#111",text:"#444"} };
-const ALTOBAIXO_CELL = {
-  "ALTO":  { bg:"#7c0000", text:"#fca5a5" },  // vermelho escuro
-  "BAIXO": { bg:"#0c4a6e", text:"#7dd3fc" },  // azul profundo
-  "—":     { bg:"#111",   text:"#444"    },
-};
-
-const SETOR_CELL = {
-  S1: {bg:"#0c2461", text:"#ffffff"},
-  S2: {bg:"#7d6608", text:"#fef9c3"},
-  S3: {bg:"#1a6b8a", text:"#ffffff"},
-  S4: {bg:"#935116", text:"#fef9c3"},
-  S5: {bg:"#0a3d62", text:"#90caf9"},
-  S6: {bg:"#5d4037", text:"#ffe0b2"},
-};
-
+const ALTOBAIXO_CELL = { "ALTO":{ bg:"#7c0000", text:"#fca5a5" }, "BAIXO":{ bg:"#0c4a6e", text:"#7dd3fc" }, "—":{ bg:"#111", text:"#444" } };
+const SETOR_CELL = { S1:{bg:"#0c2461",text:"#ffffff"}, S2:{bg:"#7d6608",text:"#fef9c3"}, S3:{bg:"#1a6b8a",text:"#ffffff"}, S4:{bg:"#935116",text:"#fef9c3"}, S5:{bg:"#0a3d62",text:"#90caf9"}, S6:{bg:"#5d4037",text:"#ffe0b2"} };
 const COL_C1_CELL = {bg:"#4a5320",text:"#d9f99d"};
 const COL_C2_CELL = {bg:"#0891b2",text:"#ffffff"};
 const COL_C3_CELL = {bg:"#ea580c",text:"#ffffff"};
@@ -137,37 +122,27 @@ const REGTRACK_CELL = {
 };
 
 const GP_CELL = {
-  "d1V": { bg:"#713f00", text:"#fef08a" },  // amarelo       — PA e VB
-  "d2P": { bg:"#44180a", text:"#d4a574" },  // marrom        — PA e VB
-  "d3P": { bg:"#7c2d12", text:"#fdba74" },  // laranja       — PA e VB
-  "d1P": { bg:"#1e3a8a", text:"#bfdbfe" },  // azul claro    — PB e VA
-  "d2I": { bg:"#164e63", text:"#67e8f9" },  // ciano escuro  — PB e VA
-  "d3V": { bg:"#0f2044", text:"#93c5fd" },  // azul escuro   — PB e VA
+  "d1V": { bg:"#713f00", text:"#fef08a" },
+  "d2P": { bg:"#44180a", text:"#d4a574" },
+  "d3P": { bg:"#7c2d12", text:"#fdba74" },
+  "d1P": { bg:"#1e3a8a", text:"#bfdbfe" },
+  "d2I": { bg:"#164e63", text:"#67e8f9" },
+  "d3V": { bg:"#0f2044", text:"#93c5fd" },
   "—":   { bg:"#111",   text:"#444"    },
 };
-const PARTE_CELL = {
-  "P1": { bg:"#713f00", text:"#fef08a" },  // amarelo claro
-  "P2": { bg:"#14532d", text:"#bbf7d0" },  // verde claro
-  "—":  { bg:"#111",   text:"#444"    },
-};
-const CAVALO_CELL = {
-  "369": {bg:"#7c3d00",text:"#fb923c"},
-  "258": {bg:"#0a1628",text:"#60a5fa"},
-  "147": {bg:"#4c1d95",text:"#ddd6fe"},
-  "—":   {bg:"#111",  text:"#444"},
-};
+const PARTE_CELL = { "P1":{ bg:"#713f00", text:"#fef08a" }, "P2":{ bg:"#14532d", text:"#bbf7d0" }, "—":{ bg:"#111", text:"#444" } };
+const CAVALO_CELL = { "369":{bg:"#7c3d00",text:"#fb923c"}, "258":{bg:"#0a1628",text:"#60a5fa"}, "147":{bg:"#4c1d95",text:"#ddd6fe"}, "—":{bg:"#111",text:"#444"} };
 const RUA_CELL    = { R1:{bg:"#4a0080",text:"#e9d5ff"}, R2:{bg:"#005a5a",text:"#99f6e4"}, R3:{bg:"#7a1c4b",text:"#fbcfe8"}, R4:{bg:"#1a3a1a",text:"#bbf7d0"}, "0":{bg:"#1B7A3E",text:"#fff"} };
 const COLUNA_CELL = { C1:{bg:"#4a5320",text:"#e5e5e5"}, C2:{bg:"#0891b2",text:"#0a0a0a"}, C3:{bg:"#ea580c",text:"#1a1a1a"}, "0":{bg:"#1B7A3E",text:"#fff"} };
 const RUA_PAR_CELL = { "R. Ímpar":{bg:"#4a0080",text:"#e9d5ff"}, "R. Par":{bg:"#005a5a",text:"#99f6e4"} };
 const GOLD = "#D4AF37";
 
-// CELL_VAL: valor exibido na célula
 const CELL_VAL = (e, key) => {
   if (key==="cor")      return e.corAbrev;
   if (key==="lado")     return e.lado;
   if (key==="duzia")    return e.duzia;
   if (key==="setor")    return e.setor;
-  if (key==="regtrack")  return e.regtrack;
+  if (key==="regtrack") return e.regtrack;
   if (key==="paridade") return (e.paridade||"—").toUpperCase();
   if (key==="coluna")   return e.coluna;
   if (key==="rua")      return e.rua;
@@ -184,17 +159,15 @@ const CELL_VAL = (e, key) => {
   if (key==="col_c1")    return e.coluna==="C1" ? "C1" : "";
   if (key==="col_c2")    return e.coluna==="C2" ? "C2" : "";
   if (key==="col_c3")    return e.coluna==="C3" ? "C3" : "";
-  if (key==="viz")       return "";
-  if (key==="vn")        return "";
   return "";
 };
-// CELL_SCHEME: lookup key correto para a paleta (diferente do valor exibido)
+
 const CELL_SCHEME = (e, key) => {
   if (key==="cor")      return COR_CELL[e.cor]         || {bg:"#111",text:"#fff"};
   if (key==="lado")     return LADO_CELL[e.lado]        || LADO_CELL["—"];
   if (key==="duzia")    return DUZIA_CELL[e.duzia]      || DUZIA_CELL["—"];
   if (key==="setor")    return SETOR_CELL[e.setor]      || {bg:"#111",text:"#aaa"};
-  if (key==="regtrack")  return REGTRACK_CELL[e.regtrack] || {bg:"#111",text:"#aaa"};
+  if (key==="regtrack") return REGTRACK_CELL[e.regtrack] || {bg:"#111",text:"#aaa"};
   if (key==="paridade") return PAR_CELL[e.paridade||"—"]  || PAR_CELL["—"];
   if (key==="coluna")   return COLUNA_CELL[e.coluna]    || {bg:"#111",text:"#fff"};
   if (key==="rua")      return RUA_CELL[e.rua]          || {bg:"#111",text:"#fff"};
@@ -203,32 +176,29 @@ const CELL_SCHEME = (e, key) => {
   if (key==="cavalo")   return CAVALO_CELL[e.cavalo]     || CAVALO_CELL["—"];
   if (key==="altobaixo") return ALTOBAIXO_CELL[e.altobaixo||"—"] || ALTOBAIXO_CELL["—"];
   if (key==="gp")        return GP_CELL[e.gp]           || GP_CELL["—"];
-  if (key==="gp_d1")     {
+  if (key==="gp_d1") {
     if (e.gp==="d1P") return {bg:"#000000",text:"#ffffff"};
     if (e.gp==="d1V") return {bg:"#CC0000",text:"#ffffff"};
     return {bg:"#f5f0e8",text:"#f5f0e8"};
   }
-  if (key==="gp_d2")     {
+  if (key==="gp_d2") {
     if (e.gp==="d2P") return {bg:"#1e3a8a",text:"#bfdbfe"};
     if (e.gp==="d2I") return {bg:"#4b5563",text:"#e5e7eb"};
     return {bg:"#f5f0e8",text:"#f5f0e8"};
   }
-  if (key==="gp_d3")     {
+  if (key==="gp_d3") {
     if (e.gp==="d3P") return {bg:"#000000",text:"#ffffff"};
     if (e.gp==="d3V") return {bg:"#991b1b",text:"#fecaca"};
     return {bg:"#f5f0e8",text:"#f5f0e8"};
   }
-  if (key==="viz")       { return {bg:"#0d0d0d",text:"#fff"}; }
-  if (key==="col_c1")    { return e.coluna==="C1" ? {bg:"#4a5320",text:"#e5e5e5"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
-  if (key==="col_c2")    { return e.coluna==="C2" ? {bg:"#0891b2",text:"#0a0a0a"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
-  if (key==="col_c3")    { return e.coluna==="C3" ? {bg:"#ea580c",text:"#1a1a1a"} : {bg:"#f5f0e8",text:"#f5f0e8"}; }
-  if (key==="viz")       return {bg:"#0d0d0d",text:"#e5e5e5"};
-  if (key==="vn")        return {bg:"#0d0d0d",text:"#e5e5e5"};
+  if (key==="viz")    return {bg:"#0d0d0d",text:"#fff"};
+  if (key==="col_c1") return e.coluna==="C1" ? {bg:"#4a5320",text:"#e5e5e5"} : {bg:"#f5f0e8",text:"#f5f0e8"};
+  if (key==="col_c2") return e.coluna==="C2" ? {bg:"#0891b2",text:"#0a0a0a"} : {bg:"#f5f0e8",text:"#f5f0e8"};
+  if (key==="col_c3") return e.coluna==="C3" ? {bg:"#ea580c",text:"#1a1a1a"} : {bg:"#f5f0e8",text:"#f5f0e8"};
+  if (key==="vn")     return {bg:"#0d0d0d",text:"#e5e5e5"};
   return {bg:"#111",text:"#fff"};
 };
 
-
-// Terminais: números que terminam no mesmo dígito + 1 viz cada lado no racetrack
 const TERMINAL_VIZ = {
   0: { nums:[0,10,20,30], viz:{0:[26,32], 10:[5,23], 20:[14,1], 30:[11,8]} },
   1: { nums:[1,11,21,31], viz:{1:[20,33], 11:[36,30], 21:[4,2], 31:[9,14]} },
@@ -242,7 +212,6 @@ const TERMINAL_VIZ = {
   9: { nums:[9,19,29],    viz:{9:[22,31], 19:[15,4], 29:[7,18]} },
 };
 
-// Build reverse lookup: number -> which terminals it belongs to (as member or viz)
 const NUM_TO_TERMINALS = {};
 for (let i = 0; i <= 36; i++) NUM_TO_TERMINALS[i] = new Set();
 Object.entries(TERMINAL_VIZ).forEach(([t, {nums, viz}]) => {
@@ -255,21 +224,17 @@ function analyzeTerminal(puxouList) {
   if (!puxouList || puxouList.length === 0) return null;
   const counts = {};
   puxouList.forEach(h => {
-    NUM_TO_TERMINALS[h.num]?.forEach(t => {
-      counts[t] = (counts[t]||0) + 1;
-    });
+    NUM_TO_TERMINALS[h.num]?.forEach(t => { counts[t] = (counts[t]||0) + 1; });
   });
   if (Object.keys(counts).length === 0) return null;
   const best = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
   const terminal = parseInt(best[0]);
   const count = parseInt(best[1]);
   const pct = count / puxouList.length;
-  if (pct < 0.8) return null; // >=80% (4 de 5)
+  if (pct < 0.8) return null;
   return { terminal, count, total: puxouList.length, pct: Math.round(pct*100) };
 }
 
-
-// Micro grupos: interseção Coluna × Dúzia com 1 viz cada lado no racetrack
 const MICRO_GROUPS = {
   "C1D1": { nums:[1,4,7,10],   viz:{1:[33,20],  4:[19,21],  7:[29,28],  10:[23,5]}  },
   "C2D1": { nums:[2,5,8,11],   viz:{2:[21,25],  5:[10,24],  8:[30,23],  11:[36,30]} },
@@ -282,7 +247,6 @@ const MICRO_GROUPS = {
   "C3D3": { nums:[27,30,33,36],viz:{27:[6,13],  30:[11,8],  33:[16,1],  36:[13,11]} },
 };
 
-// Build reverse lookup: number -> which micro groups it belongs to
 const NUM_TO_MICRO = {};
 for (let i = 0; i <= 36; i++) NUM_TO_MICRO[i] = new Set();
 Object.entries(MICRO_GROUPS).forEach(([grp, {nums, viz}]) => {
@@ -293,11 +257,7 @@ Object.entries(MICRO_GROUPS).forEach(([grp, {nums, viz}]) => {
 function analyzeMicroGroup(last6) {
   if (!last6 || last6.length === 0) return null;
   const counts = {};
-  last6.forEach(n => {
-    NUM_TO_MICRO[n]?.forEach(grp => {
-      counts[grp] = (counts[grp]||0) + 1;
-    });
-  });
+  last6.forEach(n => { NUM_TO_MICRO[n]?.forEach(grp => { counts[grp] = (counts[grp]||0) + 1; }); });
   if (Object.keys(counts).length === 0) return null;
   const best = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
   const pct = Math.round(best[1] / last6.length * 100);
@@ -305,78 +265,33 @@ function analyzeMicroGroup(last6) {
   return { group: best[0], count: best[1], total: last6.length, pct };
 }
 
-
-// Racetrack order for signal feedback
 const RACETRACK = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
 function getRaceNeighbors(n) {
   const idx = RACETRACK.indexOf(n);
   if (idx === -1) return new Set();
   const len = RACETRACK.length;
-  return new Set([
-    RACETRACK[(idx-1+len)%len],
-    RACETRACK[(idx+1)%len],
-  ]);
+  return new Set([RACETRACK[(idx-1+len)%len], RACETRACK[(idx+1)%len]]);
 }
 
-
-// VN: Vizinhos do Numeral — quais bases (0-9) um número é vizinho
-const VN_MAP = {
-  0: [26,32], 1:[33,20], 2:[21,25], 3:[35,26], 4:[19,21],
-  5:[10,24],  6:[34,27], 7:[29,28], 8:[30,23], 9:[31,22],
-};
-// Reverse: number -> which bases it's a neighbor of
-const NUM_TO_VN = {};
-for(let i=0;i<=36;i++) NUM_TO_VN[i]=[];
-Object.entries(VN_MAP).forEach(([base,vizs])=>{
-  const b=parseInt(base);
-  vizs.forEach(v=>{ if(!NUM_TO_VN[v].includes(b)) NUM_TO_VN[v].push(b); });
-  // base itself maps to itself
-  if(!NUM_TO_VN[b].includes(b)) NUM_TO_VN[b].push(b);
-});
-
-function getVN(n) {
-  const bases = NUM_TO_VN[n] || [];
-  if(bases.length===0) return null;
-  return bases.sort((a,b)=>a-b);
-}
-
-
-function getSetor(n) {
-  if (n === 0) return "—";
-  if (n >= 1  && n <= 6)  return "S1";
-  if (n >= 7  && n <= 12) return "S2";
-  if (n >= 13 && n <= 18) return "S3";
-  if (n >= 19 && n <= 24) return "S4";
-  if (n >= 25 && n <= 30) return "S5";
-  if (n >= 31 && n <= 36) return "S6";
-  return "—";
-}
-
-
-// ── SISTEMA DE REGRAS ─────────────────────────────────────────────
-
-// Colunas binárias (2 categorias)
 const BINARY_FIELDS = [
-  {k:"parte",   fn:e=>e.parte,   label:"PTE", vals:["P1","P2"],           pal:PARTE_CELL},
-  {k:"lado",    fn:e=>e.lado,    label:"LADO",vals:["PB e VA","PA e VB"], pal:LADO_CELL},
-  {k:"altobaixo",fn:e=>e.altobaixo,label:"A/B",vals:["ALTO","BAIXO"],    pal:ALTOBAIXO_CELL},
-  {k:"paridade",fn:e=>e.paridade,label:"P/I", vals:["Par","Ímpar"],       pal:PAR_CELL},
+  {k:"parte",    fn:e=>e.parte,    label:"PTE", vals:["P1","P2"],           pal:PARTE_CELL},
+  {k:"lado",     fn:e=>e.lado,     label:"LADO",vals:["PB e VA","PA e VB"], pal:LADO_CELL},
+  {k:"altobaixo",fn:e=>e.altobaixo,label:"A/B", vals:["ALTO","BAIXO"],      pal:ALTOBAIXO_CELL},
+  {k:"paridade", fn:e=>e.paridade, label:"P/I",  vals:["Par","Ímpar"],       pal:PAR_CELL},
 ];
 
-// Colunas 2-3 categorias (regras 1+2)
 const MULTI_FIELDS = [
   {k:"regiao",  fn:e=>e.regiao,  label:"ZNA", pal:REGIAO_CELL},
   {k:"gp",      fn:e=>e.gp,      label:"GP",  pal:GP_CELL},
   {k:"setor",   fn:e=>e.setor,   label:"SET", pal:SETOR_CELL},
-  {k:"regtrack", fn:e=>e.regtrack, label:"RGT", pal:REGTRACK_CELL},
+  {k:"regtrack",fn:e=>e.regtrack,label:"RGT", pal:REGTRACK_CELL},
 ];
 
-// Colunas com regra 3 (intervalo entre pares)
 const PAIR_INTERVAL_FIELDS = [
-  {k:"coluna",  fn:e=>e.coluna,  label:"COL", pal:{C1:COL_C1_CELL,C2:COL_C2_CELL,C3:COL_C3_CELL}},
-  {k:"rua",     fn:e=>e.rua,     label:"RUA", pal:RUA_CELL},
-  {k:"regiao",  fn:e=>e.regiao,  label:"ZNA", pal:REGIAO_CELL},
-  {k:"cavalo",  fn:e=>e.cavalo,  label:"CAV", pal:CAVALO_CELL},
+  {k:"coluna", fn:e=>e.coluna, label:"COL", pal:{C1:COL_C1_CELL,C2:COL_C2_CELL,C3:COL_C3_CELL}},
+  {k:"rua",    fn:e=>e.rua,    label:"RUA", pal:RUA_CELL},
+  {k:"regiao", fn:e=>e.regiao, label:"ZNA", pal:REGIAO_CELL},
+  {k:"cavalo", fn:e=>e.cavalo, label:"CAV", pal:CAVALO_CELL},
 ];
 
 function detectRules(entries) {
@@ -390,42 +305,20 @@ function detectRules(entries) {
     if(seq.length < 5) return;
     const n = seq.length;
 
-    // ── REGRA 1: X X X (isolados) Y Y → sinaliza Y ──
-    // Need: seq[n-5] !== X, seq[n-4]=X, seq[n-3]=X, seq[n-2]=X, seq[n-1]=Y, seq[n-1]=Y... wait
-    // Pattern: ?≠X X X X Y Y → at position of 2nd Y, signal Y
     if(n >= 6) {
-      const y = seq[n-1];
-      const x = seq[n-2];
-      if(y === seq[n-2] && seq[n-3]===x) {
-        // last 2 are Y Y, check if before that were exactly 3 X (isolated)
-        // y is the dominant, x is the one before
-        // actually: last2 = y, check [n-4],[n-3],[n-2] not equal
-        // Redefine: A=seq[n-1]=seq[n-2] (the Y), B=seq[n-3]=seq[n-4]=seq[n-5] (the X)
-      }
-      // Pattern: B≠A A A A B B
-      const A = seq[n-1]; // last value (2nd Y)
-      const B = seq[n-4]; // value before the 3 A's
+      const A = seq[n-1];
+      const B = seq[n-4];
       if(
-        seq[n-1]===A && seq[n-2]===A && // 2 A's at end
-        seq[n-3]===B && seq[n-4]===B && seq[n-5]===B && // exactly 3 B's
-        (n<6 || seq[n-6]!==B) // isolated: nothing before the 3 B's
+        seq[n-1]===A && seq[n-2]===A &&
+        seq[n-3]===B && seq[n-4]===B && seq[n-5]===B &&
+        (n<6 || seq[n-6]!==B)
       ) {
         const palEntry = pal[A] || {bg:"#222",text:"#aaa"};
         signals.push({rule:1, label, val:A, pal:palEntry, desc:"3+2 → próx "+A});
       }
     }
 
-    // ── REGRA 2: A BB A BB → sinaliza B ──
     if(n >= 6) {
-      const A = seq[n-5];
-      const B = seq[n-4];
-      if(
-        seq[n-5]===A && seq[n-4]===B && seq[n-3]===B &&
-        seq[n-2]===A && seq[n-1]===B && seq[n-1]===B
-      ) {
-        // Pattern A BB A B_ → signal B
-      }
-      // A BB A BB pattern: last 6
       const a = seq[n-6]; const b = seq[n-5];
       if(n>=6 &&
         seq[n-6]===a && seq[n-5]===b && seq[n-4]===b &&
@@ -435,10 +328,9 @@ function detectRules(entries) {
         const palEntry = pal[b] || {bg:"#222",text:"#aaa"};
         signals.push({rule:2, label, val:b, pal:palEntry, desc:"ABBA → próx "+b});
       }
-      // Also detect A BB A B (5 items, 2nd B just arrived)
       if(n>=5 &&
-        seq[n-5]===seq[n-2] && // A matches
-        seq[n-4]===seq[n-3] && seq[n-4]===seq[n-1] && // B matches
+        seq[n-5]===seq[n-2] &&
+        seq[n-4]===seq[n-3] && seq[n-4]===seq[n-1] &&
         seq[n-5]!==seq[n-4]
       ) {
         const bVal = seq[n-1];
@@ -446,58 +338,34 @@ function detectRules(entries) {
         signals.push({rule:2, label, val:bVal, pal:palEntry, desc:"A BB A B → próx "+bVal});
       }
     }
-
-
   });
 
-  // ── REGRA 3: Intervalo entre pares ──
   PAIR_INTERVAL_FIELDS.forEach(({k,fn,label,pal}) => {
     const seq = last20.map(fn).filter(v=>v&&v!=="—");
     const n = seq.length;
     if(n < 8) return;
-
-    // Find all pairs (consecutive same value)
     const pairs = [];
-    for(let i=0;i<n-1;i++) {
-      if(seq[i]===seq[i+1]) pairs.push({val:seq[i], pos:i});
-    }
+    for(let i=0;i<n-1;i++) { if(seq[i]===seq[i+1]) pairs.push({val:seq[i], pos:i}); }
     if(pairs.length < 2) return;
-
-    // Group by value
     const pairsByVal = {};
-    pairs.forEach(p => {
-      if(!pairsByVal[p.val]) pairsByVal[p.val]=[];
-      pairsByVal[p.val].push(p.pos);
-    });
-
+    pairs.forEach(p => { if(!pairsByVal[p.val]) pairsByVal[p.val]=[]; pairsByVal[p.val].push(p.pos); });
     Object.entries(pairsByVal).forEach(([val, positions]) => {
       if(positions.length < 2) return;
-      // Calculate intervals between consecutive pairs
       const intervals = [];
-      for(let i=1;i<positions.length;i++) {
-        intervals.push(positions[i]-positions[i-1]);
-      }
-      // Check if intervals are consistent (within 1)
+      for(let i=1;i<positions.length;i++) { intervals.push(positions[i]-positions[i-1]); }
       const lastInterval = intervals[intervals.length-1];
       const consistent = intervals.every(iv=>Math.abs(iv-lastInterval)<=1);
       if(!consistent) return;
-
-      // Project next pair position
       const lastPairPos = positions[positions.length-1];
       const projectedPos = lastPairPos + lastInterval;
       const distanceToNext = projectedPos - (n-1);
-
       if(distanceToNext >= 0 && distanceToNext <= 2) {
         const palMap = typeof pal === 'object' && pal[val] ? pal[val] : (pal[val]||{bg:"#222",text:"#aaa"});
-        signals.push({
-          rule:3, label, val, pal:palMap,
-          desc: distanceToNext===0 ? "Par "+val+" AGORA!" : "Par "+val+" em "+distanceToNext
-        });
+        signals.push({ rule:3, label, val, pal:palMap, desc: distanceToNext===0 ? "Par "+val+" AGORA!" : "Par "+val+" em "+distanceToNext });
       }
     });
   });
 
-  // Deduplicate - keep highest priority per label+val
   const seen = new Set();
   return signals.filter(s => {
     const key = s.label+s.val+s.rule;
@@ -507,61 +375,27 @@ function detectRules(entries) {
   });
 }
 
-// Get candidate numbers for a signal
-function getSignalCandidates(signal, entries) {
-  const NFIELD = {
-    parte:n=>getParte(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
-    paridade:n=>getParidade(n), regiao:n=>getRegiao(n), gp:n=>getGP(n),
-    setor:n=>getSetor(n), coluna:n=>getColuna(n), rua:n=>getRua(n), cavalo:n=>getCavalo(n),
-  };
-  const fn = NFIELD[signal.k||Object.keys(NFIELD).find(k=>
-    [...BINARY_FIELDS,...MULTI_FIELDS,...PAIR_INTERVAL_FIELDS].find(f=>f.label===signal.label&&f.k===k)
-  )];
-  if(!fn) return [];
-  return Array.from({length:37},(_,i)=>i).filter(n=>fn(n)===signal.val);
-}
-
-
-// Região do Racetrack
-const REGTRACK_MAP = {
-  "32-29": new Set([32,0,26,3,35,12,28,7,29]),
-  "25-30": new Set([25,17,34,6,27,13,36,11,30]),
-  "15-2":  new Set([15,19,4,21,2]),
-  "8-24":  new Set([8,23,10,5,24]),
-  "16-18": new Set([16,33,1,20,14,31,9,22,18]),
-};
-
-
-
-function getRegTrack(n) {
-  for(const [key, set] of Object.entries(REGTRACK_MAP)) {
-    if(set.has(n)) return key;
-  }
-  return "—";
-}
-
-
 const INIT_COLS = [
-  { key:"seq",       label:"#",         toggleable:false, mode:"fixed"    },
-  { key:"num",       label:"Nº",        toggleable:false, mode:"fixed"    },
-  { key:"hist",      label:"PUX",     toggleable:false, mode:"fixed"    },
-  { key:"viz",       label:"VIZ",       toggleable:false, mode:"fixed"    },
-  { key:"gp_d1",     label:"D1",        toggleable:true,  mode:"priority" },
-  { key:"gp_d2",     label:"D2",        toggleable:true,  mode:"priority" },
-  { key:"gp_d3",     label:"D3",        toggleable:true,  mode:"priority" },
+  { key:"seq",       label:"#",    toggleable:false, mode:"fixed"    },
+  { key:"num",       label:"Nº",   toggleable:false, mode:"fixed"    },
+  { key:"hist",      label:"PUX",  toggleable:false, mode:"fixed"    },
+  { key:"viz",       label:"VIZ",  toggleable:false, mode:"fixed"    },
+  { key:"gp_d1",     label:"D1",   toggleable:true,  mode:"priority" },
+  { key:"gp_d2",     label:"D2",   toggleable:true,  mode:"priority" },
+  { key:"gp_d3",     label:"D3",   toggleable:true,  mode:"priority" },
   { key:"lado",      label:"LADO", toggleable:true,  mode:"pinned"   },
-  { key:"col_c1",    label:"C1",        toggleable:true,  mode:"pinned"   },
-  { key:"col_c2",    label:"C2",        toggleable:true,  mode:"pinned"   },
-  { key:"col_c3",    label:"C3",        toggleable:true,  mode:"pinned"   },
-  { key:"regtrack",  label:"RGT",       toggleable:true,  mode:"pinned"   },
-  { key:"parte",     label:"PTE",     toggleable:true,  mode:"pinned"   },
-  { key:"cavalo",    label:"CAV",    toggleable:true,  mode:"pinned"   },
-  { key:"cor",       label:"COR",       toggleable:true,  mode:"auto"     },
-  { key:"altobaixo", label:"A/B",       toggleable:true,  mode:"auto"     },
-  { key:"paridade",  label:"P/I", toggleable:true,  mode:"auto"     },
-  { key:"regiao",    label:"ZNA",      toggleable:true,  mode:"auto"     },
-  { key:"setor",     label:"SET",      toggleable:true,  mode:"always"   },
-  { key:"rua",       label:"RUA",       toggleable:true,  mode:"always"   },
+  { key:"col_c1",    label:"C1",   toggleable:true,  mode:"pinned"   },
+  { key:"col_c2",    label:"C2",   toggleable:true,  mode:"pinned"   },
+  { key:"col_c3",    label:"C3",   toggleable:true,  mode:"pinned"   },
+  { key:"regtrack",  label:"RGT",  toggleable:true,  mode:"pinned"   },
+  { key:"parte",     label:"PTE",  toggleable:true,  mode:"pinned"   },
+  { key:"cavalo",    label:"CAV",  toggleable:true,  mode:"pinned"   },
+  { key:"cor",       label:"COR",  toggleable:true,  mode:"auto"     },
+  { key:"altobaixo", label:"A/B",  toggleable:true,  mode:"auto"     },
+  { key:"paridade",  label:"P/I",  toggleable:true,  mode:"auto"     },
+  { key:"regiao",    label:"ZNA",  toggleable:true,  mode:"auto"     },
+  { key:"setor",     label:"SET",  toggleable:true,  mode:"always"   },
+  { key:"rua",       label:"RUA",  toggleable:true,  mode:"always"   },
 ];
 
 const AUTO_RULE_FIELDS = {
@@ -576,20 +410,14 @@ const AUTO_RULE_FIELDS = {
   regiao:    { field:"regiao",    values:["Tier","Orphelins","Voisins"] },
 };
 
-// Retorna os numeros que saíram APÓS cada ocorrência anterior do mesmo num
 function getHistorico(entries, currentIndex, num) {
   const nexts = [];
   for (let i = 0; i < currentIndex; i++) {
-    if (entries[i].num === num && i + 1 < entries.length) {
-      nexts.push(entries[i + 1]);
-    }
+    if (entries[i].num === num && i + 1 < entries.length) { nexts.push(entries[i + 1]); }
   }
   return nexts.slice(-5);
 }
 
-
-// ── Painel Repetição / Alternância ───────────────────────────────────────────
-// Para cada valor específico de um campo, conta rep (saiu de novo na próxima) e alt (não saiu)
 function calcRepAltPerValue(arr, field, value) {
   let rep = 0, alt = 0;
   for (let i = 0; i < arr.length - 1; i++) {
@@ -607,121 +435,10 @@ const RA_FIELDS = [
   { key:"duzia",    label:"Dúzia",     values:["D1","D2","D3"],                    palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
   { key:"paridade", label:"Par/Ímpar", values:["Par","Ímpar"],                     palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
   { key:"coluna",   label:"Coluna",    values:["C1","C2","C3"],                    palette:{"C1":{bg:"#4a5320",text:"#e5e5e5"},"C2":{bg:"#0891b2",text:"#0a0a0a"},"C3":{bg:"#ea580c",text:"#1a1a1a"}} },
-  { key:"parte",    label:"Parte",     values:["P1","P2"],
-    palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
-  { key:"altobaixo", label:"Alto/Baixo", values:["ALTO","BAIXO"],
-    palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
+  { key:"parte",    label:"Parte",     values:["P1","P2"],                         palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
+  { key:"altobaixo",label:"Alto/Baixo",values:["ALTO","BAIXO"],                    palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
   { key:"regiao",   label:"Região",    values:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
 ];
-
-function RepAltPanel({ last14 }) {
-  if (last14.length < 2) return <div style={{color:"#333",fontSize:10,padding:"8px 0"}}>Insira ao menos 2 números</div>;
-  return (
-    <div>
-      {RA_FIELDS.map(({key, label, values, palette}) => (
-        <div key={key} style={{marginBottom:10}}>
-          <div style={{fontSize:7,letterSpacing:"0.12em",color:"#666",textTransform:"uppercase",marginBottom:4,borderBottom:"0.5px solid #1e1e1e",paddingBottom:2}}>{label}</div>
-          {values.map(val => {
-            const {rep, alt, repPct, altPct, total} = calcRepAltPerValue(last14, key, val);
-            if (total === 0) return null;
-            const p = palette[val] || {bg:"#222",text:"#aaa"};
-            return (
-              <div key={val} style={{marginBottom:5}}>
-                <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:2}}>
-                  <div style={{background:p.bg,color:p.text,fontSize:7,fontWeight:"bold",padding:"1px 4px",borderRadius:1,minWidth:36,textAlign:"center",flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{val}</div>
-                  <div style={{flex:1}}/>
-                </div>
-                {/* REP */}
-                <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:1}}>
-                  <div style={{width:5,height:5,borderRadius:"50%",background:"#22c55e",flexShrink:0}}/>
-                  <div style={{width:18,fontSize:7,color:"#22c55e"}}>REP</div>
-                  <div style={{flex:1,height:7,background:"#1a1a1a",borderRadius:1,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:repPct+"%",background:"#166534",transition:"width 0.4s"}}/>
-                  </div>
-                  <div style={{width:22,fontSize:7,color:"#22c55e",textAlign:"right"}}>{repPct}%</div>
-                  <div style={{width:10,fontSize:7,color:"#444",textAlign:"right"}}>{rep}</div>
-                </div>
-                {/* ALT */}
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <div style={{width:5,height:5,borderRadius:"50%",background:"#f97316",flexShrink:0}}/>
-                  <div style={{width:18,fontSize:7,color:"#f97316"}}>ALT</div>
-                  <div style={{flex:1,height:7,background:"#1a1a1a",borderRadius:1,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:altPct+"%",background:"#7c2d12",transition:"width 0.4s"}}/>
-                  </div>
-                  <div style={{width:22,fontSize:7,color:"#f97316",textAlign:"right"}}>{altPct}%</div>
-                  <div style={{width:10,fontSize:7,color:"#444",textAlign:"right"}}>{alt}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ))}
-
-    </div>
-  );
-}
-
-// ── Score de Rep/Alt ─────────────────────────────────────────────────────────
-function ScorePanel({ last14 }) {
-  if (last14.length < 2) return null;
-
-  const fields = ["cor","lado","paridade","parte","regiao","altobaixo"];
-  let totalRep = 0, totalAlt = 0;
-  fields.forEach(field => {
-    const vals = [...new Set(last14.map(e => e[field]||"—").filter(v=>v!=="—"))];
-    vals.forEach(val => {
-      const {rep, alt} = calcRepAltPerValue(last14, field, val);
-      totalRep += rep;
-      totalAlt += alt;
-    });
-  });
-
-  const total = totalRep + totalAlt;
-  if (total === 0) return null;
-  const score = Math.round((totalRep / total) * 100);
-  const isRepDominant = score >= 70;
-  const isAltDominant = score <= 30;
-  const isExtreme = isRepDominant || isAltDominant;
-  const scoreColor = score >= 60 ? "#22c55e" : score <= 40 ? "#f97316" : "#facc15";
-  const label = score >= 60 ? "REPETIÇÃO" : score <= 40 ? "ALTERNÂNCIA" : "NEUTRO";
-  const labelColor = score >= 60 ? "#22c55e" : score <= 40 ? "#f97316" : "#facc15";
-
-  return (
-    <div style={{
-      marginTop:14,
-      border: isExtreme ? "2px solid " + scoreColor : "0.5px solid #2a2a2a",
-      borderRadius:4,
-      padding:"10px 10px",
-      background:"#0d0d0d",
-      animation: isExtreme ? "pulseBorder 0.9s ease-in-out infinite" : "none",
-      outline: isExtreme ? "2px solid " + scoreColor : "none",
-      outlineOffset: isExtreme ? "-2px" : "0",
-    }}>
-      <div style={{fontSize:7,letterSpacing:"0.15em",color:"#555",textTransform:"uppercase",marginBottom:8}}>Score Geral</div>
-      {/* Barra de score */}
-      <div style={{position:"relative",height:14,background:"#1a1a1a",borderRadius:2,overflow:"hidden",marginBottom:6}}>
-        <div style={{
-          position:"absolute",left:0,top:0,height:"100%",
-          width:score+"%",
-          background: score>=60?"#166534":score<=40?"#7c2d12":"#713f00",
-          transition:"width 0.5s ease",
-        }}/>
-        <div style={{
-          position:"absolute",left:"50%",top:0,bottom:0,width:"1px",background:"#444"
-        }}/>
-      </div>
-      {/* Valor e label */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontSize:20,fontWeight:"bold",color:scoreColor,fontFamily:"Arial, sans-serif"}}>{score}</span>
-        <span style={{fontSize:9,fontWeight:"bold",color:labelColor,letterSpacing:"0.08em"}}>{label}</span>
-      </div>
-      <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-        <span style={{fontSize:7,color:"#444"}}>ALT ← 0</span>
-        <span style={{fontSize:7,color:"#444"}}>100 → REP</span>
-      </div>
-    </div>
-  );
-}
 
 function countBy(arr, key, values) {
   const r={};
@@ -741,7 +458,7 @@ function StatBlockH({ title, data, palette }) {
           <div key={k} style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}>
             <div style={{width:52,fontSize:8,color:p.text,textAlign:"center",background:p.bg,padding:"1px 3px",borderRadius:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontFamily:"Arial, sans-serif",fontWeight:"bold",flexShrink:0}}>{k}</div>
             <div style={{flex:1,height:10,background:"#1a1a1a",borderRadius:1,overflow:"hidden"}}>
-              <div style={{height:"100%",width:`${pct}%`,background:p.bg,transition:"width 0.4s ease",boxSizing:"border-box",border:p.bg==="#111111"?"1px solid rgba(255,255,255,0.4)":"none"}}/>
+              <div style={{height:"100%",width:`${pct}%`,background:p.bg,transition:"width 0.4s ease",boxSizing:"border-box"}}/>
             </div>
             <div style={{width:14,fontSize:8,color:"#ccc",textAlign:"right",fontFamily:"Arial, sans-serif",flexShrink:0}}>{v}</div>
           </div>
@@ -751,12 +468,7 @@ function StatBlockH({ title, data, palette }) {
   );
 }
 
-
-// ══════════════════════════════════════════════════════════════
-// DESTROYER PAIR CATALOG — integrado
-// ══════════════════════════════════════════════════════════════
 const SK = "destroyer-pair-v6";
-const SK_LIVE = "destroyer-pair-v6-live";
 
 const TD_STYLE = {
   padding:"0 5px", height:28, textAlign:"center", verticalAlign:"middle",
@@ -808,7 +520,16 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
   return (
     <tr>
       <td style={{...TD_STYLE,background:"#0d0d0d",color:"#444",fontSize:10}}>#{rank}</td>
-      <td style={{...TD_STYLE,background:"#0d0d0d",padding:"0 4px"}}><CatalogNumBall n={n}/></td>
+      <td style={{...TD_STYLE,background:"#0d0d0d",padding:"0 4px"}}>
+        <div style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",
+          justifyContent:"center",
+          background: isRepeat ? "#FFD700" : NUM_BALL[cor].bg,
+          boxShadow: isRepeat ? "0 0 6px #FFD700" : "none",
+          border:`2px solid ${NUM_BALL[cor].border}`,
+          color: isRepeat ? "#000" : NUM_BALL[cor].text,fontSize:10,fontWeight:"bold"}}>
+          {n}
+        </div>
+      </td>
       <td style={{...TD_STYLE,background:gp!=="—"?gpScheme.bg:"#111",color:gp!=="—"?gpScheme.text:"#333",minWidth:36}}>{gp!=="—"?gp:"—"}</td>
       <CatalogCell label={lado} scheme={LADO_CELL[lado]||LADO_CELL["—"]}/>
       <CatalogCell label={coluna==="0"?"—":coluna} scheme={COLUNA_CELL[coluna]||{bg:"#111",text:"#444"}}/>
@@ -833,56 +554,37 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
   );
 }
 
-
 function CatalogFooterStats({ entries, terminalStats }) {
   const allNums = entries.map(e => e.num);
   const queryNum = allNums.length > 0 ? allNums[allNums.length - 1] : null;
   if (queryNum === null) return null;
 
-  // Build live catalog for this number
   const pairs = {};
   for (let i = 0; i < allNums.length - 1; i++) {
-    if (allNums[i] === queryNum) {
-      const b = allNums[i+1];
-      pairs[b] = (pairs[b]||0) + 1;
-    }
+    if (allNums[i] === queryNum) { const b = allNums[i+1]; pairs[b] = (pairs[b]||0) + 1; }
   }
   const sorted = Object.entries(pairs).map(([k,v])=>({num:parseInt(k),count:v}));
 
-  // Use terminalStats prop (same calculation as main table)
   const termTop2 = terminalStats && terminalStats.topTerminals
-    ? terminalStats.topTerminals.slice(0,2).map(x=>x.t)
-    : [];
+    ? terminalStats.topTerminals.slice(0,2).map(x=>x.t) : [];
 
-  // VIZ terminal for current last number — use full historical puxou
   const lastEntry = entries[entries.length - 1];
   const lastHist = (() => {
-    // Same logic as getHistorico: find all numbers that came AFTER lastEntry.num
     const hist = [];
     for (let i = 0; i < entries.length - 1; i++) {
       if (entries[i].num === lastEntry.num) hist.push(entries[i+1]);
     }
-    return hist.slice(-5); // last 5 occurrences
+    return hist.slice(-5);
   })();
   const vizResult = lastHist.length >= 1 ? analyzeTerminal(lastHist) : null;
   const vizTerminal = vizResult ? vizResult.terminal : null;
-
-  // Check if vizTerminal is in top 2
   const terminalInTop2 = vizTerminal !== null && termTop2.includes(vizTerminal);
 
   const dominants = [];
-
-  // Add terminal card if it matches top 2
   if (terminalInTop2) {
-    dominants.push({
-      label:"TERMINAL",
-      val:"T"+vizTerminal,
-      pct: vizResult.pct,
-      pal:{bg:"#1a1a00",text:"#FFD700"}
-    });
+    dominants.push({ label:"TERMINAL", val:"T"+vizTerminal, pct: vizResult.pct, pal:{bg:"#1a1a00",text:"#FFD700"} });
   }
 
-  // Add characteristic dominants
   if (sorted.length > 0) {
     const fields = [
       {label:"Cor",   key:"cor",    vals:["Vermelho","Preto","Verde"],   pal:COR_CELL},
@@ -891,13 +593,13 @@ function CatalogFooterStats({ entries, terminalStats }) {
       {label:"Parte", key:"parte",  vals:["P1","P2"],                    pal:PARTE_CELL},
       {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
       {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
-    {label:"Cavalo", key:"cavalo", vals:["369","258","147"], pal:CAVALO_CELL},
+      {label:"Cavalo",key:"cavalo", vals:["369","258","147"],             pal:CAVALO_CELL},
     ];
     const puxados = sorted.map(p => {
       const arr = [];
       for(let k=0;k<p.count;k++) arr.push({
         cor:getColor(p.num), lado:getLado(p.num), par:getParidade(p.num),
-        parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num), cavalo:getCavalo(p.num), cavalo:getCavalo(p.num)
+        parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num), cavalo:getCavalo(p.num)
       });
       return arr;
     }).flat();
@@ -932,41 +634,30 @@ function CatalogFooterStats({ entries, terminalStats }) {
   );
 }
 
-
 function MicroGroupCard({ entries }) {
   if (!entries || entries.length < 3) return null;
   const last6 = entries.slice(-6).map(e => e.num);
   const result = analyzeMicroGroup(last6);
   if (!result) return null;
-
   const grpData = MICRO_GROUPS[result.group];
-  const col = result.group.substring(0,2); // C1, C2, C3
-  const duz = result.group.substring(2);   // D1, D2, D3
-
+  const col = result.group.substring(0,2);
+  const duz = result.group.substring(2);
   const colScheme = COLUNA_CELL[col] || {bg:"#111",text:"#aaa"};
   const duzScheme = DUZIA_CELL[duz]  || {bg:"#111",text:"#aaa"};
-
   return (
     <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#0a0a0a",flexShrink:0}}>
       <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>micro grupo ativo</div>
       <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
         <div style={{display:"flex",alignItems:"center",gap:2}}>
-          <span style={{fontSize:12,fontWeight:"bold",color:colScheme.text,background:colScheme.bg,
-            padding:"2px 7px",borderRadius:3}}>{col}</span>
-          <span style={{fontSize:12,fontWeight:"bold",color:duzScheme.text,background:duzScheme.bg,
-            padding:"2px 7px",borderRadius:3}}>{duz}</span>
+          <span style={{fontSize:12,fontWeight:"bold",color:colScheme.text,background:colScheme.bg,padding:"2px 7px",borderRadius:3}}>{col}</span>
+          <span style={{fontSize:12,fontWeight:"bold",color:duzScheme.text,background:duzScheme.bg,padding:"2px 7px",borderRadius:3}}>{duz}</span>
         </div>
         <span style={{fontSize:11,fontWeight:"bold",color:"#FFD700"}}>{result.pct}%</span>
         <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
           {grpData.nums.map(n => {
             const c = getColor(n);
             return (
-              <div key={n} style={{width:20,height:20,borderRadius:"50%",display:"flex",
-                alignItems:"center",justifyContent:"center",
-                background:NUM_BALL[c].bg,border:"1px solid "+NUM_BALL[c].border,
-                color:"#fff",fontSize:8,fontWeight:"bold",flexShrink:0}}>
-                {n}
-              </div>
+              <div key={n} style={{width:20,height:20,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:NUM_BALL[c].bg,border:"1px solid "+NUM_BALL[c].border,color:"#fff",fontSize:8,fontWeight:"bold",flexShrink:0}}>{n}</div>
             );
           })}
         </div>
@@ -976,15 +667,12 @@ function MicroGroupCard({ entries }) {
 }
 
 function PairCatalog({ sharedEntries }) {
-  const [catalog,      setCatalog]      = useState({});
-  const [totalSeq,     setTotalSeq]     = useState(0);
-  const [totalNum,     setTotalNum]     = useState(0);
-  const [status,       setStatus]       = useState("AGUARDANDO");
-  const [liveQuery,    setLiveQuery]    = useState(null);
+  const [catalog, setCatalog] = useState({});
+  const [totalSeq, setTotalSeq] = useState(0);
+  const [totalNum, setTotalNum] = useState(0);
+  const [status, setStatus] = useState("AGUARDANDO");
   const [resetConfirm, setResetConfirm] = useState(false);
-  const [undoStack,    setUndoStack]    = useState([]);
 
-  // Load from storage on mount
   useState(() => {
     (async () => {
       try {
@@ -1008,11 +696,9 @@ function PairCatalog({ sharedEntries }) {
     setTimeout(()=>setStatus("AGUARDANDO"), 2000);
   }
 
-  // Sync with sharedEntries from main table
   const allNums = sharedEntries.map(e => e.num);
   const liveQ = allNums.length > 0 ? allNums[allNums.length - 1] : null;
 
-  // Build catalog from sharedEntries live
   const liveCatalog = {};
   for (let i = 0; i < allNums.length - 1; i++) {
     const a = allNums[i], b = allNums[i+1];
@@ -1020,7 +706,6 @@ function PairCatalog({ sharedEntries }) {
     liveCatalog[a][b] = (liveCatalog[a][b]||0) + 1;
   }
 
-  // Merge live catalog with stored catalog
   const mergedCatalog = {...catalog};
   Object.entries(liveCatalog).forEach(([a, bMap]) => {
     Object.entries(bMap).forEach(([b, cnt]) => {
@@ -1042,22 +727,8 @@ function PairCatalog({ sharedEntries }) {
   const pTotal = sorted.reduce((s,x) => s+x.count, 0);
   const pMax   = sorted.length ? sorted[0].count : 1;
 
-  function handleResetStored() {
-    if (!resetConfirm) { setResetConfirm(true); setTimeout(()=>setResetConfirm(false),3000); return; }
-    setCatalog({}); setTotalSeq(0); setTotalNum(0); setResetConfirm(false);
-    save({}, 0, 0);
-  }
-
-  const INP = {
-    background:"#111",border:"1px solid #2a2a2a",color:"#e5e5e5",
-    fontFamily:"Arial, sans-serif",fontSize:12,
-    padding:"6px 10px",outline:"none",borderRadius:2,
-  };
-
   return (
     <div style={{padding:"12px 16px",background:"#0d0d0d",display:"flex",flexDirection:"column",minHeight:"100vh"}}>
-
-      {/* Consulta automática */}
       {queryNum !== null && (
         <div style={{marginBottom:6}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
@@ -1065,15 +736,11 @@ function PairCatalog({ sharedEntries }) {
             <CatalogNumBall n={queryNum} size={28}/>
             <span style={{fontSize:10,color:"#888"}}>{pTotal} apariç.</span>
           </div>
-
         </div>
       )}
-
-      {/* Resultado */}
       {queryNum !== null ? (
         sorted.length === 0 ? (
-          <div style={{textAlign:"center",color:"#333",padding:24,fontSize:11,
-            letterSpacing:"0.1em",border:"1px solid #1a1a1a",borderRadius:2,fontFamily:"Arial, sans-serif"}}>
+          <div style={{textAlign:"center",color:"#333",padding:24,fontSize:11,letterSpacing:"0.1em",border:"1px solid #1a1a1a",borderRadius:2,fontFamily:"Arial, sans-serif"}}>
             NENHUM DADO AINDA PARA O NÚMERO {queryNum}
           </div>
         ) : (
@@ -1082,33 +749,30 @@ function PairCatalog({ sharedEntries }) {
               <thead>
                 <tr>
                   <CatalogTH>RNK</CatalogTH><CatalogTH>NÚM</CatalogTH>
-                  <CatalogTH>GP</CatalogTH>
-                  <CatalogTH>LADO</CatalogTH><CatalogTH>COL</CatalogTH><CatalogTH>PARTE</CatalogTH>
-                  <CatalogTH>CAVALO</CatalogTH>
-                  <CatalogTH>COR</CatalogTH><CatalogTH>A/B</CatalogTH><CatalogTH>PAR/ÍMP</CatalogTH>
-                  <CatalogTH>ZONA</CatalogTH><CatalogTH>DÚZIA</CatalogTH><CatalogTH>RUA</CatalogTH>
+                  <CatalogTH>GP</CatalogTH><CatalogTH>LADO</CatalogTH><CatalogTH>COL</CatalogTH>
+                  <CatalogTH>PARTE</CatalogTH><CatalogTH>CAVALO</CatalogTH><CatalogTH>COR</CatalogTH>
+                  <CatalogTH>A/B</CatalogTH><CatalogTH>PAR/ÍMP</CatalogTH><CatalogTH>ZONA</CatalogTH>
+                  <CatalogTH>DÚZIA</CatalogTH><CatalogTH>RUA</CatalogTH>
+                  <CatalogTH>SET</CatalogTH><CatalogTH>RGT</CatalogTH>
                   <CatalogTH>VEZES</CatalogTH><CatalogTH>%</CatalogTH><CatalogTH>FREQ</CatalogTH>
                 </tr>
               </thead>
               <tbody>
                 {sorted.map((p,i) => (
-                  <CatalogTableRow key={p.num} n={p.num} rank={i+1}
-                    count={p.count} total={pTotal} maxCount={pMax}/>
+                  <CatalogTableRow key={p.num} n={p.num} rank={i+1} count={p.count} total={pTotal} maxCount={pMax}/>
                 ))}
               </tbody>
             </table>
           </div>
         )
       ) : (
-        <div style={{textAlign:"center",color:"#222",padding:32,fontSize:11,
-          letterSpacing:"0.15em",border:"1px solid #1a1a1a",borderRadius:2,fontFamily:"Arial, sans-serif"}}>
+        <div style={{textAlign:"center",color:"#222",padding:32,fontSize:11,letterSpacing:"0.15em",border:"1px solid #1a1a1a",borderRadius:2,fontFamily:"Arial, sans-serif"}}>
           AGUARDANDO NÚMEROS DA TABELA PRINCIPAL
         </div>
       )}
     </div>
   );
 }
-
 
 function SignalsPanel({ entries, terminalStats }) {
   if (entries.length === 0) return (
@@ -1117,37 +781,23 @@ function SignalsPanel({ entries, terminalStats }) {
     </div>
   );
 
-  // Compute dominance from HISTORICAL PUXOU of last number (same as PROBABILIDADE)
-  const lastEntry = entries[entries.length - 1]; // most recent
+  const lastEntry = entries[entries.length - 1];
   const puxadoHist = getHistorico(entries, entries.length - 1, lastEntry.num);
 
   const NFIELD = {
-    cor:       n => getColor(n),
-    lado:      n => getLado(n),
-    altobaixo: n => getAltoBaixo(n),
-    paridade:  n => getParidade(n),
-    parte:     n => getParte(n),
-    cavalo:    n => getCavalo(n),
-    regiao:    n => getRegiao(n),
-    duzia:     n => getDuzia(n),
-    coluna:    n => getColuna(n),
-    ruaPar:    n => getRuaParidade(n),
+    cor:n=>getColor(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
+    paridade:n=>getParidade(n), parte:n=>getParte(n), cavalo:n=>getCavalo(n),
+    regiao:n=>getRegiao(n), duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
+    ruaPar:n=>getRuaParidade(n),
   };
 
-  // STEP 1: Dominant fields from historical puxou >=70%
   const probDomVals = {};
   if (puxadoHist.length > 0) {
     const total = puxadoHist.length;
     const fieldChecks = [
-      {k:"cor",      fn:e=>e.cor},
-      {k:"lado",     fn:e=>e.lado},
-      {k:"altobaixo",fn:e=>e.altobaixo},
-      {k:"paridade", fn:e=>e.paridade},
-      {k:"parte",    fn:e=>e.parte},
-      {k:"cavalo",   fn:e=>e.cavalo},
-      {k:"regiao",   fn:e=>e.regiao},
-      {k:"duzia",    fn:e=>e.duzia},
-      {k:"ruaPar",   fn:e=>getRuaParidade(e.num)},
+      {k:"cor",fn:e=>e.cor},{k:"lado",fn:e=>e.lado},{k:"altobaixo",fn:e=>e.altobaixo},
+      {k:"paridade",fn:e=>e.paridade},{k:"parte",fn:e=>e.parte},{k:"cavalo",fn:e=>e.cavalo},
+      {k:"regiao",fn:e=>e.regiao},{k:"duzia",fn:e=>e.duzia},{k:"ruaPar",fn:e=>getRuaParidade(e.num)},
     ];
     fieldChecks.forEach(({k,fn}) => {
       const cnt = {};
@@ -1157,17 +807,13 @@ function SignalsPanel({ entries, terminalStats }) {
     });
   }
 
-  // STEP 2: Get all numbers matching PROB dominants (>=70%)
   const probKeys = Object.keys(probDomVals);
   let step1 = [];
   for (let n = 0; n <= 36; n++) {
     if (probKeys.length === 0) break;
-    if (probKeys.every(k => NFIELD[k] && NFIELD[k](n) === probDomVals[k])) {
-      step1.push(n);
-    }
+    if (probKeys.every(k => NFIELD[k] && NFIELD[k](n) === probDomVals[k])) step1.push(n);
   }
 
-  // STEP 3: Filter by last 5 entries dominants (>=80%)
   const last5 = entries.slice(-5);
   const repDomVals = {};
   if (last5.length > 0) {
@@ -1176,9 +822,7 @@ function SignalsPanel({ entries, terminalStats }) {
       {k:"cor",fn:e=>e.cor},{k:"lado",fn:e=>e.lado},{k:"altobaixo",fn:e=>e.altobaixo},
       {k:"paridade",fn:e=>e.paridade},{k:"parte",fn:e=>e.parte},{k:"cavalo",fn:e=>e.cavalo},
       {k:"regiao",fn:e=>e.regiao},{k:"duzia",fn:e=>e.duzia},{k:"coluna",fn:e=>e.coluna},
-      {k:"ruaPar",fn:e=>getRuaParidade(e.num)},
-      {k:"setor",fn:e=>getSetor(e.num)},
-      {k:"regtrack",fn:e=>getRegTrack(e.num)},
+      {k:"ruaPar",fn:e=>getRuaParidade(e.num)},{k:"setor",fn:e=>getSetor(e.num)},{k:"regtrack",fn:e=>getRegTrack(e.num)},
     ];
     fieldChecks5.forEach(({k,fn}) => {
       const cnt = {};
@@ -1192,7 +836,6 @@ function SignalsPanel({ entries, terminalStats }) {
     ? step1.filter(n => repKeys.every(k => NFIELD[k] && NFIELD[k](n) === repDomVals[k]))
     : step1;
 
-  // VIZ terminal
   const vizResult = puxadoHist.length >= 1 ? analyzeTerminal(puxadoHist) : null;
   const vizTerminal = vizResult ? vizResult.terminal : null;
   const termTop2 = terminalStats?.topTerminals?.slice(0,2).map(x=>x.t) || [];
@@ -1203,68 +846,6 @@ function SignalsPanel({ entries, terminalStats }) {
     inTerminal: terminalActive && vizTerminal !== null && !!NUM_TO_TERMINALS[n]?.has(vizTerminal)
   }));
 
-  // Signal feedback: check historical signal accuracy
-  const feedback = useMemo ? (() => {
-    let wins = 0, losses = 0, vizHits = 0;
-    for (let i = 1; i < entries.length - 1; i++) {
-      const e = entries[i];
-      const hist = getHistorico(entries, i, e.num);
-      if (hist.length === 0) continue;
-      // Compute what signals would have been at this point
-      const pHist = hist;
-      const total = pHist.length;
-      const pDom = {};
-      const fc2 = [
-        {k:"cor",fn:h=>h.cor},{k:"lado",fn:h=>h.lado},{k:"altobaixo",fn:h=>h.altobaixo},
-        {k:"paridade",fn:h=>h.paridade},{k:"parte",fn:h=>h.parte},{k:"cavalo",fn:h=>h.cavalo},
-        {k:"regiao",fn:h=>h.regiao},{k:"duzia",fn:h=>h.duzia},{k:"coluna",fn:h=>h.coluna},
-        {k:"ruaPar",fn:h=>getRuaParidade(h.num)},
-      {k:"regtrack",fn:h=>getRegTrack(h.num)},
-      ];
-      fc2.forEach(({k,fn}) => {
-        const cnt = {};
-        pHist.forEach(h => { const v=fn(h); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
-        const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
-        if (best && best[1]/total >= 0.70) pDom[k] = best[0];
-      });
-      const pKeys = Object.keys(pDom);
-      if (pKeys.length === 0) continue;
-      // Get last5 before this point
-      const prev5 = entries.slice(Math.max(0,i-5), i);
-      const rDom = {};
-      if (prev5.length > 0) {
-        fc2.forEach(({k,fn}) => {
-          const cnt = {};
-          prev5.forEach(h => { const v=fn(h); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
-          const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
-          if (best && best[1]/prev5.length >= 0.80) rDom[k] = best[0];
-        });
-      }
-      const rKeys = Object.keys(rDom);
-      // Build signal candidates
-      const sigNums = [];
-      for (let n = 0; n <= 36; n++) {
-        const pm = pKeys.every(k => NFIELD[k] && NFIELD[k](n) === pDom[k]);
-        if (!pm) continue;
-        if (rKeys.length > 0 && !rKeys.every(k => NFIELD[k] && NFIELD[k](n) === rDom[k])) continue;
-        sigNums.push(n);
-      }
-      if (sigNums.length === 0) continue;
-      // Check next number
-      const nextNum = entries[i+1].num;
-      const neighbors = getRaceNeighbors(nextNum);
-      const hitAlvo = sigNums.includes(nextNum);
-      const hitViz = !hitAlvo && sigNums.some(n => {
-        const nNeigh = getRaceNeighbors(n);
-        return nNeigh.has(nextNum);
-      });
-      if (hitAlvo) wins++;
-      else if (hitViz) vizHits++;
-      else losses++;
-    }
-    return { wins, losses, vizHits, total: wins+losses+vizHits };
-  })() : { wins:0, losses:0, total:0 };
-
   if (candidates.length === 0) return (
     <div style={{padding:8,textAlign:"center"}}>
       <span style={{fontSize:9,color:"#333",writingMode:"vertical-rl"}}>SEM SINAIS</span>
@@ -1273,25 +854,17 @@ function SignalsPanel({ entries, terminalStats }) {
 
   return (
     <div style={{padding:"8px 4px"}}>
-      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#CC0000",fontWeight:"bold",
-        textTransform:"uppercase",marginBottom:4,textAlign:"center"}}>SINAIS</div>
-
+      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#CC0000",fontWeight:"bold",textTransform:"uppercase",marginBottom:4,textAlign:"center"}}>SINAIS</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:4,justifyContent:"center"}}>
         {candidates.map((c) => {
           const {n, inTerminal} = c;
           const cor = getColor(n);
           const s = NUM_BALL[cor];
           return (
-            <div key={n}
-              className={inTerminal ? "pulse-cell" : ""}
-              style={{
-                display:"flex",alignItems:"center",justifyContent:"center",
-                width:28,height:28,borderRadius:"50%",
-                background: s.bg,
-                border: inTerminal ? "2px solid #FFD700" : `2px solid ${s.border}`,
-                boxShadow: inTerminal ? "0 0 8px #FFD700" : "none",
-                color: s.text, flexShrink:0,
-              }}>
+            <div key={n} className={inTerminal ? "pulse-cell" : ""}
+              style={{display:"flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",
+                background:s.bg,border:inTerminal?"2px solid #FFD700":`2px solid ${s.border}`,
+                boxShadow:inTerminal?"0 0 8px #FFD700":"none",color:s.text,flexShrink:0}}>
               <span style={{fontSize:10,fontWeight:"bold"}}>{n}</span>
             </div>
           );
@@ -1300,71 +873,9 @@ function SignalsPanel({ entries, terminalStats }) {
       {terminalActive && (
         <div style={{marginTop:4,textAlign:"center",fontSize:7,color:"#FFD700"}}>T{vizTerminal}</div>
       )}
-
-      {/* Absent column signal */}
-      {(() => {
-        if(entries.length < 6) return null;
-        // Find absent column (C1/C2/C3) for more than 5 numbers
-        const last10 = entries.slice(-10);
-        const colCnt = {C1:0,C2:0,C3:0};
-        last10.forEach(e=>{ if(colCnt[e.coluna]!==undefined) colCnt[e.coluna]++; });
-        const absent = Object.entries(colCnt).filter(([,c])=>c===0).map(([k])=>k);
-        const present = Object.entries(colCnt).filter(([,c])=>c>0).map(([k])=>k);
-        if(absent.length !== 1 || present.length !== 2) return null;
-
-        // Find 100% characteristics in last 5
-        const last5 = entries.slice(-5);
-        const invictaFields = [
-          {k:"cor",fn:e=>e.cor},{k:"lado",fn:e=>e.lado},{k:"altobaixo",fn:e=>e.altobaixo},
-          {k:"paridade",fn:e=>e.paridade},{k:"parte",fn:e=>e.parte},
-        ];
-        const invictas = {};
-        invictaFields.forEach(({k,fn})=>{
-          const vals = last5.map(fn).filter(v=>v&&v!=="—");
-          if(vals.length===0) return;
-          const first = vals[0];
-          if(vals.every(v=>v===first)) invictas[k]=first;
-        });
-        if(Object.keys(invictas).length===0) return null;
-
-        // Get candidates: numbers in present columns matching all invictas
-        const NFLD = {
-          cor:n=>getColor(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
-          paridade:n=>getParidade(n), parte:n=>getParte(n),
-        };
-        const candidates = [];
-        for(let n=1;n<=36;n++){
-          if(!present.includes(getColuna(n))) continue;
-          if(Object.entries(invictas).every(([k,v])=>NFLD[k]&&NFLD[k](n)===v)) candidates.push(n);
-        }
-        if(candidates.length===0) return null;
-
-        return (
-          <div style={{marginTop:8,borderTop:"1px solid #1a1a1a",paddingTop:6}}>
-            <div style={{fontSize:7,color:"#00e5ff",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4,textAlign:"center"}}>
-              COL AUSENTE: {absent[0]}
-            </div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:3,justifyContent:"center"}}>
-              {candidates.map(n=>{
-                const cor=getColor(n); const s=NUM_BALL[cor];
-                return (
-                  <div key={n} style={{width:24,height:24,borderRadius:"50%",display:"flex",
-                    alignItems:"center",justifyContent:"center",
-                    background:s.bg,border:"2px solid #00e5ff",
-                    color:s.text,fontSize:9,fontWeight:"bold"}}>
-                    {n}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
     </div>
   );
 }
-
 
 let idCounter = 0;
 
@@ -1373,34 +884,21 @@ export default function DestroyerRaceTable() {
   const [input, setInput]     = useState("");
   const [colOrder, setColOrder] = useState(() => INIT_COLS.map(c=>c.key));
   const [hidden, setHidden]     = useState(new Set());
-
   const [showRep, setShowRep] = useState(false);
   const [showAlt, setShowAlt] = useState(false);
 
+  const dragKey  = useRef(null);
+  const dragOver = useRef(null);
 
-
-  const dragKey   = useRef(null);
-  const dragOver  = useRef(null);
-
-  // Merge colOrder with INIT_COLS — ensures new columns are always included
   const cols = useMemo(() => {
-    const ordered = colOrder
-      .filter(k => INIT_COLS.find(c => c.key === k))
-      .map(k => INIT_COLS.find(c => c.key === k));
-    // Add any new columns not yet in colOrder
-    INIT_COLS.forEach(c => {
-      if (!colOrder.includes(c.key)) ordered.push(c);
-    });
+    const ordered = colOrder.filter(k => INIT_COLS.find(c => c.key === k)).map(k => INIT_COLS.find(c => c.key === k));
+    INIT_COLS.forEach(c => { if (!colOrder.includes(c.key)) ordered.push(c); });
     return ordered;
   }, [colOrder]);
 
   const toggleHide = (key) => {
     if (!INIT_COLS.find(c=>c.key===key)?.toggleable) return;
-    setHidden(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
+    setHidden(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
   };
 
   const onDragStart = (key) => { dragKey.current = key; };
@@ -1408,12 +906,7 @@ export default function DestroyerRaceTable() {
   const onDragEnd   = () => {
     const from = dragKey.current, to = dragOver.current;
     if (!from || !to || from===to) { dragKey.current=null; dragOver.current=null; return; }
-    setColOrder(prev => {
-      const arr = [...prev];
-      const fi = arr.indexOf(from), ti = arr.indexOf(to);
-      arr.splice(fi,1); arr.splice(ti,0,from);
-      return arr;
-    });
+    setColOrder(prev => { const arr = [...prev]; const fi = arr.indexOf(from), ti = arr.indexOf(to); arr.splice(fi,1); arr.splice(ti,0,from); return arr; });
     dragKey.current=null; dragOver.current=null;
   };
 
@@ -1425,12 +918,8 @@ export default function DestroyerRaceTable() {
     Object.entries(AUTO_RULE_FIELDS).forEach(([key, {field, values}]) => {
       if (last14b.length < 3) { result[key] = false; return; }
       const total = last14b.length;
-      let dominant = false;
-      let dominantVal = null;
-      values.forEach(val => {
-        const cnt = last14b.filter(e => (e[field]||"—") === val).length;
-        if (cnt / total >= 0.7) { dominant = true; dominantVal = val; }
-      });
+      let dominant = false, dominantVal = null;
+      values.forEach(val => { const cnt = last14b.filter(e => (e[field]||"—") === val).length; if (cnt / total >= 0.7) { dominant = true; dominantVal = val; } });
       if (!dominant) { result[key] = false; return; }
       const {rep, alt} = calcRepAltPerValue(last14b, field, dominantVal);
       const repRate = (rep + alt) > 0 ? rep / (rep + alt) : 0;
@@ -1467,42 +956,21 @@ export default function DestroyerRaceTable() {
 
   async function exportPDF() {
     try {
-      // Load libraries dynamically
       if (!window.html2canvas) {
-        await new Promise((res, rej) => {
-          const s = document.createElement("script");
-          s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-          s.onload = res; s.onerror = rej;
-          document.head.appendChild(s);
-        });
+        await new Promise((res, rej) => { const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
       }
       if (!window.jspdf) {
-        await new Promise((res, rej) => {
-          const s = document.createElement("script");
-          s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-          s.onload = res; s.onerror = rej;
-          document.head.appendChild(s);
-        });
+        await new Promise((res, rej) => { const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
       }
-
       const tableEl = document.getElementById("destroyer-table");
       if (!tableEl) return;
-
-      const canvas = await window.html2canvas(tableEl, {
-        backgroundColor: "#0d0d0d",
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-
+      const canvas = await window.html2canvas(tableEl, { backgroundColor:"#0d0d0d", scale:2, useCORS:true, logging:false });
       const { jsPDF } = window.jspdf;
       const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [canvas.width / 2, canvas.height / 2] });
-      pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
+      const pdf = new jsPDF({ orientation:"landscape", unit:"px", format:[canvas.width/2, canvas.height/2] });
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width/2, canvas.height/2);
       pdf.save("destroyer-race-table.pdf");
-    } catch(err) {
-      alert("Erro ao gerar PDF: " + err.message);
-    }
+    } catch(err) { alert("Erro ao gerar PDF: " + err.message); }
   }
 
   function isColVisible(key) {
@@ -1512,18 +980,13 @@ export default function DestroyerRaceTable() {
     return true;
   }
 
-  // Score each auto column for dynamic reordering
   const colScores = useMemo(() => {
     const scores = {};
     Object.entries(AUTO_RULE_FIELDS).forEach(([key, {field, values}]) => {
       if (last14b.length < 3) { scores[key] = 0; return; }
       const total = last14b.length;
       let maxPct = 0, bestVal = null;
-      values.forEach(val => {
-        const cnt = last14b.filter(e => (e[field]||"—") === val).length;
-        const pct = cnt / total;
-        if (pct > maxPct) { maxPct = pct; bestVal = val; }
-      });
+      values.forEach(val => { const cnt = last14b.filter(e => (e[field]||"—") === val).length; const pct = cnt/total; if (pct > maxPct) { maxPct = pct; bestVal = val; } });
       if (!bestVal) { scores[key] = 0; return; }
       const {rep, alt} = calcRepAltPerValue(last14b, field, bestVal);
       const repRate = (rep + alt) > 0 ? rep / (rep + alt) : 0;
@@ -1532,22 +995,18 @@ export default function DestroyerRaceTable() {
     return scores;
   }, [last14b]);
 
-  // Dynamically reorder cols: fixed first, then auto sorted by score desc, then always last
   const orderedCols = useMemo(() => {
     const fixed    = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "fixed");
     const priority = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "priority");
     const pinned   = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "pinned");
-    const auto     = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "auto")
-                         .sort((a,b) => (colScores[b.key]||0) - (colScores[a.key]||0));
+    const auto     = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "auto").sort((a,b) => (colScores[b.key]||0) - (colScores[a.key]||0));
     const always   = cols.filter(c => INIT_COLS.find(x=>x.key===c.key)?.mode === "always");
     return [...fixed, ...priority, ...pinned, ...auto, ...always];
   }, [cols, colScores]);
 
   const visibleCols = orderedCols.filter(c=>isColVisible(c.key));
-
   const lastVisKey  = [...visibleCols].reverse()[0]?.key;
 
-  // Compute which columns have 100% match AND the last occurrence index for each matched key
   const { pulseKeys, pulseLastIdx } = useMemo(() => {
     if (entries.length === 0) return { pulseKeys: new Set(), pulseLastIdx: {} };
     const lastEntry = entries[entries.length - 1];
@@ -1557,24 +1016,16 @@ export default function DestroyerRaceTable() {
     const threshold = total - 0.1;
     const keys = new Set();
     const dominantVal = {};
-
     const check = (field, vals) => {
       const counts = {};
       hist.forEach(h => { const v = h[field]||"—"; counts[v] = (counts[v]||0) + 1; });
       const maxVal = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
       if (maxVal && maxVal[1] > threshold) { keys.add(field); dominantVal[field] = maxVal[0]; }
     };
-
-    check("cor",      ["Vermelho","Preto","Verde"]);
-    check("lado",     ["PB e VA","PA e VB"]);
-    check("duzia",    ["D1","D2","D3"]);
-    check("paridade", ["Par","Ímpar"]);
-    check("coluna",   ["C1","C2","C3"]);
-    check("rua",      ["R1","R2","R3","R4"]);
-    check("parte",    ["P1","P2"]);
-    check("regiao",   ["Tier","Orphelins","Voisins"]);
-
-    // For each matched key, find the last occurrence index (excluding the last entry itself)
+    check("cor",["Vermelho","Preto","Verde"]); check("lado",["PB e VA","PA e VB"]);
+    check("duzia",["D1","D2","D3"]); check("paridade",["Par","Ímpar"]);
+    check("coluna",["C1","C2","C3"]); check("rua",["R1","R2","R3","R4"]);
+    check("parte",["P1","P2"]); check("regiao",["Tier","Orphelins","Voisins"]);
     const lastIdx = {};
     keys.forEach(field => {
       const val = dominantVal[field];
@@ -1582,95 +1033,45 @@ export default function DestroyerRaceTable() {
         if ((entries[i][field]||"—") === val) { lastIdx[field] = i; break; }
       }
     });
-
     return { pulseKeys: keys, pulseLastIdx: lastIdx };
   }, [entries]);
 
-  const isLastEntry = (i) => i === entries.length - 1;
-
-  // GP blue border logic
   const gpHighlight = useMemo(() => {
     if (entries.length === 0) return { ballIndices: new Set(), histGpNums: new Set() };
     const lastGp = entries[entries.length - 1].gp;
     if (lastGp === "—") return { ballIndices: new Set(), histGpNums: new Set() };
-
-    // last 3 siblings of same GP (excluding last entry itself)
     const siblings = [];
     for (let i = entries.length - 2; i >= 0 && siblings.length < 3; i--) {
       if (entries[i].gp === lastGp) siblings.push(i);
     }
     const ballIndices = new Set([entries.length - 1, ...siblings]);
-
-    // In the last 3 general entries (excluding last), find puxou balls that belong to lastGp
     const histGpNums = new Set();
-    const last3 = entries.slice(Math.max(0, entries.length - 4), entries.length - 1);
-    last3.forEach((e, relIdx) => {
-      const absIdx = entries.length - 1 - (last3.length - relIdx);
-      const hist = getHistorico(entries, entries.length - 1 - (last3.length - relIdx), e.num);
-      hist.forEach(h => { if (h.gp === lastGp) histGpNums.add(h.num + "_" + (entries.length - 1 - (last3.length - relIdx))); });
-    });
-
     return { ballIndices, histGpNums };
   }, [entries]);
 
-  // Absent card: last 5 entries, check which Dúzia/Coluna values are absent
   const absentCard = useMemo(() => {
     if (entries.length < 1) return null;
     const last5 = entries.slice(-5);
     const result = {};
-
-    // Dúzia
     const duziaVals = ["D1","D2","D3"];
     const duziaPresent = [...new Set(last5.map(e=>e.duzia).filter(v=>v!=="—"))];
     const duziaAbsent = duziaVals.filter(v=>!duziaPresent.includes(v));
     if (duziaAbsent.length === 1 && duziaPresent.length === 2) {
       result.duzia = { absent: duziaAbsent[0], present: duziaPresent };
     }
-
-    // Coluna
     const colunaVals = ["C1","C2","C3"];
     const colunaPresent = [...new Set(last5.map(e=>e.coluna).filter(v=>v!=="0"&&v!=="—"))];
     const colunaAbsent = colunaVals.filter(v=>!colunaPresent.includes(v));
     if (colunaAbsent.length === 1 && colunaPresent.length === 2) {
       result.coluna = { absent: colunaAbsent[0], present: colunaPresent };
     }
-
     return Object.keys(result).length > 0 ? result : null;
   }, [entries]);
 
-  // Ranking de maior ausência para dúzias e colunas
-  const absenceRanking = useMemo(() => {
-    if (entries.length < 2) return [];
-    const items = [];
-
-    const calcMax = (field, vals, type) => {
-      vals.forEach(val => {
-        let maxStreak = 0, current = 0;
-        for (let i = 0; i < entries.length; i++) {
-          if ((entries[i][field]||"—") === val) {
-            if (current > maxStreak) maxStreak = current;
-            current = 0;
-          } else {
-            current++;
-          }
-        }
-        if (current > maxStreak) maxStreak = current;
-        if (maxStreak > 0) items.push({ val, streak: maxStreak, type });
-      });
-    };
-
-    calcMax("duzia",  ["D1","D2","D3"], "duzia");
-    calcMax("coluna", ["C1","C2","C3"], "coluna");
-
-    return items.sort((a,b) => b.streak - a.streak);
-  }, [entries]);
-
-  // Terminal prediction accuracy
   const terminalStats = useMemo(() => {
     if (entries.length < 3) return { acertos: 0, erros: 0, total: 0, taxa: 0, topTerminals: [] };
     let acertos = 0, erros = 0;
     const perTerminal = {};
-
     for (let i = 0; i < entries.length - 1; i++) {
       const hist = getHistorico(entries, i, entries[i].num);
       const prediction = analyzeTerminal(hist);
@@ -1679,19 +1080,12 @@ export default function DestroyerRaceTable() {
       if (!perTerminal[t]) perTerminal[t] = { acertos: 0, erros: 0 };
       const nextNum = entries[i + 1].num;
       const nextTerminals = NUM_TO_TERMINALS[nextNum];
-      if (nextTerminals && nextTerminals.has(t)) {
-        acertos++;
-        perTerminal[t].acertos++;
-      } else {
-        erros++;
-        perTerminal[t].erros++;
-      }
+      if (nextTerminals && nextTerminals.has(t)) { acertos++; perTerminal[t].acertos++; }
+      else { erros++; perTerminal[t].erros++; }
     }
-
     const total = acertos + erros;
     const taxa = total > 0 ? Math.round((acertos / total) * 100) : 0;
 
-    // Build signalsByTerminal first (used for both top and recent)
     const signalsByTerminalPre = {};
     for (let si = 1; si < entries.length; si++) {
       const sn = entries[si].num;
@@ -1721,7 +1115,6 @@ export default function DestroyerRaceTable() {
       .sort((a,b) => b.taxa - a.taxa || b.acertos - a.acertos)
       .slice(0,3);
 
-    // recentTop3: same as topTerminals but sorted by taxa of last 10
     const recentTop3 = Object.entries(signalsByTerminalPre)
       .map(([t, hits]) => {
         const last10 = hits.slice(-10);
@@ -1737,35 +1130,18 @@ export default function DestroyerRaceTable() {
     return { acertos, erros, total, taxa, topTerminals, recentTop3 };
   }, [entries]);
 
-  // Micro group analysis (last 6 numbers)
-  const microGroupResult = useMemo(() => {
-    if (entries.length < 3) return null;
-    const last6nums = entries.slice(-6).map(e => e.num);
-    return analyzeMicroGroup(last6nums);
-  }, [entries]);
-
-  // Column dominance arrows (last 5, >=80%)
   const colDominance = useMemo(() => {
     if (entries.length < 3) return {};
     const last5 = entries.slice(-5);
     const result = {};
     const checks = {
-      cor:       ["Vermelho","Preto","Verde"],
-      lado:      ["PB e VA","PA e VB"],
-      altobaixo: ["ALTO","BAIXO"],
-      paridade:  ["Par","Ímpar"],
-      parte:     ["P1","P2"],
-      cavalo:    ["369","258","147"],
-      regiao:    ["Tier","Orphelins","Voisins"],
-      setor:     ["S1","S2","S3","S4","S5","S6"],
-      regtrack:  ["32-29","25-30","15-2","8-24","16-18"],
-      col_c1:    ["C1"],
-      col_c2:    ["C2"],
-      col_c3:    ["C3"],
-      gp_d1:     ["d1V","d1P"],
-      gp_d2:     ["d2I","d2P"],
-      gp_d3:     ["d3V","d3P"],
-      ruaPar:    ["R.Ímpar","R.Par"],
+      cor:["Vermelho","Preto","Verde"], lado:["PB e VA","PA e VB"], altobaixo:["ALTO","BAIXO"],
+      paridade:["Par","Ímpar"], parte:["P1","P2"], cavalo:["369","258","147"],
+      regiao:["Tier","Orphelins","Voisins"], setor:["S1","S2","S3","S4","S5","S6"],
+      regtrack:["32-29","25-30","15-2","8-24","16-18"],
+      col_c1:["C1"], col_c2:["C2"], col_c3:["C3"],
+      gp_d1:["d1V","d1P"], gp_d2:["d2I","d2P"], gp_d3:["d3V","d3P"],
+      ruaPar:["R.Ímpar","R.Par"],
     };
     Object.entries(checks).forEach(([field, vals]) => {
       const getVal = (e) => {
@@ -1782,15 +1158,12 @@ export default function DestroyerRaceTable() {
       };
       vals.forEach(val => {
         const cnt = last5.filter(e => getVal(e) === val).length;
-        if (cnt / last5.length >= 0.8) {
-          result[field] = { val, pct: Math.round(cnt/last5.length*100) };
-        }
+        if (cnt / last5.length >= 0.8) { result[field] = { val, pct: Math.round(cnt/last5.length*100) }; }
       });
     });
     return result;
   }, [entries]);
 
-  // Top 3 stats from last 3 entries' puxou
   const top3Stats = useMemo(() => {
     if (entries.length === 0) return [];
     const last5e = entries.slice(Math.max(0, entries.length - 5));
@@ -1801,18 +1174,16 @@ export default function DestroyerRaceTable() {
       allPuxou.push(...hist);
     });
     if (allPuxou.length === 0) return [];
-
     const total = allPuxou.length;
     const fields = [
-      { key:"cor",      vals:["Vermelho","Preto","Verde"],         palette:{"Vermelho":{bg:"#CC0000",text:"#fff"},"Preto":{bg:"#222",text:"#ddd"},"Verde":{bg:"#1B7A3E",text:"#fff"}} },
-      { key:"lado",     vals:["PB e VA","PA e VB"],                palette:{"PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"},"PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}} },
-      { key:"paridade", vals:["Par","Ímpar"],                      palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
-      { key:"parte",    vals:["P1","P2"],                          palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
-      { key:"altobaixo",vals:["ALTO","BAIXO"],                     palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
-      { key:"regiao",   vals:["Tier","Orphelins","Voisins"],        palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
-      { key:"duzia",    vals:["D1","D2","D3"],                     palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
+      { key:"cor",      vals:["Vermelho","Preto","Verde"],        palette:{"Vermelho":{bg:"#CC0000",text:"#fff"},"Preto":{bg:"#222",text:"#ddd"},"Verde":{bg:"#1B7A3E",text:"#fff"}} },
+      { key:"lado",     vals:["PB e VA","PA e VB"],               palette:{"PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"},"PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}} },
+      { key:"paridade", vals:["Par","Ímpar"],                     palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
+      { key:"parte",    vals:["P1","P2"],                         palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
+      { key:"altobaixo",vals:["ALTO","BAIXO"],                    palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
+      { key:"regiao",   vals:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
+      { key:"duzia",    vals:["D1","D2","D3"],                    palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
     ];
-
     const results = [];
     fields.forEach(({key, vals, palette}) => {
       vals.forEach(val => {
@@ -1820,7 +1191,6 @@ export default function DestroyerRaceTable() {
         const count = matching.length;
         if (count > 0) {
           const pct = Math.round((count / total) * 100);
-          // Top 2 most frequent numbers in this group
           const numFreq = {};
           matching.forEach(h => { numFreq[h.num] = (numFreq[h.num]||0) + 1; });
           const top2nums = Object.entries(numFreq).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([n])=>parseInt(n));
@@ -1828,70 +1198,51 @@ export default function DestroyerRaceTable() {
         }
       });
     });
-
     return results.sort((a,b) => b.pct - a.pct).slice(0, 3);
   }, [entries]);
 
-  // Rep/Alt GP highlight indices
   const repAltIndices = useMemo(() => {
     if ((!showRep && !showAlt) || entries.length < 2) return { rep: new Set(), alt: new Set() };
-    const rep = new Set();
-    const alt = new Set();
+    const rep = new Set(), alt = new Set();
     if (showRep) {
       for (let i = 0; i < entries.length - 1; i++) {
-        if (entries[i].gp !== "—" && entries[i].gp === entries[i+1].gp) {
-          rep.add(i); rep.add(i+1);
-        }
+        if (entries[i].gp !== "—" && entries[i].gp === entries[i+1].gp) { rep.add(i); rep.add(i+1); }
       }
     }
     if (showAlt) {
       for (let i = 0; i < entries.length - 2; i++) {
-        if (entries[i].gp !== "—" && entries[i].gp === entries[i+2].gp && entries[i].gp !== entries[i+1].gp) {
-          alt.add(i); alt.add(i+2);
-        }
+        if (entries[i].gp !== "—" && entries[i].gp === entries[i+2].gp && entries[i].gp !== entries[i+1].gp) { alt.add(i); alt.add(i+2); }
       }
     }
     return { rep, alt };
   }, [entries, showRep, showAlt]);
 
-  const GP_BORDER_COLOR = {
-    "d1V":"#fef08a","d2P":"#d4a574","d3P":"#fdba74",
-    "d1P":"#bfdbfe","d2I":"#67e8f9","d3V":"#93c5fd",
-  };
+  const GP_BORDER_COLOR = { "d1V":"#fef08a","d2P":"#d4a574","d3P":"#fdba74","d1P":"#bfdbfe","d2I":"#67e8f9","d3V":"#93c5fd" };
 
-  // Dúzia sequence alert: D1->D2 = D3 pulses | D3->D2 = D1 pulses
   const duziaAlert = useMemo(() => {
     if (entries.length < 2) return null;
-    const last = entries[entries.length - 1];
-    const prev = entries[entries.length - 2];
+    const last = entries[entries.length - 1], prev = entries[entries.length - 2];
     if (last.duzia === "D2" && prev.duzia === "D1") return "gp_d3";
     if (last.duzia === "D2" && prev.duzia === "D3") return "gp_d1";
     return null;
   }, [entries]);
 
-  // Coluna sequence alert: C1->C2 = C3 pulses | C3->C2 = C1 pulses
   const colunaAlert = useMemo(() => {
     if (entries.length < 2) return null;
-    const last = entries[entries.length - 1];
-    const prev = entries[entries.length - 2];
+    const last = entries[entries.length - 1], prev = entries[entries.length - 2];
     if (last.coluna === "C2" && prev.coluna === "C1") return "col_c3";
     if (last.coluna === "C2" && prev.coluna === "C3") return "col_c1";
     return null;
   }, [entries]);
 
-  // Top 2 dominant characteristics for pos 5/13 pulse
   const top2Chars = useMemo(() => {
     if (last14.length < 3) return [];
     const fields = [
-      { key:"duzia",    vals:["D1","D2","D3"] },
-      { key:"paridade", vals:["Par","Ímpar"] },
-      { key:"cor",      vals:["Vermelho","Preto","Verde"] },
-      { key:"lado",     vals:["PB e VA","PA e VB"] },
-      { key:"parte",    vals:["P1","P2"] },
-      { key:"regiao",   vals:["Tier","Orphelins","Voisins"] },
+      { key:"duzia", vals:["D1","D2","D3"] }, { key:"paridade", vals:["Par","Ímpar"] },
+      { key:"cor", vals:["Vermelho","Preto","Verde"] }, { key:"lado", vals:["PB e VA","PA e VB"] },
+      { key:"parte", vals:["P1","P2"] }, { key:"regiao", vals:["Tier","Orphelins","Voisins"] },
     ];
-    const results = [];
-    const total = last14.length;
+    const results = [], total = last14.length;
     fields.forEach(({key, vals}) => {
       vals.forEach(val => {
         const cnt = last14.filter(e => (e[key]||"—") === val).length;
@@ -1908,50 +1259,28 @@ export default function DestroyerRaceTable() {
 
   return (
     <div style={{display:"flex",flexDirection:"row",minHeight:"100vh",width:"100vw",maxWidth:"100vw",margin:0,padding:0,background:"#0d0d0d",color:"#e5e5e5",fontFamily:"Arial, sans-serif"}}>
-      {/* ── Painel lateral esquerdo: Sinais ── */}
-      <div style={{width:80,background:"#080808",borderRight:"1px solid #1e1e1e",
-        flexShrink:0,display:"flex",flexDirection:"column",
-        height:"100vh",position:"fixed",top:0,left:0,zIndex:50,overflowY:"auto"}}>
-        <SignalsPanel entries={entries} terminalStats={terminalStats}/>
-      </div>
-      <div style={{width:80,flexShrink:0}}/>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; overflow-x: hidden; }
-        @keyframes pulseBorder {
-          0%,100% { box-shadow: inset 0 0 0 2px #FFD700, inset 0 0 8px #FFD700; }
-          50%      { box-shadow: inset 0 0 0 2px #fff5a0, inset 0 0 16px #FFD700; }
-        }
-        .pulse-cell {
-          animation: pulseBorder 0.9s ease-in-out infinite;
-          outline: 2px solid #FFD700;
-          outline-offset: -2px;
-          position: relative;
-          z-index: 1;
-        }
-        @keyframes pulseDuzia {
-          0%,100% { box-shadow: inset 0 0 0 2px #00e5ff, inset 0 0 10px #00e5ff; }
-          50%      { box-shadow: inset 0 0 0 2px #80f4ff, inset 0 0 20px #00e5ff; }
-        }
-        .pulse-duzia {
-          animation: pulseDuzia 0.7s ease-in-out infinite;
-          outline: 2px solid #00e5ff;
-          outline-offset: -2px;
-          position: relative;
-          z-index: 2;
-        }
+        @keyframes pulseBorder { 0%,100% { box-shadow: inset 0 0 0 2px #FFD700, inset 0 0 8px #FFD700; } 50% { box-shadow: inset 0 0 0 2px #fff5a0, inset 0 0 16px #FFD700; } }
+        .pulse-cell { animation: pulseBorder 0.9s ease-in-out infinite; outline: 2px solid #FFD700; outline-offset: -2px; position: relative; z-index: 1; }
+        @keyframes pulseDuzia { 0%,100% { box-shadow: inset 0 0 0 2px #00e5ff, inset 0 0 10px #00e5ff; } 50% { box-shadow: inset 0 0 0 2px #80f4ff, inset 0 0 20px #00e5ff; } }
+        .pulse-duzia { animation: pulseDuzia 0.7s ease-in-out infinite; outline: 2px solid #00e5ff; outline-offset: -2px; position: relative; z-index: 2; }
       `}</style>
+      {/* ── Painel lateral esquerdo: Sinais ── */}
+      <div style={{width:80,background:"#080808",borderRight:"1px solid #1e1e1e",flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",position:"fixed",top:0,left:0,zIndex:50,overflowY:"auto"}}>
+        <SignalsPanel entries={entries} terminalStats={terminalStats}/>
+      </div>
+      <div style={{width:80,flexShrink:0}}/>
 
-      {/* ── Coluna central (tabela + rodapé) ── */}
+      {/* ── Coluna central ── */}
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
-
       <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",padding:"8px 8px 0 8px"}}>
 
         <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
           <span style={{fontSize:13,letterSpacing:"0.3em",color:"#CC0000",fontWeight:"bold"}}>DESTROYER</span>
           <span style={{fontSize:9,letterSpacing:"0.2em",color:"#555"}}>RACE TABLE</span>
           {entries.length>0&&<span style={{marginLeft:"auto",fontSize:9,color:"#555"}}>{entries.length} números</span>}
-
         </div>
 
         <div id="destroyer-table-wrap" style={{flex:1,overflowY:"auto",overflowX:"auto",marginBottom:8}}>
@@ -1962,59 +1291,47 @@ export default function DestroyerRaceTable() {
                   if (!isColVisible(col.key)) return null;
                   const isDraggable = col.toggleable;
                   const isBeingDragged = dragKey.current===col.key;
-                  const visibleAutoKeys = visibleCols.filter(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="auto").map(c=>c.key);
-                  const firstAlwaysKey   = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
-                  const lastPriorityKey  = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="priority")?.key;
-                  const lastPinnedKey    = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="pinned")?.key;
-                  const isSeparator      = col.key === firstAlwaysKey;
-                  const isPrioritySep    = col.key === lastPriorityKey;
-                  const isPinnedSep      = col.key === lastPinnedKey;
-
+                  const firstAlwaysKey  = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
+                  const lastPriorityKey = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="priority")?.key;
+                  const lastPinnedKey   = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="pinned")?.key;
+                  const isSeparator     = col.key === firstAlwaysKey;
+                  const isPrioritySep   = col.key === lastPriorityKey;
+                  const isPinnedSep     = col.key === lastPinnedKey;
                   return (
-                    <th
-                      key={col.key}
+                    <th key={col.key}
                       draggable={isDraggable}
                       onDragStart={isDraggable ? ()=>onDragStart(col.key) : undefined}
                       onDragEnter={isDraggable ? ()=>onDragEnter(col.key) : undefined}
                       onDragEnd={isDraggable ? onDragEnd : undefined}
                       onDragOver={e=>e.preventDefault()}
                       onDoubleClick={col.toggleable ? ()=>toggleHide(col.key) : undefined}
-                      title={col.toggleable ? "Arraste para mover • 2x clique para ocultar" : ""}
                       style={{
                         background: isBeingDragged ? "#990000" : "#CC0000",
                         color:"#ffffff", padding:"2px 1px", textAlign:"center",
                         fontSize:9, fontWeight:"bold", letterSpacing:"0em",
                         borderBottom:"2px solid #000", borderRight:"1px solid #000",
                         width: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 :
-                               ["seq"].includes(col.key) ? 20 :
-                               ["num"].includes(col.key) ? 34 :
-                               ["viz"].includes(col.key) ? 34 :
-                               ["hist"].includes(col.key) ? 114 :
+                               ["seq"].includes(col.key) ? 20 : ["num"].includes(col.key) ? 34 :
+                               ["viz"].includes(col.key) ? 34 : ["hist"].includes(col.key) ? 114 :
                                ["vn"].includes(col.key) ? 34 :
                                ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 42 :
                                ["duzia","rua"].includes(col.key) ? 32 :
-                               ["setor"].includes(col.key) ? 32 :
-                               ["regtrack"].includes(col.key) ? 36 : undefined,
+                               ["setor"].includes(col.key) ? 32 : ["regtrack"].includes(col.key) ? 36 : undefined,
                         minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 : 20,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
                         whiteSpace:"nowrap", fontFamily:"Arial, sans-serif",
-                        cursor: isDraggable ? "grab" : "default",
-                        userSelect:"none", opacity: isBeingDragged ? 0.5 : 1,
-                      }}
-                    >
+                        cursor: isDraggable ? "grab" : "default", userSelect:"none", opacity: isBeingDragged ? 0.5 : 1,
+                      }}>
                       {col.label}
                     </th>
                   );
                 })}
-                {/* Colunas ocultas — ▶ clicável para restaurar */}
                 {[...hidden].map(key => {
                   const col = INIT_COLS.find(c=>c.key===key);
                   return (
                     <th key={"h-"+key} onClick={()=>toggleHide(key)} title={`Mostrar ${col?.label}`}
-                      style={{background:"#1a0000",color:"#CC0000",padding:"5px 3px",textAlign:"center",
-                        fontSize:8,fontWeight:"bold",borderBottom:"2px solid #000",borderRight:"1px solid #000",
-                        cursor:"pointer",userSelect:"none",whiteSpace:"nowrap"}}>▶</th>
+                      style={{background:"#1a0000",color:"#CC0000",padding:"5px 3px",textAlign:"center",fontSize:8,fontWeight:"bold",borderBottom:"2px solid #000",borderRight:"1px solid #000",cursor:"pointer",userSelect:"none",whiteSpace:"nowrap"}}>▶</th>
                   );
                 })}
               </tr>
@@ -2028,7 +1345,6 @@ export default function DestroyerRaceTable() {
                 const isWhite = posFromLast===5||posFromLast===13;
                 const bTop = isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"none";
                 const bBot = isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"1px solid #000";
-
                 const firstAlwaysKeyRow  = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
                 const lastPriorityKeyRow = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="priority")?.key;
                 const lastPinnedKeyRow   = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="pinned")?.key;
@@ -2052,19 +1368,14 @@ export default function DestroyerRaceTable() {
                     </td>
                   );
                 };
-
                 return (
                   <tr key={e.id}>
                     {cols.map((col,ci) => {
                       if (!isColVisible(col.key)) return null;
                       const isLast = col.key===lastVisKey;
-
                       if (col.key==="seq") {
                         return (
-                          <td key="seq" style={{background:"#0d0d0d",fontSize:8,textAlign:"center",
-                            padding:"1px 2px",borderTop:bTop,borderBottom:bBot,
-                            borderLeft:isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"none",borderRight:"1px solid #000",
-                            fontFamily:"Arial, sans-serif",width:26,whiteSpace:"nowrap"}}>
+                          <td key="seq" style={{background:"#0d0d0d",fontSize:8,textAlign:"center",padding:"1px 2px",borderTop:bTop,borderBottom:bBot,borderLeft:isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"none",borderRight:"1px solid #000",fontFamily:"Arial, sans-serif",width:26,whiteSpace:"nowrap"}}>
                             <span style={{color:"#444"}}>{i+1}</span>
                           </td>
                         );
@@ -2079,10 +1390,8 @@ export default function DestroyerRaceTable() {
                         const isPos513 = posFromLast === 5 || posFromLast === 13;
                         const isCharMatch = isPos513 && matchesTop2(e);
                         return (
-                          <td key="num" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:40}}>
-                            <div
-                              className={isCharMatch ? "pulse-cell" : ""}
+                          <td key="num" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:40}}>
+                            <div className={isCharMatch ? "pulse-cell" : ""}
                               style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
                               width:26,height:26,borderRadius:"50%",background:NUM_BALL[e.cor].bg,
                               border: isCharMatch ? "2px solid #FFD700" : repAltBorder || (gpBall ? "2px solid #3b82f6" : `2px solid ${NUM_BALL[e.cor].border}`),
@@ -2096,35 +1405,26 @@ export default function DestroyerRaceTable() {
                       }
                       if (col.key==="hist") {
                         const hist = getHistorico(entries, i, e.num);
-                        // Compute full history to detect repeats
                         const histFullNums = [];
-                        for(let j=0;j<i;j++){
-                          if(entries[j].num===e.num && j+1<entries.length) histFullNums.push(entries[j+1].num);
-                        }
-                        const histRepeatNums = new Set(
-                          Object.entries(histFullNums.reduce((a,n)=>{a[n]=(a[n]||0)+1;return a;},{}))
-                            .filter(([,c])=>c>1).map(([n])=>parseInt(n))
-                        );
+                        for(let j=0;j<i;j++){ if(entries[j].num===e.num && j+1<entries.length) histFullNums.push(entries[j+1].num); }
+                        const histRepeatNums = new Set(Object.entries(histFullNums.reduce((a,n)=>{a[n]=(a[n]||0)+1;return a;},{})).filter(([,c])=>c>1).map(([n])=>parseInt(n)));
                         const lastGp = entries.length > 0 ? entries[entries.length-1].gp : "—";
                         const isLast3General = posFromLast >= 1 && posFromLast <= 4;
                         return (
-                          <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:114,maxWidth:114}}>
+                          <td key="hist" style={{background:"#0d0d0d",padding:"2px 5px",textAlign:"left",borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",width:114,maxWidth:114}}>
                             <div style={{display:"flex",alignItems:"center",gap:1,flexWrap:"nowrap"}}>
                               {hist.length===0
                                 ? <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
                                 : hist.map((h,hi) => {
                                     const isGpMatch = isLast3General && lastGp !== "—" && h.gp === lastGp;
+                                    const isRepeat = histRepeatNums.has(h.num);
                                     return (
-                                      <div key={hi} style={{
-                                        display:"inline-flex",alignItems:"center",justifyContent:"center",
-                                        width:24,height:24,borderRadius:"50%",flexShrink:0,
-                                        background:NUM_BALL[h.cor].bg,
+                                      <div key={hi} style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:24,height:24,borderRadius:"50%",flexShrink:0,
+                                        background: isRepeat ? "#FFD700" : NUM_BALL[h.cor].bg,
+                                        boxShadow: isRepeat ? "0 0 6px #FFD700" : "none",
                                         border: isGpMatch ? "2px solid #3b82f6" : `2px solid ${NUM_BALL[h.cor].border}`,
-                                        boxShadow: isGpMatch ? "0 0 6px #3b82f6" : "none",
-                                        color:NUM_BALL[h.cor].text,
-                                        fontSize:10,fontWeight:"bold",
-                                      }}>{h.num}</div>
+                                        color: isRepeat ? "#000" : NUM_BALL[h.cor].text,
+                                        fontSize:10,fontWeight:"bold"}}>{h.num}</div>
                                     );
                                   })
                               }
@@ -2136,20 +1436,13 @@ export default function DestroyerRaceTable() {
                         const hist = getHistorico(entries, i, e.num);
                         const result = analyzeTerminal(hist);
                         return (
-                          <td key="viz" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",
-                            borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:28}}>
+                          <td key="viz" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:28}}>
                             {result ? (
-                              <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-                                width:28,height:28,borderRadius:"50%",
-                                background:"#1a1a00",
-                                border:"2px solid #FFD700",
-                                color:"#FFD700",fontFamily:"Arial, sans-serif"}}>
+                              <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:"#1a1a00",border:"2px solid #FFD700",color:"#FFD700",fontFamily:"Arial, sans-serif"}}>
                                 <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>T{result.terminal}</span>
                                 <span style={{fontSize:6,lineHeight:1,opacity:0.85}}>{result.pct}%</span>
                               </div>
-                            ) : (
-                              <span style={{color:"#2a2a2a",fontSize:8}}>—</span>
-                            )}
+                            ) : <span style={{color:"#2a2a2a",fontSize:8}}>—</span>}
                           </td>
                         );
                       }
@@ -2165,13 +1458,9 @@ export default function DestroyerRaceTable() {
           </table>
         </div>
 
-        {/* Barra de dominância — setas por coluna */}
+        {/* Barra de dominância */}
         {Object.keys(colDominance).length > 0 && (() => {
-          // Sort cols by pct descending
-          const sortedDomCols = visibleCols.filter(c=>c.toggleable&&colDominance[c.key])
-            .sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));
-
-          // Build matching numbers from ALL dominants
+          const sortedDomCols = visibleCols.filter(c=>c.toggleable&&colDominance[c.key]).sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));
           const allDomVals = {};
           Object.entries(colDominance).forEach(([k,v]) => { allDomVals[k] = v.val; });
           const NFIELDX = {
@@ -2179,177 +1468,63 @@ export default function DestroyerRaceTable() {
             paridade:n=>getParidade(n), parte:n=>getParte(n), cavalo:n=>getCavalo(n),
             regiao:n=>getRegiao(n), duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
             ruaPar:n=>getRuaParidade(n),
-            col_c1:n=>getColuna(n)==="C1"?"C1":null, col_c2:n=>getColuna(n)==="C2"?"C2":null,
-            col_c3:n=>getColuna(n)==="C3"?"C3":null,
+            col_c1:n=>getColuna(n)==="C1"?"C1":null, col_c2:n=>getColuna(n)==="C2"?"C2":null, col_c3:n=>getColuna(n)==="C3"?"C3":null,
             gp_d1:n=>{const g=getGP(n);return["d1V","d1P"].includes(g)?g:null;},
             gp_d2:n=>{const g=getGP(n);return["d2I","d2P"].includes(g)?g:null;},
             gp_d3:n=>{const g=getGP(n);return["d3V","d3P"].includes(g)?g:null;},
           };
           const domKeys = Object.keys(allDomVals).filter(k=>NFIELDX[k]);
           const matchNums = [];
-          for(let n=0;n<=36;n++){
-            if(domKeys.length>0 && domKeys.every(k=>NFIELDX[k](n)===allDomVals[k])) matchNums.push(n);
-          }
-
+          for(let n=0;n<=36;n++){ if(domKeys.length>0 && domKeys.every(k=>NFIELDX[k](n)===allDomVals[k])) matchNums.push(n); }
           return (
-          <div style={{display:"flex",gap:3,padding:"3px 0",flexWrap:"wrap",alignItems:"center",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",marginTop:2,marginBottom:2}}>
-            {sortedDomCols.map(col => {
-              const dom = colDominance[col.key];
-              if (!dom) return null;
-              return (
-                <div key={col.key} style={{display:"flex",flexDirection:"column",alignItems:"center",
-                  background: (() => { const s = CELL_SCHEME({...buildEntry(0,'x'), gp:"—", cavalo:"—"}, col.key); return "#0a0a0a"; })(),
-                  border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
-                  <span style={{fontSize:7,color:"#777",lineHeight:1,textTransform:"uppercase"}}>{col.label}</span>
-                  <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,
-                    color: col.key==="cor" ? (dom.val==="Vermelho"?"#ff6666":dom.val==="Verde"?"#4ade80":"#e5e5e5") :
-                           col.key==="cavalo" ? (CAVALO_CELL[dom.val]?.text||"#fff") :
-                           col.key==="paridade" ? (PAR_CELL[dom.val]?.text||"#fff") :
-                           col.key==="parte" ? (PARTE_CELL[dom.val]?.text||"#fff") :
-                           col.key==="lado" ? (LADO_CELL[dom.val]?.text||"#fff") :
-                           col.key==="altobaixo" ? (ALTOBAIXO_CELL[dom.val]?.text||"#fff") :
-                           col.key==="regiao" ? (REGIAO_CELL[dom.val]?.text||"#fff") :
-                           col.key==="duzia" ? (DUZIA_CELL[dom.val]?.text||"#fff") :
-                           "#00e5ff",
-                    background: col.key==="cor" ? (dom.val==="Vermelho"?"#CC0000":dom.val==="Verde"?"#1B7A3E":"#222") :
-                                col.key==="cavalo" ? (CAVALO_CELL[dom.val]?.bg||"#111") :
-                                col.key==="paridade" ? (PAR_CELL[dom.val]?.bg||"#111") :
-                                col.key==="parte" ? (PARTE_CELL[dom.val]?.bg||"#111") :
-                                col.key==="lado" ? (LADO_CELL[dom.val]?.bg||"#111") :
-                                col.key==="altobaixo" ? (ALTOBAIXO_CELL[dom.val]?.bg||"#111") :
-                                col.key==="regiao" ? (REGIAO_CELL[dom.val]?.bg||"#111") :
-                                col.key==="duzia" ? (DUZIA_CELL[dom.val]?.bg||"#111") :
-                                "transparent",
-                    padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
-                    {dom.val}
-                  </span>
-                  <span style={{fontSize:11,fontWeight:"bold",color:"#fff",lineHeight:1}}>{dom.pct}%</span>
+            <div style={{display:"flex",gap:3,padding:"3px 0",flexWrap:"wrap",alignItems:"center",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",marginTop:2,marginBottom:2}}>
+              {sortedDomCols.map(col => {
+                const dom = colDominance[col.key];
+                if (!dom) return null;
+                return (
+                  <div key={col.key} style={{display:"flex",flexDirection:"column",alignItems:"center",background:"#0a0a0a",border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
+                    <span style={{fontSize:7,color:"#777",lineHeight:1,textTransform:"uppercase"}}>{col.label}</span>
+                    <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,
+                      color: col.key==="cor"?(dom.val==="Vermelho"?"#ff6666":dom.val==="Verde"?"#4ade80":"#e5e5e5"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.text||"#fff"):col.key==="paridade"?(PAR_CELL[dom.val]?.text||"#fff"):col.key==="parte"?(PARTE_CELL[dom.val]?.text||"#fff"):col.key==="lado"?(LADO_CELL[dom.val]?.text||"#fff"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.text||"#fff"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.text||"#fff"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.text||"#fff"):"#00e5ff",
+                      background: col.key==="cor"?(dom.val==="Vermelho"?"#CC0000":dom.val==="Verde"?"#1B7A3E":"#222"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.bg||"#111"):col.key==="paridade"?(PAR_CELL[dom.val]?.bg||"#111"):col.key==="parte"?(PARTE_CELL[dom.val]?.bg||"#111"):col.key==="lado"?(LADO_CELL[dom.val]?.bg||"#111"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.bg||"#111"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.bg||"#111"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.bg||"#111"):"transparent",
+                      padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
+                      {dom.val}
+                    </span>
+                    <span style={{fontSize:11,fontWeight:"bold",color:"#fff",lineHeight:1}}>{dom.pct}%</span>
+                  </div>
+                );
+              })}
+              {colDominance.ruaPar && (
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",background:colDominance.ruaPar.val==="R.Par"?"#005a5a":"#4a0080",border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
+                  <span style={{fontSize:7,color:"#aaa",lineHeight:1,textTransform:"uppercase"}}>RUA</span>
+                  <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,color:"#fff",padding:"1px 5px",borderRadius:2,display:"inline-block"}}>{colDominance.ruaPar.val}</span>
+                  <span style={{fontSize:8,color:"#aaa",lineHeight:1}}>{colDominance.ruaPar.pct}%</span>
                 </div>
-              );
-            })}
-            {/* ruaPar extra card - not a column but needs display */}
-            {colDominance.ruaPar && (
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",
-                background:colDominance.ruaPar.val==="R.Par"?"#005a5a":"#4a0080",
-                border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
-                <span style={{fontSize:7,color:"#aaa",lineHeight:1,textTransform:"uppercase"}}>RUA</span>
-                <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,color:"#fff",
-                  padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
-                  {colDominance.ruaPar.val}
-                </span>
-                <span style={{fontSize:8,color:"#aaa",lineHeight:1}}>{colDominance.ruaPar.pct}%</span>
-              </div>
-            )}
-            {/* Matching numbers + feedback */}
-            {matchNums.length > 0 && matchNums.length <= 12 && (() => {
-              // Compute feedback: at each point in history, recompute matchNums and check next number
-              let mWins=0, mViz=0, mSec=0, mLoss=0;
-              const fc3 = [
-                {k:"cor",fn:h=>h.cor},{k:"lado",fn:h=>h.lado},{k:"altobaixo",fn:h=>h.altobaixo},
-                {k:"paridade",fn:h=>h.paridade},{k:"parte",fn:h=>h.parte},{k:"cavalo",fn:h=>h.cavalo},
-                {k:"regiao",fn:h=>h.regiao},{k:"duzia",fn:h=>h.duzia},{k:"coluna",fn:h=>h.coluna},
-                {k:"ruaPar",fn:h=>getRuaParidade(h.num)},
-              ];
-              const NFX = {
-                cor:n=>getColor(n),lado:n=>getLado(n),altobaixo:n=>getAltoBaixo(n),
-                paridade:n=>getParidade(n),parte:n=>getParte(n),cavalo:n=>getCavalo(n),
-                regiao:n=>getRegiao(n),duzia:n=>getDuzia(n),coluna:n=>getColuna(n),
-                ruaPar:n=>getRuaParidade(n),
-              };
-              for (let hi = 1; hi < entries.length - 1; hi++) {
-                // Compute last5 dominants at position hi
-                const l5 = entries.slice(Math.max(0,hi-5), hi);
-                if (l5.length < 3) continue;
-                const hDom = {};
-                fc3.forEach(({k,fn}) => {
-                  const cnt = {};
-                  l5.forEach(h => { const v=fn(h); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
-                  const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
-                  if (best && best[1]/l5.length >= 0.80) hDom[k] = best[0];
-                });
-                const hKeys = Object.keys(hDom);
-                if (hKeys.length === 0) continue;
-                // Also need puxou dominants (prob)
-                const pHist = getHistorico(entries, hi, entries[hi].num);
-                if (pHist.length === 0) continue;
-                const pDom = {};
-                fc3.forEach(({k,fn}) => {
-                  const cnt = {};
-                  pHist.forEach(h => { const v=fn(h); if(v&&v!=="—") cnt[v]=(cnt[v]||0)+1; });
-                  const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
-                  if (best && best[1]/pHist.length >= 0.70) pDom[k] = best[0];
-                });
-                const pKeys = Object.keys(pDom);
-                if (pKeys.length === 0) continue;
-                // Build historic matchNums
-                const hMatch = [];
-                for (let n=0;n<=36;n++) {
-                  if (!pKeys.every(k=>NFX[k]&&NFX[k](n)===pDom[k])) continue;
-                  if (hKeys.length>0 && !hKeys.every(k=>NFX[k]&&NFX[k](n)===hDom[k])) continue;
-                  hMatch.push(n);
-                }
-                if (hMatch.length===0 || hMatch.length>15) continue;
-                // Check outcome
-                const n1 = entries[hi+1].num;
-                const hit1 = hMatch.includes(n1);
-                const viz1 = !hit1 && hMatch.some(s=>getRaceNeighbors(s).has(n1));
-                if (hit1) { mWins++; continue; }
-                if (viz1) { mViz++; continue; }
-                if (hi+2 < entries.length) {
-                  const n2 = entries[hi+2].num;
-                  const hit2 = hMatch.includes(n2);
-                  const viz2 = !hit2 && hMatch.some(s=>getRaceNeighbors(s).has(n2));
-                  if (hit2||viz2) { mSec++; continue; }
-                }
-                mLoss++;
-              }
-              const mTotal = mWins+mViz+mSec+mLoss;
-              return (
+              )}
+              {matchNums.length > 0 && matchNums.length <= 12 && (
                 <div style={{display:"flex",gap:2,alignItems:"center",marginLeft:4,flexWrap:"wrap"}}>
                   <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
                   {matchNums.map(n=>{
                     const cor=getColor(n);
                     return (
-                      <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",
-                        alignItems:"center",justifyContent:"center",
-                        background:NUM_BALL[cor].bg,border:"2px solid "+NUM_BALL[cor].border,
-                        color:"#fff",fontSize:11,fontWeight:"bold",flexShrink:0}}>
-                        {n}
-                      </div>
+                      <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:NUM_BALL[cor].bg,border:"2px solid "+NUM_BALL[cor].border,color:"#fff",fontSize:11,fontWeight:"bold",flexShrink:0}}>{n}</div>
                     );
                   })}
-
                 </div>
-              );
-            })()}
-          </div>
+              )}
+            </div>
           );
         })()}
 
-      {/* Barra de toggle de colunas + PDF */}
+        {/* Barra de toggle */}
         <div style={{display:"flex",gap:3,padding:"4px 0",flexWrap:"wrap",borderTop:"1px solid #1a1a1a",marginTop:4,alignItems:"center"}}>
-          <button onClick={exportPDF}
-            style={{padding:"1px 10px",background:"#7c0000",border:"1px solid #CC0000",borderRadius:2,
-              color:"#fca5a5",fontSize:9,cursor:"pointer",fontFamily:"Arial, sans-serif",fontWeight:"bold",letterSpacing:"0.05em"}}>
-            ⬇ PDF
-          </button>
+          <button onClick={exportPDF} style={{padding:"1px 10px",background:"#7c0000",border:"1px solid #CC0000",borderRadius:2,color:"#fca5a5",fontSize:9,cursor:"pointer",fontFamily:"Arial, sans-serif",fontWeight:"bold",letterSpacing:"0.05em"}}>⬇ PDF</button>
           <div style={{width:"0.5px",height:14,background:"#2a2a2a"}}/>
           {INIT_COLS.filter(c=>c.toggleable).map(col => {
             const vis = isColVisible(col.key);
             return (
               <button key={col.key} onClick={()=>toggleHide(col.key)}
-                title={vis ? "Ocultar "+col.label : "Mostrar "+col.label}
-                style={{
-                  padding:"1px 7px",
-                  background: vis ? "#1a1a1a" : "#0a0a0a",
-                  border: vis ? "1px solid #333" : "1px solid #1a1a1a",
-                  borderRadius:2,
-                  color: vis ? "#aaa" : "#333",
-                  fontSize:9, cursor:"pointer",
-                  fontFamily:"Arial, sans-serif",
-                  letterSpacing:"0.04em",
-                  transition:"all 0.15s",
-                }}>
+                style={{padding:"1px 7px",background:vis?"#1a1a1a":"#0a0a0a",border:vis?"1px solid #333":"1px solid #1a1a1a",borderRadius:2,color:vis?"#aaa":"#333",fontSize:9,cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.04em",transition:"all 0.15s"}}>
                 {vis ? "−" : "+"} {col.label}
               </button>
             );
@@ -2362,32 +1537,14 @@ export default function DestroyerRaceTable() {
         <div style={{display:"flex",gap:8,marginBottom:last14.length>0?10:0}}>
           <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey}
             placeholder="Cole ou digite: 23 10 11  ou  23,10,11  — Enter para adicionar" rows={2}
-            style={{flex:1,background:"#111",border:"1px solid #2a2a2a",borderRadius:2,color:"#e5e5e5",
-              padding:"7px 10px",fontSize:12,fontFamily:"Arial, sans-serif",resize:"none",outline:"none"}}/>
-          <button onClick={addNumbers} style={{padding:"0 20px",background:"#CC0000",border:"none",borderRadius:2,
-            color:"#fff",fontSize:11,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",fontFamily:"Arial, sans-serif"}}>ADD</button>
-          <button onClick={()=>{ setEntries([]); try{ window.storage.set("destroyer-pair-v6", JSON.stringify({catalog:{},totalSeq:0,totalNum:0})); }catch(e){} }} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",
-            borderRadius:2,color:"#666",fontSize:11,cursor:"pointer",fontFamily:"Arial, sans-serif"}}>CLR</button>
-          <button onClick={()=>setEntries(prev=>prev.slice(0,-1))} disabled={entries.length===0} style={{padding:"0 14px",background:"transparent",border:"1px solid #444",
-            borderRadius:2,color:entries.length===0?"#333":"#aaa",fontSize:11,cursor:entries.length===0?"default":"pointer",fontFamily:"Arial, sans-serif"}}>↩</button>
-          <button onClick={()=>setShowRep(v=>!v)} style={{
-            padding:"0 12px",
-            background: showRep ? "#166534" : "transparent",
-            border: showRep ? "1px solid #22c55e" : "1px solid #333",
-            borderRadius:2, color: showRep ? "#22c55e" : "#555",
-            fontSize:10, fontWeight:"bold", cursor:"pointer",
-            fontFamily:"Arial, sans-serif", letterSpacing:"0.06em",
-          }}>{showRep ? "● REP" : "○ REP"}</button>
-          <button onClick={()=>setShowAlt(v=>!v)} style={{
-            padding:"0 12px",
-            background: showAlt ? "#7c2d12" : "transparent",
-            border: showAlt ? "1px solid #f97316" : "1px solid #333",
-            borderRadius:2, color: showAlt ? "#f97316" : "#555",
-            fontSize:10, fontWeight:"bold", cursor:"pointer",
-            fontFamily:"Arial, sans-serif", letterSpacing:"0.06em",
-          }}>{showAlt ? "● ALT" : "○ ALT"}</button>
+            style={{flex:1,background:"#111",border:"1px solid #2a2a2a",borderRadius:2,color:"#e5e5e5",padding:"7px 10px",fontSize:12,fontFamily:"Arial, sans-serif",resize:"none",outline:"none"}}/>
+          <button onClick={addNumbers} style={{padding:"0 20px",background:"#CC0000",border:"none",borderRadius:2,color:"#fff",fontSize:11,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",fontFamily:"Arial, sans-serif"}}>ADD</button>
+          <button onClick={()=>{ setEntries([]); try{ window.storage.set("destroyer-pair-v6", JSON.stringify({catalog:{},totalSeq:0,totalNum:0})); }catch(e){} }} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",borderRadius:2,color:"#666",fontSize:11,cursor:"pointer",fontFamily:"Arial, sans-serif"}}>CLR</button>
+          <button onClick={()=>setEntries(prev=>prev.slice(0,-1))} disabled={entries.length===0} style={{padding:"0 14px",background:"transparent",border:"1px solid #444",borderRadius:2,color:entries.length===0?"#333":"#aaa",fontSize:11,cursor:entries.length===0?"default":"pointer",fontFamily:"Arial, sans-serif"}}>↩</button>
+          <button onClick={()=>setShowRep(v=>!v)} style={{padding:"0 12px",background:showRep?"#166534":"transparent",border:showRep?"1px solid #22c55e":"1px solid #333",borderRadius:2,color:showRep?"#22c55e":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showRep?"● REP":"○ REP"}</button>
+          <button onClick={()=>setShowAlt(v=>!v)} style={{padding:"0 12px",background:showAlt?"#7c2d12":"transparent",border:showAlt?"1px solid #f97316":"1px solid #333",borderRadius:2,color:showAlt?"#f97316":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showAlt?"● ALT":"○ ALT"}</button>
         </div>
-        {/* Top 3 stats from last 3 puxou — junto ao input */}
+
         {(top3Stats.length > 0 || absentCard) && (
           <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8,marginTop:2,flexWrap:"wrap"}}>
             {top3Stats.length > 0 && <>
@@ -2396,16 +1553,10 @@ export default function DestroyerRaceTable() {
                 const hot = s.pct >= 80;
                 return (
                   <div key={idx} className={hot ? "pulse-cell" : ""}
-                    style={{
-                      display:"flex",alignItems:"center",gap:4,
-                      background: hot ? s.scheme.bg : "#111",
-                      borderRadius:3,padding:"3px 8px",
-                      border: hot ? "2px solid " + s.scheme.text : "0.5px solid #222",
-                      transition:"all 0.3s",
-                    }}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background: hot ? s.scheme.text : s.scheme.bg,border:"0.5px solid "+s.scheme.text,flexShrink:0}}/>
+                    style={{display:"flex",alignItems:"center",gap:4,background:hot?s.scheme.bg:"#111",borderRadius:3,padding:"3px 8px",border:hot?"2px solid "+s.scheme.text:"0.5px solid #222",transition:"all 0.3s"}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:hot?s.scheme.text:s.scheme.bg,border:"0.5px solid "+s.scheme.text,flexShrink:0}}/>
                     <span style={{fontSize:9,color:s.scheme.text,fontWeight:"bold",fontFamily:"Arial, sans-serif"}}>{s.label}</span>
-                    <span style={{fontSize:9,color: hot ? s.scheme.text : "#666",fontFamily:"Arial, sans-serif",fontWeight: hot ? "bold" : "normal"}}>{s.pct}%</span>
+                    <span style={{fontSize:9,color:hot?s.scheme.text:"#666",fontFamily:"Arial, sans-serif",fontWeight:hot?"bold":"normal"}}>{s.pct}%</span>
                   </div>
                 );
               })}
@@ -2438,146 +1589,176 @@ export default function DestroyerRaceTable() {
             )}
           </div>
         )}
-        {/* Card de estatística do terminal */}
-        
-      {/* Top 5 números e top 2 grupos - últimos 50 */}
-      {entries.length >= 5 && (() => {
-        const last50 = entries.slice(-50);
-        const numCnt = {};
-        last50.forEach(e => { numCnt[e.num]=(numCnt[e.num]||0)+1; });
-        const top5 = Object.entries(numCnt).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,c])=>({n:parseInt(n),c}));
-        const gpCnt = {};
-        last50.forEach(e => { if(e.gp&&e.gp!=="—") gpCnt[e.gp]=(gpCnt[e.gp]||0)+1; });
-        const top2gp = Object.entries(gpCnt).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([g,c])=>({g,c}));
-        return (
-          <div style={{padding:"4px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
-            <div style={{display:"flex",gap:6,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}}>
-              <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 5 ULT 50</span>
-              {top5.map(({n,c},i)=>{
-                const cor=getColor(n); const s=NUM_BALL[cor];
-                return (
-                  <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-                    <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>#{i+1}</span>
-                    <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",
-                      justifyContent:"center",background:s.bg,border:"2px solid "+s.border,
-                      color:s.text,fontSize:10,fontWeight:"bold"}}>{n}</div>
-                    <span style={{fontSize:9,color:"#888",fontWeight:"bold"}}>{c}x</span>
-                  </div>
+
+        {/* Sinal interseção: dúzia ausente + coluna ausente + dominância >=80% */}
+        {(() => {
+          if(entries.length < 5) return null;
+          const l5 = entries.slice(-5);
+
+          // Dúzia ausente nos últimos 5
+          const duzPresent = [...new Set(l5.map(e=>e.duzia).filter(v=>v!=="—"))];
+          const duzAbsent = ["D1","D2","D3"].filter(v=>!duzPresent.includes(v));
+
+          // Coluna ausente nos últimos 5
+          const colPresent = [...new Set(l5.map(e=>e.coluna).filter(v=>v!=="0"&&v!=="—"))];
+          const colAbsent = ["C1","C2","C3"].filter(v=>!colPresent.includes(v));
+
+          if(duzAbsent.length === 0 && colAbsent.length === 0) return null;
+
+          // Dominantes >=80% nos últimos 5
+          const domFields = [
+            {k:"cor",fn:e=>e.cor},{k:"lado",fn:e=>e.lado},{k:"altobaixo",fn:e=>e.altobaixo},
+            {k:"paridade",fn:e=>e.paridade},{k:"parte",fn:e=>e.parte},
+            {k:"cavalo",fn:e=>e.cavalo},{k:"regiao",fn:e=>e.regiao},
+          ];
+          const dom = {};
+          domFields.forEach(({k,fn})=>{
+            const cnt={};
+            l5.forEach(e=>{const v=fn(e);if(v&&v!=="—")cnt[v]=(cnt[v]||0)+1;});
+            const best=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+            if(best&&best[1]/5>=0.80) dom[k]=best[0];
+          });
+          const domKeys=Object.keys(dom);
+
+          const NFLD={
+            cor:n=>getColor(n),lado:n=>getLado(n),altobaixo:n=>getAltoBaixo(n),
+            paridade:n=>getParidade(n),parte:n=>getParte(n),
+            cavalo:n=>getCavalo(n),regiao:n=>getRegiao(n),
+          };
+
+          // Candidates: match dom chars + present duzias + present colunas + NOT absent
+          const cands=[];
+          for(let n=1;n<=36;n++){
+            if(duzAbsent.length>0 && duzAbsent.includes(getDuzia(n))) continue;
+            if(colAbsent.length>0 && colAbsent.includes(getColuna(n))) continue;
+            if(domKeys.length>0 && !domKeys.every(k=>NFLD[k]&&NFLD[k](n)===dom[k])) continue;
+            cands.push(n);
+          }
+          if(cands.length===0) return null;
+
+          return (
+            <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",marginTop:4,padding:"3px 6px",background:"#0a0a0a",border:"1px solid #333",borderRadius:3}}>
+              <span style={{fontSize:7,color:"#00e5ff",textTransform:"uppercase",letterSpacing:"0.08em",flexShrink:0,fontWeight:"bold"}}>
+                {duzAbsent.length>0?"✗"+duzAbsent.join(","):""}
+                {duzAbsent.length>0&&colAbsent.length>0?" ":""}
+                {colAbsent.length>0?"✗"+colAbsent.join(","):""}
+              </span>
+              <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
+              {cands.map(n=>{
+                const cor=getColor(n);const s=NUM_BALL[cor];
+                return(
+                  <div key={n} style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:s.bg,border:"2px solid #00e5ff",color:s.text,fontSize:9,fontWeight:"bold",flexShrink:0}}>{n}</div>
                 );
               })}
             </div>
-            {/* GP popup when top2gp has 3+ in last 5 */}
-            {(() => {
-              const last5gp = entries.slice(-5).map(e=>e.gp).filter(v=>v&&v!=="—");
-              const gpAlert = top2gp.find(({g})=>last5gp.filter(v=>v===g).length>=3);
-              return gpAlert ? (
-                <div style={{display:"flex",alignItems:"center",gap:6,background:"#1a0a00",
-                  border:"2px solid #FFD700",borderRadius:4,padding:"4px 10px",marginBottom:4,
-                  animation:"pulse 1s infinite"}}>
-                  <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>⚡ TAKE</span>
-                  <span style={{fontSize:12,fontWeight:"bold",color:GP_CELL[gpAlert.g]?.text||"#fff"}}>{gpAlert.g}</span>
-                  <span style={{fontSize:9,color:"#FFD700"}}>{last5gp.filter(v=>v===gpAlert.g).length}/5</span>
-                </div>
-              ) : null;
-            })()}
-            <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 2 GP</span>
-              {top2gp.map(({g,c},i)=>{
-                const sch=GP_CELL[g]||{bg:"#111",text:"#aaa"};
-                return (
-                  <div key={g} style={{display:"flex",alignItems:"center",gap:4,
-                    background:sch.bg,borderRadius:3,padding:"3px 10px",
-                    border:"1px solid "+sch.text+"88"}}>
-                    <span style={{fontSize:9,color:sch.text,opacity:0.7}}>#{i+1}</span>
-                    <span style={{fontSize:13,fontWeight:"bold",color:sch.text}}>{g}</span>
-                    <span style={{fontSize:10,color:sch.text,opacity:0.9}}>{c}x</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-      
-      {/* Regras detectadas */}
-      {entries.length >= 6 && (() => {
-        const signals = detectRules(entries);
-        if(signals.length === 0) return null;
+          );
+        })()}
 
-        // Build candidate numbers per signal
-        const fieldMap = {
-          PTE:  n=>getParte(n),    LADO: n=>getLado(n),
-          "A/B":n=>getAltoBaixo(n),"P/I":n=>getParidade(n),
-          ZNA:  n=>getRegiao(n),   GP:   n=>getGP(n),
-          SET:  n=>getSetor(n),    COL:  n=>getColuna(n),
-          RUA:  n=>getRua(n),      CAV:  n=>getCavalo(n),
-          RGT:  n=>getRegTrack(n),
-        };
-
-        // Build intersection of all signal candidates
-        const allCandidateSets = signals.map(sig => {
-          const fn = fieldMap[sig.label];
-          return fn ? new Set(Array.from({length:37},(_,i)=>i).filter(n=>fn(n)===sig.val&&n>0)) : new Set();
-        }).filter(s=>s.size>0);
-
-        const intersection = allCandidateSets.length > 0
-          ? Array.from({length:37},(_,i)=>i).filter(n=>allCandidateSets.every(s=>s.has(n)))
-          : [];
-
-        return (
-          <div style={{padding:"4px 0",borderTop:"1px solid #CC0000",marginTop:4}}>
-            <div style={{fontSize:7,color:"#CC0000",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4,fontWeight:"bold"}}>
-              ◆ REGRAS ATIVAS
-            </div>
-            {/* Individual rule badges */}
-            <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
-              {signals.map((sig,si) => (
-                <div key={si} style={{display:"flex",flexDirection:"column",alignItems:"center",
-                  background:sig.pal.bg,borderRadius:3,padding:"2px 6px",
-                  border:"1px solid "+sig.pal.text,minWidth:44,textAlign:"center",flexShrink:0}}>
-                  <span style={{fontSize:6,color:sig.pal.text,opacity:0.7}}>R{sig.rule} {sig.label}</span>
-                  <span style={{fontSize:11,fontWeight:"bold",color:sig.pal.text}}>{sig.val}</span>
-                  <span style={{fontSize:6,color:sig.pal.text,opacity:0.8}}>{sig.desc}</span>
-                </div>
-              ))}
-            </div>
-            {/* Intersection candidates */}
-            {intersection.length > 0 && (
-              <div style={{display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
-                <span style={{fontSize:7,color:"#CC0000",fontWeight:"bold",flexShrink:0}}>▶</span>
-                {intersection.map(n=>{
+        {/* Top 5 e Top 2 GP */}
+        {entries.length >= 5 && (() => {
+          const last50 = entries.slice(-50);
+          const numCnt = {};
+          last50.forEach(e => { numCnt[e.num]=(numCnt[e.num]||0)+1; });
+          const top5 = Object.entries(numCnt).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,c])=>({n:parseInt(n),c}));
+          const gpCnt = {};
+          last50.forEach(e => { if(e.gp&&e.gp!=="—") gpCnt[e.gp]=(gpCnt[e.gp]||0)+1; });
+          const top2gp = Object.entries(gpCnt).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([g,c])=>({g,c}));
+          return (
+            <div style={{padding:"4px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
+              <div style={{display:"flex",gap:6,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}}>
+                <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 5 ULT 50</span>
+                {top5.map(({n,c},i)=>{
                   const cor=getColor(n); const s=NUM_BALL[cor];
                   return (
-                    <div key={n} style={{width:26,height:26,borderRadius:"50%",
-                      display:"flex",alignItems:"center",justifyContent:"center",
-                      background:s.bg,border:"2px solid "+s.border,
-                      color:s.text,fontSize:10,fontWeight:"bold",flexShrink:0,
-                      boxShadow:"0 0 4px "+s.border}}>
-                      {n}
+                    <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+                      <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>#{i+1}</span>
+                      <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:s.bg,border:"2px solid "+s.border,color:s.text,fontSize:10,fontWeight:"bold"}}>{n}</div>
+                      <span style={{fontSize:9,color:"#888",fontWeight:"bold"}}>{c}x</span>
                     </div>
                   );
                 })}
               </div>
-            )}
-          </div>
-        );
-      })()}
+              {(() => {
+                const last5gp = entries.slice(-5).map(e=>e.gp).filter(v=>v&&v!=="—");
+                const gpAlert = top2gp.find(({g})=>last5gp.filter(v=>v===g).length>=3);
+                return gpAlert ? (
+                  <div style={{display:"flex",alignItems:"center",gap:6,background:"#1a0a00",border:"2px solid #FFD700",borderRadius:4,padding:"4px 10px",marginBottom:4}}>
+                    <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>⚡ TAKE</span>
+                    <span style={{fontSize:12,fontWeight:"bold",color:GP_CELL[gpAlert.g]?.text||"#fff"}}>{gpAlert.g}</span>
+                    <span style={{fontSize:9,color:"#FFD700"}}>{last5gp.filter(v=>v===gpAlert.g).length}/5</span>
+                  </div>
+                ) : null;
+              })()}
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 2 GP</span>
+                {top2gp.map(({g,c},i)=>{
+                  const sch=GP_CELL[g]||{bg:"#111",text:"#aaa"};
+                  return (
+                    <div key={g} style={{display:"flex",alignItems:"center",gap:4,background:sch.bg,borderRadius:3,padding:"3px 10px",border:"1px solid "+sch.text+"88"}}>
+                      <span style={{fontSize:9,color:sch.text,opacity:0.7}}>#{i+1}</span>
+                      <span style={{fontSize:13,fontWeight:"bold",color:sch.text}}>{g}</span>
+                      <span style={{fontSize:10,color:sch.text,opacity:0.9}}>{c}x</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Regras */}
+        {entries.length >= 6 && (() => {
+          const signals = detectRules(entries);
+          if(signals.length === 0) return null;
+          const fieldMap = {
+            PTE:n=>getParte(n), LADO:n=>getLado(n), "A/B":n=>getAltoBaixo(n), "P/I":n=>getParidade(n),
+            ZNA:n=>getRegiao(n), GP:n=>getGP(n), SET:n=>getSetor(n), COL:n=>getColuna(n),
+            RUA:n=>getRua(n), CAV:n=>getCavalo(n), RGT:n=>getRegTrack(n),
+          };
+          const allCandidateSets = signals.map(sig => {
+            const fn = fieldMap[sig.label];
+            return fn ? new Set(Array.from({length:37},(_,i)=>i).filter(n=>fn(n)===sig.val&&n>0)) : new Set();
+          }).filter(s=>s.size>0);
+          const intersection = allCandidateSets.length > 0
+            ? Array.from({length:37},(_,i)=>i).filter(n=>allCandidateSets.every(s=>s.has(n))) : [];
+          return (
+            <div style={{padding:"4px 0",borderTop:"1px solid #CC0000",marginTop:4}}>
+              <div style={{fontSize:7,color:"#CC0000",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4,fontWeight:"bold"}}>◆ REGRAS ATIVAS</div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+                {signals.map((sig,si) => (
+                  <div key={si} style={{display:"flex",flexDirection:"column",alignItems:"center",background:sig.pal.bg,borderRadius:3,padding:"2px 6px",border:"1px solid "+sig.pal.text,minWidth:44,textAlign:"center",flexShrink:0}}>
+                    <span style={{fontSize:6,color:sig.pal.text,opacity:0.7}}>R{sig.rule} {sig.label}</span>
+                    <span style={{fontSize:11,fontWeight:"bold",color:sig.pal.text}}>{sig.val}</span>
+                    <span style={{fontSize:6,color:sig.pal.text,opacity:0.8}}>{sig.desc}</span>
+                  </div>
+                ))}
+              </div>
+              {intersection.length > 0 && (
+                <div style={{display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
+                  <span style={{fontSize:7,color:"#CC0000",fontWeight:"bold",flexShrink:0}}>▶</span>
+                  {intersection.map(n=>{
+                    const cor=getColor(n); const s=NUM_BALL[cor];
+                    return (
+                      <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:s.bg,border:"2px solid "+s.border,color:s.text,fontSize:10,fontWeight:"bold",flexShrink:0,boxShadow:"0 0 4px "+s.border}}>{n}</div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>{/* fim rodapé */}
       </div>{/* fim coluna central */}
-      
 
       <div style={{width:220,flexShrink:0}}/>
       {/* ── Painel lateral: Pair Catalog ── */}
-      <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",
-        flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",
-        position:"fixed",top:0,right:0,zIndex:50}}>
+      <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",position:"fixed",top:0,right:0,zIndex:50}}>
         <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
         <div style={{flex:1,overflowY:"auto"}}>
           <PairCatalog sharedEntries={entries}/>
         </div>
         <MicroGroupCard entries={entries}/>
       </div>
-
     </div>
   );
 }
