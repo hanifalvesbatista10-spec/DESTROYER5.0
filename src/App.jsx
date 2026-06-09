@@ -1267,11 +1267,7 @@ export default function DestroyerRaceTable() {
         @keyframes pulseDuzia { 0%,100% { box-shadow: inset 0 0 0 2px #00e5ff, inset 0 0 10px #00e5ff; } 50% { box-shadow: inset 0 0 0 2px #80f4ff, inset 0 0 20px #00e5ff; } }
         .pulse-duzia { animation: pulseDuzia 0.7s ease-in-out infinite; outline: 2px solid #00e5ff; outline-offset: -2px; position: relative; z-index: 2; }
       `}</style>
-      {/* ── Painel lateral esquerdo: Sinais ── */}
-      <div style={{width:80,background:"#080808",borderRight:"1px solid #1e1e1e",flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",position:"fixed",top:0,left:0,zIndex:50,overflowY:"auto"}}>
-        <SignalsPanel entries={entries} terminalStats={terminalStats}/>
-      </div>
-      <div style={{width:80,flexShrink:0}}/>
+
 
       {/* ── Coluna central ── */}
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
@@ -1341,10 +1337,10 @@ export default function DestroyerRaceTable() {
                 <tr><td colSpan={visibleCols.length+hidden.size} style={{textAlign:"center",padding:"3rem",color:"#333",fontSize:12,background:"#0d0d0d",borderBottom:"1px solid #1a1a1a",borderRight:"1px solid #1a1a1a"}}>Nenhum número inserido</td></tr>
               ) : entries.map((e,i) => {
                 const posFromLast = entries.length - i;
-                const isGold  = posFromLast===12||posFromLast===14;
-                const isWhite = posFromLast===5||posFromLast===13;
-                const bTop = isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"none";
-                const bBot = isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"1px solid #000";
+                const isGold  = false;
+                const isWhite = posFromLast===5;
+                const bTop = isWhite?"2px solid #ffffff":"none";
+                const bBot = isWhite?"2px solid #ffffff":"1px solid #000";
                 const firstAlwaysKeyRow  = visibleCols.find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="always")?.key;
                 const lastPriorityKeyRow = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="priority")?.key;
                 const lastPinnedKeyRow   = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="pinned")?.key;
@@ -1374,9 +1370,30 @@ export default function DestroyerRaceTable() {
                       if (!isColVisible(col.key)) return null;
                       const isLast = col.key===lastVisKey;
                       if (col.key==="seq") {
+                        const bracketStart = posFromLast === 13;
+                        const bracketEnd   = posFromLast === 19;
+                        const bracketMid   = posFromLast >= 13 && posFromLast <= 19;
+                        const bracketPos5  = posFromLast === 5;
                         return (
-                          <td key="seq" style={{background:"#0d0d0d",fontSize:8,textAlign:"center",padding:"1px 2px",borderTop:bTop,borderBottom:bBot,borderLeft:isGold?`2px solid ${GOLD}`:isWhite?"2px solid #ffffff":"none",borderRight:"1px solid #000",fontFamily:"Arial, sans-serif",width:26,whiteSpace:"nowrap"}}>
-                            <span style={{color:"#444"}}>{i+1}</span>
+                          <td key="seq" style={{background:"#0d0d0d",fontSize:8,textAlign:"center",padding:"0",borderTop:bTop,borderBottom:bBot,borderLeft:"none",borderRight:"1px solid #000",fontFamily:"Arial, sans-serif",width:26,whiteSpace:"nowrap",position:"relative"}}>
+                            {bracketMid && (
+                              <div style={{
+                                position:"absolute", top:0, bottom:0,
+                                left:2, width:6,
+                                borderTop: bracketStart ? "2px solid #FFD700" : "none",
+                                borderBottom: bracketEnd ? "2px solid #FFD700" : "none",
+                                borderLeft: "2px solid #FFD700",
+                              }}/>
+                            )}
+                            {bracketPos5 && (
+                              <div style={{
+                                position:"absolute", top:"50%", left:1,
+                                transform:"translateY(-50%)",
+                                width:8, height:8, borderRadius:"50%",
+                                background:"#ffffff", flexShrink:0,
+                              }}/>
+                            )}
+                            <span style={{color:"#444",paddingLeft:bracketMid?10:0}}>{i+1}</span>
                           </td>
                         );
                       }
@@ -1590,7 +1607,7 @@ export default function DestroyerRaceTable() {
           </div>
         )}
 
-        {/* Sinal interseção: dúzia ausente + coluna ausente + dominância >=80% */}
+        {/* Sinal interseção: dúzia ausente + coluna ausente + colDominance */}
         {(() => {
           if(entries.length < 5) return null;
           const l5 = entries.slice(-5);
@@ -1605,33 +1622,33 @@ export default function DestroyerRaceTable() {
 
           if(duzAbsent.length === 0 && colAbsent.length === 0) return null;
 
-          // Dominantes >=80% nos últimos 5
-          const domFields = [
-            {k:"cor",fn:e=>e.cor},{k:"lado",fn:e=>e.lado},{k:"altobaixo",fn:e=>e.altobaixo},
-            {k:"paridade",fn:e=>e.paridade},{k:"parte",fn:e=>e.parte},
-            {k:"cavalo",fn:e=>e.cavalo},{k:"regiao",fn:e=>e.regiao},
-          ];
-          const dom = {};
-          domFields.forEach(({k,fn})=>{
-            const cnt={};
-            l5.forEach(e=>{const v=fn(e);if(v&&v!=="—")cnt[v]=(cnt[v]||0)+1;});
-            const best=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
-            if(best&&best[1]/5>=0.80) dom[k]=best[0];
-          });
-          const domKeys=Object.keys(dom);
-
-          const NFLD={
-            cor:n=>getColor(n),lado:n=>getLado(n),altobaixo:n=>getAltoBaixo(n),
-            paridade:n=>getParidade(n),parte:n=>getParte(n),
-            cavalo:n=>getCavalo(n),regiao:n=>getRegiao(n),
+          // Usar colDominance (já calculado, >=80% últimos 5)
+          const NFLD = {
+            cor:n=>getColor(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
+            paridade:n=>getParidade(n), parte:n=>getParte(n),
+            cavalo:n=>getCavalo(n), regiao:n=>getRegiao(n),
+            duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
+            ruaPar:n=>getRuaParidade(n),
           };
 
-          // Candidates: match dom chars + present duzias + present colunas + NOT absent
-          const cands=[];
+          // Map colDominance keys to NFLD keys
+          const domMap = {
+            cor:"cor", lado:"lado", altobaixo:"altobaixo", paridade:"paridade",
+            parte:"parte", cavalo:"cavalo", regiao:"regiao", duzia:"duzia",
+            coluna:"coluna", ruaPar:"ruaPar",
+          };
+
+          const cands = [];
           for(let n=1;n<=36;n++){
             if(duzAbsent.length>0 && duzAbsent.includes(getDuzia(n))) continue;
             if(colAbsent.length>0 && colAbsent.includes(getColuna(n))) continue;
-            if(domKeys.length>0 && !domKeys.every(k=>NFLD[k]&&NFLD[k](n)===dom[k])) continue;
+            // Check all colDominance fields
+            let match = true;
+            for(const [field, {val}] of Object.entries(colDominance)){
+              const fn = NFLD[domMap[field]];
+              if(fn && fn(n) !== val){ match = false; break; }
+            }
+            if(!match) continue;
             cands.push(n);
           }
           if(cands.length===0) return null;
