@@ -897,6 +897,7 @@ export default function DestroyerRaceTable() {
   const [hidden, setHidden]     = useState(new Set());
   const [showRep, setShowRep] = useState(false);
   const [showAlt, setShowAlt] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const dragKey  = useRef(null);
   const dragOver = useRef(null);
@@ -1346,8 +1347,9 @@ export default function DestroyerRaceTable() {
             <tbody>
               {entries.length===0 ? (
                 <tr><td colSpan={visibleCols.length+hidden.size} style={{textAlign:"center",padding:"3rem",color:"#333",fontSize:12,background:"#0d0d0d",borderBottom:"1px solid #1a1a1a",borderRight:"1px solid #1a1a1a"}}>Nenhum número inserido</td></tr>
-              ) : entries.map((e,i) => {
-                const posFromLast = entries.length - i;
+              ) : (showAll ? entries : entries.slice(-20)).map((e,i) => {
+                const realIndex = showAll ? i : entries.length - 20 + i;
+                const posFromLast = entries.length - (showAll ? i : entries.length - 20 + i);
                 const isGold  = false;
                 const isWhite = posFromLast===5;
                 const bTop = isWhite?"2px solid #ffffff":"none";
@@ -1356,10 +1358,10 @@ export default function DestroyerRaceTable() {
                 const lastPriorityKeyRow = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="priority")?.key;
                 const lastPinnedKeyRow   = [...visibleCols].reverse().find(c=>INIT_COLS.find(x=>x.key===c.key)?.mode==="pinned")?.key;
                 const isPrioritySepRow   = (ckey) => ckey === lastPriorityKeyRow || ckey === lastPinnedKeyRow;
-                const isLastRow = i === entries.length - 1;
+                const isLastRow = realIndex === entries.length - 1;
                 const Cell = ({ckey, isLast}) => {
                   const scheme = CELL_SCHEME(e,ckey);
-                  const pulse = pulseLastIdx[ckey] === i;
+                  const pulse = pulseLastIdx[ckey] === realIndex;
                   const isSep = ckey === firstAlwaysKeyRow;
                   const isDuziaAlert = isLastRow && duziaAlert === ckey && CELL_VAL(e,ckey) === "";
                   const isColunaAlert = isLastRow && colunaAlert === ckey && CELL_VAL(e,ckey) === "";
@@ -1409,9 +1411,9 @@ export default function DestroyerRaceTable() {
                         );
                       }
                       if (col.key==="num") {
-                        const gpBall = gpHighlight.ballIndices.has(i);
-                        const isRep = repAltIndices.rep.has(i);
-                        const isAlt = repAltIndices.alt.has(i);
+                        const gpBall = gpHighlight.ballIndices.has(realIndex);
+                        const isRep = repAltIndices.rep.has(realIndex);
+                        const isAlt = repAltIndices.alt.has(realIndex);
                         const gpColor = GP_BORDER_COLOR[e.gp] || null;
                         const repAltBorder = (isRep || isAlt) && gpColor ? `2px solid ${gpColor}` : null;
                         const repAltShadow = (isRep || isAlt) && gpColor ? `0 0 6px ${gpColor}` : null;
@@ -1432,7 +1434,7 @@ export default function DestroyerRaceTable() {
                         );
                       }
                       if (col.key==="hist") {
-                        const hist = getHistorico(entries, i, e.num);
+                        const hist = getHistorico(entries, realIndex, e.num);
                         const histFullNums = [];
                         for(let j=0;j<i;j++){ if(entries[j].num===e.num && j+1<entries.length) histFullNums.push(entries[j+1].num); }
                         const histRepeatNums = new Set(Object.entries(histFullNums.reduce((a,n)=>{a[n]=(a[n]||0)+1;return a;},{})).filter(([,c])=>c>1).map(([n])=>parseInt(n)));
@@ -1461,7 +1463,7 @@ export default function DestroyerRaceTable() {
                         );
                       }
                       if (col.key==="viz") {
-                        const hist = getHistorico(entries, i, e.num);
+                        const hist = getHistorico(entries, realIndex, e.num);
                         const result = analyzeTerminal(hist);
                         return (
                           <td key="viz" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:28}}>
@@ -1571,6 +1573,7 @@ export default function DestroyerRaceTable() {
           <button onClick={()=>setEntries(prev=>prev.slice(0,-1))} disabled={entries.length===0} style={{padding:"0 14px",background:"transparent",border:"1px solid #444",borderRadius:2,color:entries.length===0?"#333":"#aaa",fontSize:11,cursor:entries.length===0?"default":"pointer",fontFamily:"Arial, sans-serif"}}>↩</button>
           <button onClick={()=>setShowRep(v=>!v)} style={{padding:"0 12px",background:showRep?"#166534":"transparent",border:showRep?"1px solid #22c55e":"1px solid #333",borderRadius:2,color:showRep?"#22c55e":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showRep?"● REP":"○ REP"}</button>
           <button onClick={()=>setShowAlt(v=>!v)} style={{padding:"0 12px",background:showAlt?"#7c2d12":"transparent",border:showAlt?"1px solid #f97316":"1px solid #333",borderRadius:2,color:showAlt?"#f97316":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showAlt?"● ALT":"○ ALT"}</button>
+          <button onClick={()=>setShowAll(v=>!v)} style={{padding:"0 12px",background:showAll?"#1e3a5f":"transparent",border:showAll?"1px solid #60a5fa":"1px solid #333",borderRadius:2,color:showAll?"#60a5fa":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showAll?"● HIST":"○ HIST"}</button>
         </div>
 
         {(top3Stats.length > 0 || absentCard) && (
