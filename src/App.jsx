@@ -150,7 +150,7 @@ const GOLD = "#D4AF37";
 const CELL_VAL = (e, key) => {
   if (key==="cor")      return e.corAbrev;
   if (key==="lado")     return e.lado;
-  if (key==="duzia")    return e.duzia;
+  if (key==="duzia")    return e.gp;
   if (key==="setor")    return e.setor;
   if (key==="regtrack") return e.regtrack;
   if (key==="paridade") return (e.paridade||"—").toUpperCase();
@@ -161,9 +161,9 @@ const CELL_VAL = (e, key) => {
   if (key==="cavalo")   return e.cavalo;
   if (key==="altobaixo") return e.altobaixo;
   if (key==="gp")        return e.gp;
-  if (key==="gp_d1")     return ["d1V","d1P"].includes(e.gp) ? e.gp : "";
-  if (key==="gp_d2")     return ["d2I","d2P"].includes(e.gp) ? e.gp : "";
-  if (key==="gp_d3")     return ["d3V","d3P"].includes(e.gp) ? e.gp : "";
+  if (key==="gp_d1")     return e.duzia==="D1" ? "D1" : "";
+  if (key==="gp_d2")     return e.duzia==="D2" ? "D2" : "";
+  if (key==="gp_d3")     return e.duzia==="D3" ? "D3" : "";
   if (key==="viz")       return "";
   if (key==="vn")        return "";
   if (key==="col_c1")    return e.coluna==="C1" ? "C1" : "";
@@ -175,7 +175,7 @@ const CELL_VAL = (e, key) => {
 const CELL_SCHEME = (e, key) => {
   if (key==="cor")      return COR_CELL[e.cor]         || {bg:"#111",text:"#fff"};
   if (key==="lado")     return LADO_CELL[e.lado]        || LADO_CELL["—"];
-  if (key==="duzia")    return DUZIA_CELL[e.duzia]      || DUZIA_CELL["—"];
+  if (key==="duzia")    return GP_CELL[e.gp]            || GP_CELL["—"];
   if (key==="setor")    return SETOR_CELL[e.setor]      || {bg:"#111",text:"#aaa"};
   if (key==="regtrack") return REGTRACK_CELL[e.regtrack] || {bg:"#111",text:"#aaa"};
   if (key==="paridade") return PAR_CELL[e.paridade||"—"]  || PAR_CELL["—"];
@@ -186,21 +186,9 @@ const CELL_SCHEME = (e, key) => {
   if (key==="cavalo")   return CAVALO_CELL[e.cavalo]     || CAVALO_CELL["—"];
   if (key==="altobaixo") return ALTOBAIXO_CELL[e.altobaixo||"—"] || ALTOBAIXO_CELL["—"];
   if (key==="gp")        return GP_CELL[e.gp]           || GP_CELL["—"];
-  if (key==="gp_d1") {
-    if (e.gp==="d1P") return {bg:"#000000",text:"#ffffff"};
-    if (e.gp==="d1V") return {bg:"#CC0000",text:"#ffffff"};
-    return {bg:"#f5f0e8",text:"#f5f0e8"};
-  }
-  if (key==="gp_d2") {
-    if (e.gp==="d2P") return {bg:"#1e3a8a",text:"#bfdbfe"};
-    if (e.gp==="d2I") return {bg:"#4b5563",text:"#e5e7eb"};
-    return {bg:"#f5f0e8",text:"#f5f0e8"};
-  }
-  if (key==="gp_d3") {
-    if (e.gp==="d3P") return {bg:"#000000",text:"#ffffff"};
-    if (e.gp==="d3V") return {bg:"#991b1b",text:"#fecaca"};
-    return {bg:"#f5f0e8",text:"#f5f0e8"};
-  }
+  if (key==="gp_d1") return e.duzia==="D1" ? DUZIA_CELL["D1"] : {bg:"#f5f0e8",text:"#f5f0e8"};
+  if (key==="gp_d2") return e.duzia==="D2" ? DUZIA_CELL["D2"] : {bg:"#f5f0e8",text:"#f5f0e8"};
+  if (key==="gp_d3") return e.duzia==="D3" ? DUZIA_CELL["D3"] : {bg:"#f5f0e8",text:"#f5f0e8"};
   if (key==="viz")    return {bg:"#0d0d0d",text:"#fff"};
   if (key==="col_c1") return e.coluna==="C1" ? {bg:"#4a5320",text:"#e5e5e5"} : {bg:"#f5f0e8",text:"#f5f0e8"};
   if (key==="col_c2") return e.coluna==="C2" ? {bg:"#0891b2",text:"#0a0a0a"} : {bg:"#f5f0e8",text:"#f5f0e8"};
@@ -398,15 +386,15 @@ const INIT_COLS = [
   { key:"col_c1",    label:"C1",   toggleable:true,  mode:"pinned"   },
   { key:"col_c2",    label:"C2",   toggleable:true,  mode:"pinned"   },
   { key:"col_c3",    label:"C3",   toggleable:true,  mode:"pinned"   },
-  { key:"regtrack",  label:"RGT",  toggleable:true,  mode:"pinned"   },
-  { key:"duzia",     label:"DUZ",  toggleable:true,  mode:"pinned"   },
-  { key:"cavalo",    label:"CAV",  toggleable:true,  mode:"pinned"   },
   { key:"cor",       label:"COR",  toggleable:true,  mode:"auto"     },
   { key:"altobaixo", label:"A/B",  toggleable:true,  mode:"auto"     },
   { key:"paridade",  label:"P/I",  toggleable:true,  mode:"auto"     },
   { key:"regiao",    label:"ZNA",  toggleable:true,  mode:"auto"     },
+  { key:"cavalo",    label:"CAV",  toggleable:true,  mode:"always"   },
+  { key:"regtrack",  label:"RGT",  toggleable:true,  mode:"always"   },
   { key:"setor",     label:"SET",  toggleable:true,  mode:"always"   },
   { key:"rua",       label:"RUA",  toggleable:true,  mode:"always"   },
+  { key:"duzia",     label:"GP",   toggleable:true,  mode:"always"   },
 ];
 
 const AUTO_RULE_FIELDS = {
