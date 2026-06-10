@@ -34,7 +34,9 @@ function getRua(n) {
 function getParte(n) {
   if (n===0) return "—";
   const rua = getRua(n);
-  return (rua==="R1"||rua==="R2") ? "P1" : "P2";
+  const base = (rua==="R1"||rua==="R2") ? "P1" : "P2";
+  const ab = n > 18 ? "a" : "b";
+  return base + ab;
 }
 function getColuna(n) {
   if (n===0) return "0";
@@ -130,7 +132,15 @@ const GP_CELL = {
   "d3V": { bg:"#0f2044", text:"#93c5fd" },
   "—":   { bg:"#111",   text:"#444"    },
 };
-const PARTE_CELL = { "P1":{ bg:"#713f00", text:"#fef08a" }, "P2":{ bg:"#14532d", text:"#bbf7d0" }, "—":{ bg:"#111", text:"#444" } };
+const PARTE_CELL = {
+  "P1a":{ bg:"#713f00", text:"#fef08a", textDecoration:"underline" },
+  "P1b":{ bg:"#713f00", text:"#fef08a" },
+  "P2a":{ bg:"#14532d", text:"#bbf7d0" },
+  "P2b":{ bg:"#14532d", text:"#bbf7d0", textDecoration:"underline" },
+  "P1": { bg:"#713f00", text:"#fef08a" },
+  "P2": { bg:"#14532d", text:"#bbf7d0" },
+  "—":  { bg:"#111",   text:"#444"    },
+};
 const CAVALO_CELL = { "369":{bg:"#7c3d00",text:"#fb923c"}, "258":{bg:"#0a1628",text:"#60a5fa"}, "147":{bg:"#4c1d95",text:"#ddd6fe"}, "—":{bg:"#111",text:"#444"} };
 const RUA_CELL    = { R1:{bg:"#4a0080",text:"#e9d5ff"}, R2:{bg:"#005a5a",text:"#99f6e4"}, R3:{bg:"#7a1c4b",text:"#fbcfe8"}, R4:{bg:"#1a3a1a",text:"#bbf7d0"}, "0":{bg:"#1B7A3E",text:"#fff"} };
 const COLUNA_CELL = { C1:{bg:"#4a5320",text:"#e5e5e5"}, C2:{bg:"#0891b2",text:"#0a0a0a"}, C3:{bg:"#ea580c",text:"#1a1a1a"}, "0":{bg:"#1B7A3E",text:"#fff"} };
@@ -389,6 +399,7 @@ const INIT_COLS = [
   { key:"col_c3",    label:"C3",   toggleable:true,  mode:"pinned"   },
   { key:"regtrack",  label:"RGT",  toggleable:true,  mode:"pinned"   },
   { key:"parte",     label:"PTE",  toggleable:true,  mode:"pinned"   },
+  { key:"duzia",     label:"DUZ",  toggleable:true,  mode:"pinned"   },
   { key:"cavalo",    label:"CAV",  toggleable:true,  mode:"pinned"   },
   { key:"cor",       label:"COR",  toggleable:true,  mode:"auto"     },
   { key:"altobaixo", label:"A/B",  toggleable:true,  mode:"auto"     },
@@ -403,7 +414,7 @@ const AUTO_RULE_FIELDS = {
   lado:      { field:"lado",      values:["PB e VA","PA e VB"]        },
   altobaixo: { field:"altobaixo", values:["ALTO","BAIXO"]             },
   paridade:  { field:"paridade",  values:["Par","Ímpar"]              },
-  parte:     { field:"parte",     values:["P1","P2"]                  },
+  parte:     { field:"parte",     values:["P1a","P1b","P2a","P2b"]    },
   gp_d1:     { field:"gp", values:["d1V","d1P"] },
   gp_d2:     { field:"gp", values:["d2I","d2P"] },
   gp_d3:     { field:"gp", values:["d3V","d3P"] },
@@ -435,7 +446,7 @@ const RA_FIELDS = [
   { key:"duzia",    label:"Dúzia",     values:["D1","D2","D3"],                    palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
   { key:"paridade", label:"Par/Ímpar", values:["Par","Ímpar"],                     palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
   { key:"coluna",   label:"Coluna",    values:["C1","C2","C3"],                    palette:{"C1":{bg:"#4a5320",text:"#e5e5e5"},"C2":{bg:"#0891b2",text:"#0a0a0a"},"C3":{bg:"#ea580c",text:"#1a1a1a"}} },
-  { key:"parte",    label:"Parte",     values:["P1","P2"],                         palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
+  { key:"parte",    label:"Parte",     values:["P1a","P1b","P2a","P2b"],           palette:{"P1a":{bg:"#713f00",text:"#fef08a"},"P1b":{bg:"#713f00",text:"#fef08a"},"P2a":{bg:"#14532d",text:"#bbf7d0"},"P2b":{bg:"#14532d",text:"#bbf7d0"}} },
   { key:"altobaixo",label:"Alto/Baixo",values:["ALTO","BAIXO"],                    palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
   { key:"regiao",   label:"Região",    values:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
 ];
@@ -590,7 +601,7 @@ function CatalogFooterStats({ entries, terminalStats }) {
       {label:"Cor",   key:"cor",    vals:["Vermelho","Preto","Verde"],   pal:COR_CELL},
       {label:"Lado",  key:"lado",   vals:["PB e VA","PA e VB"],          pal:LADO_CELL},
       {label:"Par",   key:"par",    vals:["Par","Ímpar"],                pal:PAR_CELL},
-      {label:"Parte", key:"parte",  vals:["P1","P2"],                    pal:PARTE_CELL},
+      {label:"Parte", key:"parte",  vals:["P1a","P1b","P2a","P2b"],      pal:PARTE_CELL},
       {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
       {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
       {label:"Cavalo",key:"cavalo", vals:["369","258","147"],             pal:CAVALO_CELL},
@@ -1179,7 +1190,7 @@ export default function DestroyerRaceTable() {
       { key:"cor",      vals:["Vermelho","Preto","Verde"],        palette:{"Vermelho":{bg:"#CC0000",text:"#fff"},"Preto":{bg:"#222",text:"#ddd"},"Verde":{bg:"#1B7A3E",text:"#fff"}} },
       { key:"lado",     vals:["PB e VA","PA e VB"],               palette:{"PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"},"PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}} },
       { key:"paridade", vals:["Par","Ímpar"],                     palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
-      { key:"parte",    vals:["P1","P2"],                         palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
+      { key:"parte",    vals:["P1a","P1b","P2a","P2b"],           palette:{"P1a":{bg:"#713f00",text:"#fef08a"},"P1b":{bg:"#713f00",text:"#fef08a"},"P2a":{bg:"#14532d",text:"#bbf7d0"},"P2b":{bg:"#14532d",text:"#bbf7d0"}} },
       { key:"altobaixo",vals:["ALTO","BAIXO"],                    palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
       { key:"regiao",   vals:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
       { key:"duzia",    vals:["D1","D2","D3"],                    palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
@@ -1355,7 +1366,7 @@ export default function DestroyerRaceTable() {
                   return (
                     <td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
                       style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"1px 2px",textAlign:"center",
-                      fontSize:11,fontWeight:"700",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",
+                      fontSize:11,fontWeight:"700",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",textDecoration:scheme.textDecoration||"none",
                       borderTop: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
                       borderBottom: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
                       borderLeft: isSep ? "3px solid #FFD700" : "none",
