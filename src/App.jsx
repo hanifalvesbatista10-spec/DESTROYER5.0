@@ -34,9 +34,7 @@ function getRua(n) {
 function getParte(n) {
   if (n===0) return "—";
   const rua = getRua(n);
-  const base = (rua==="R1"||rua==="R2") ? "P1" : "P2";
-  const ab = n > 18 ? "a" : "b";
-  return base + ab;
+  return (rua==="R1"||rua==="R2") ? "P1" : "P2";
 }
 function getColuna(n) {
   if (n===0) return "0";
@@ -133,10 +131,6 @@ const GP_CELL = {
   "—":   { bg:"#111",   text:"#444"    },
 };
 const PARTE_CELL = {
-  "P1a":{ bg:"#713f00", text:"#fef08a", textDecoration:"underline" },
-  "P1b":{ bg:"#713f00", text:"#fef08a" },
-  "P2a":{ bg:"#14532d", text:"#bbf7d0" },
-  "P2b":{ bg:"#14532d", text:"#bbf7d0", textDecoration:"underline" },
   "P1": { bg:"#713f00", text:"#fef08a" },
   "P2": { bg:"#14532d", text:"#bbf7d0" },
   "—":  { bg:"#111",   text:"#444"    },
@@ -402,7 +396,7 @@ const AUTO_RULE_FIELDS = {
   lado:      { field:"lado",      values:["PB e VA","PA e VB"]        },
   altobaixo: { field:"altobaixo", values:["ALTO","BAIXO"]             },
   paridade:  { field:"paridade",  values:["Par","Ímpar"]              },
-  parte:     { field:"parte",     values:["P1a","P1b","P2a","P2b"]    },
+  parte:     { field:"parte",     values:["P1","P2"]                  },
   gp_d1:     { field:"gp", values:["d1V","d1P"] },
   gp_d2:     { field:"gp", values:["d2I","d2P"] },
   gp_d3:     { field:"gp", values:["d3V","d3P"] },
@@ -434,7 +428,7 @@ const RA_FIELDS = [
   { key:"duzia",    label:"Dúzia",     values:["D1","D2","D3"],                    palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
   { key:"paridade", label:"Par/Ímpar", values:["Par","Ímpar"],                     palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
   { key:"coluna",   label:"Coluna",    values:["C1","C2","C3"],                    palette:{"C1":{bg:"#4a5320",text:"#e5e5e5"},"C2":{bg:"#0891b2",text:"#0a0a0a"},"C3":{bg:"#ea580c",text:"#1a1a1a"}} },
-  { key:"parte",    label:"Parte",     values:["P1a","P1b","P2a","P2b"],           palette:{"P1a":{bg:"#713f00",text:"#fef08a"},"P1b":{bg:"#713f00",text:"#fef08a"},"P2a":{bg:"#14532d",text:"#bbf7d0"},"P2b":{bg:"#14532d",text:"#bbf7d0"}} },
+  { key:"parte",    label:"Parte",     values:["P1","P2"],                         palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
   { key:"altobaixo",label:"Alto/Baixo",values:["ALTO","BAIXO"],                    palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
   { key:"regiao",   label:"Região",    values:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
 ];
@@ -589,7 +583,7 @@ function CatalogFooterStats({ entries, terminalStats }) {
       {label:"Cor",   key:"cor",    vals:["Vermelho","Preto","Verde"],   pal:COR_CELL},
       {label:"Lado",  key:"lado",   vals:["PB e VA","PA e VB"],          pal:LADO_CELL},
       {label:"Par",   key:"par",    vals:["Par","Ímpar"],                pal:PAR_CELL},
-      {label:"Parte", key:"parte",  vals:["P1a","P1b","P2a","P2b"],      pal:PARTE_CELL},
+      {label:"Parte", key:"parte",  vals:["P1","P2"],                    pal:PARTE_CELL},
       {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
       {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
       {label:"Cavalo",key:"cavalo", vals:["369","258","147"],             pal:CAVALO_CELL},
@@ -1179,7 +1173,7 @@ export default function DestroyerRaceTable() {
       { key:"cor",      vals:["Vermelho","Preto","Verde"],        palette:{"Vermelho":{bg:"#CC0000",text:"#fff"},"Preto":{bg:"#222",text:"#ddd"},"Verde":{bg:"#1B7A3E",text:"#fff"}} },
       { key:"lado",     vals:["PB e VA","PA e VB"],               palette:{"PB e VA":{bg:"#6b0f1a",text:"#ffb3bb"},"PA e VB":{bg:"#1e3a5f",text:"#93c5fd"}} },
       { key:"paridade", vals:["Par","Ímpar"],                     palette:{"Par":{bg:"#0f1f5c",text:"#bfdbfe"},"Ímpar":{bg:"#4b5563",text:"#e5e7eb"}} },
-      { key:"parte",    vals:["P1a","P1b","P2a","P2b"],           palette:{"P1a":{bg:"#713f00",text:"#fef08a"},"P1b":{bg:"#713f00",text:"#fef08a"},"P2a":{bg:"#14532d",text:"#bbf7d0"},"P2b":{bg:"#14532d",text:"#bbf7d0"}} },
+      { key:"parte",    vals:["P1","P2"],                         palette:{"P1":{bg:"#713f00",text:"#fef08a"},"P2":{bg:"#14532d",text:"#bbf7d0"}} },
       { key:"altobaixo",vals:["ALTO","BAIXO"],                    palette:{"ALTO":{bg:"#7c0000",text:"#fca5a5"},"BAIXO":{bg:"#0c4a6e",text:"#7dd3fc"}} },
       { key:"regiao",   vals:["Tier","Orphelins","Voisins"],       palette:{"Tier":{bg:"#7c2d12",text:"#fdba74"},"Orphelins":{bg:"#854d0e",text:"#fefce8"},"Voisins":{bg:"#166534",text:"#bbf7d0"}} },
       { key:"duzia",    vals:["D1","D2","D3"],                    palette:{"D1":{bg:"#1e3a8a",text:"#bfdbfe"},"D2":{bg:"#92400e",text:"#fde68a"},"D3":{bg:"#7f1d1d",text:"#fca5a5"}} },
@@ -1356,7 +1350,7 @@ export default function DestroyerRaceTable() {
                   return (
                     <td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
                       style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"1px 2px",textAlign:"center",
-                      fontSize:11,fontWeight:"700",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",textDecoration:scheme.textDecoration||"none",
+                      fontSize:11,fontWeight:"700",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",
                       borderTop: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bTop,
                       borderBottom: isDuziaAlert || isColunaAlert ? "2px solid #00e5ff" : pulse ? "2px solid #FFD700" : bBot,
                       borderLeft: isSep ? "3px solid #FFD700" : "none",
@@ -1673,6 +1667,38 @@ export default function DestroyerRaceTable() {
           );
         })()}
 
+        {/* Card: 3+ com mesmo LADO + mesma PARTE, persiste até 2+ contrários consecutivos */}
+        {entries.length >= 3 && (() => {
+          let triggerLado = null, triggerParte = null, triggerEnd = -1;
+          for(let i = entries.length - 3; i >= 0; i--) {
+            const e0=entries[i], e1=entries[i+1], e2=entries[i+2];
+            if(e0.lado===e1.lado && e1.lado===e2.lado &&
+               e0.parte===e1.parte && e1.parte===e2.parte) {
+              triggerLado = e0.lado; triggerParte = e0.parte; triggerEnd = i+2; break;
+            }
+          }
+          if(triggerLado === null) return null;
+          const afterTrigger = entries.slice(triggerEnd + 1);
+          if(afterTrigger.length >= 2) {
+            let oppositeStreak = 0;
+            for(let i = afterTrigger.length - 1; i >= 0; i--) {
+              const e = afterTrigger[i];
+              if(e.lado !== triggerLado || e.parte !== triggerParte) oppositeStreak++;
+              else break;
+            }
+            if(oppositeStreak >= 2) return null;
+          }
+          const ladoSch = LADO_CELL[triggerLado] || {bg:"#111",text:"#fff"};
+          const parteSch = PARTE_CELL[triggerParte] || {bg:"#111",text:"#fff"};
+          return (
+            <div style={{display:"flex",gap:8,alignItems:"center",padding:"6px 12px",marginTop:4,background:"#0a0a0a",border:"2px solid #FFD700",borderRadius:3}}>
+              <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.08em"}}>3x SEQ:</span>
+              <span style={{fontSize:14,fontWeight:"bold",color:ladoSch.text,background:ladoSch.bg,padding:"3px 12px",borderRadius:3}}>{triggerLado}</span>
+              <span style={{fontSize:14,fontWeight:"bold",color:parteSch.text,background:parteSch.bg,padding:"3px 12px",borderRadius:3}}>{triggerParte}</span>
+            </div>
+          );
+        })()}
+
         {/* Top 5 e Top 2 GP */}
         {entries.length >= 5 && (() => {
           const last50 = entries.slice(-50);
@@ -1724,6 +1750,7 @@ export default function DestroyerRaceTable() {
             </div>
           );
         })()}
+
 
         {/* Regras */}
         {entries.length >= 6 && (() => {
