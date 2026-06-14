@@ -690,6 +690,16 @@ function TargetNumbers({ entries }) {
   }
   if(targets.length===0) return null;
 
+  // 2 strongest columns in last 5 — tie-break by recency
+  const colDom = dominant(last5, 'coluna');
+  const colCnt = {};
+  last5.forEach(e=>{ if(e.coluna&&e.coluna!=="0"&&e.coluna!=="—") colCnt[e.coluna]=(colCnt[e.coluna]||0)+1; });
+  const colVals = last5.map(e=>e.coluna);
+  const top2cols = Object.entries(colCnt).sort((a,b)=>{
+    if(b[1]!==a[1]) return b[1]-a[1];
+    return colVals.lastIndexOf(b[0]) - colVals.lastIndexOf(a[0]);
+  }).slice(0,2).map(([c])=>c);
+
   const duzSch = DUZIA_CELL[duz]||{bg:"#111",text:"#aaa"};
   const ladoSch = LADO_CELL[lado]||{bg:"#111",text:"#aaa"};
   const parteSch = PARTE_CELL[parte]||{bg:"#111",text:"#aaa"};
@@ -702,15 +712,32 @@ function TargetNumbers({ entries }) {
         <span style={{fontSize:9,fontWeight:"bold",color:ladoSch.text,background:ladoSch.bg,padding:"2px 6px",borderRadius:2}}>{lado} {ladoQty}/5</span>
         <span style={{fontSize:9,fontWeight:"bold",color:parteSch.text,background:parteSch.bg,padding:"2px 6px",borderRadius:2}}>{parte} {parteQty}/5</span>
       </div>
+      {top2cols.length > 0 && (
+        <div style={{display:"flex",gap:3,marginBottom:6,alignItems:"center"}}>
+          <span style={{fontSize:7,color:"#888",flexShrink:0}}>cols:</span>
+          {top2cols.map(c=>{
+            const sch = c==="C1"?COL_C1_CELL:c==="C2"?COL_C2_CELL:COL_C3_CELL;
+            return <span key={c} style={{fontSize:9,fontWeight:"bold",color:sch.text,background:sch.bg,padding:"2px 6px",borderRadius:2}}>{c}</span>;
+          })}
+        </div>
+      )}
       <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
         <span style={{fontSize:7,color:"#FFD700",fontWeight:"bold",flexShrink:0}}>▶</span>
         {targets.map(n=>{
           const cor=getColor(n); const s=NUM_BALL[cor];
+          const inTop2Col = top2cols.includes(getColuna(n));
           return (
-            <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",
+            <div key={n} style={{
+              width: inTop2Col ? 30 : 24,
+              height: inTop2Col ? 30 : 24,
+              borderRadius:"50%",display:"flex",
               alignItems:"center",justifyContent:"center",
-              background:s.bg,border:"2px solid #FFD700",
-              color:s.text,fontSize:11,fontWeight:"bold",flexShrink:0}}>
+              background:s.bg,
+              border: inTop2Col ? "3px solid #00e5ff" : "1px solid "+s.border,
+              boxShadow: inTop2Col ? "0 0 8px #00e5ff" : "none",
+              color:s.text,
+              fontSize: inTop2Col ? 12 : 10,
+              fontWeight:"bold",flexShrink:0}}>
               {n}
             </div>
           );
