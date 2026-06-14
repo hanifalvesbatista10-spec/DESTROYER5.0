@@ -663,23 +663,21 @@ function TargetNumbers({ entries }) {
   if(!entries || entries.length < 5) return null;
   const last5 = entries.slice(-5);
 
-  // Dominant duzia in last 5
-  const duzCnt = {};
-  last5.forEach(e=>{ if(e.duzia&&e.duzia!=="—") duzCnt[e.duzia]=(duzCnt[e.duzia]||0)+1; });
-  const bestDuz = Object.entries(duzCnt).sort((a,b)=>b[1]-a[1])[0];
-  if(!bestDuz) return null;
+  // Dominant field in last 5 — tie-break by most recent
+  const dominant = (arr, key) => {
+    const cnt = {};
+    arr.forEach(e=>{ if(e[key]&&e[key]!=="—") cnt[e[key]]=(cnt[e[key]]||0)+1; });
+    const vals = arr.map(e=>e[key]);
+    return Object.entries(cnt).sort((a,b)=>{
+      if(b[1]!==a[1]) return b[1]-a[1];
+      return vals.lastIndexOf(b[0]) - vals.lastIndexOf(a[0]);
+    })[0] || null;
+  };
 
-  // Dominant lado in last 5
-  const ladoCnt = {};
-  last5.forEach(e=>{ if(e.lado&&e.lado!=="—") ladoCnt[e.lado]=(ladoCnt[e.lado]||0)+1; });
-  const bestLado = Object.entries(ladoCnt).sort((a,b)=>b[1]-a[1])[0];
-  if(!bestLado) return null;
-
-  // Dominant parte in last 5
-  const parteCnt = {};
-  last5.forEach(e=>{ if(e.parte&&e.parte!=="—") parteCnt[e.parte]=(parteCnt[e.parte]||0)+1; });
-  const bestParte = Object.entries(parteCnt).sort((a,b)=>b[1]-a[1])[0];
-  if(!bestParte) return null;
+  const bestDuz   = dominant(last5, 'duzia');
+  const bestLado  = dominant(last5, 'lado');
+  const bestParte = dominant(last5, 'parte');
+  if(!bestDuz || !bestLado || !bestParte) return null;
 
   const [duz, duzQty] = bestDuz;
   const [lado, ladoQty] = bestLado;
