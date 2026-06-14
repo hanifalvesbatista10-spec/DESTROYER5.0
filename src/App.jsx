@@ -659,6 +659,69 @@ function MicroGroupCard({ entries }) {
   );
 }
 
+function TargetNumbers({ entries }) {
+  if(!entries || entries.length < 5) return null;
+  const last5 = entries.slice(-5);
+
+  // Dominant duzia in last 5
+  const duzCnt = {};
+  last5.forEach(e=>{ if(e.duzia&&e.duzia!=="—") duzCnt[e.duzia]=(duzCnt[e.duzia]||0)+1; });
+  const bestDuz = Object.entries(duzCnt).sort((a,b)=>b[1]-a[1])[0];
+  if(!bestDuz) return null;
+
+  // Dominant lado in last 5
+  const ladoCnt = {};
+  last5.forEach(e=>{ if(e.lado&&e.lado!=="—") ladoCnt[e.lado]=(ladoCnt[e.lado]||0)+1; });
+  const bestLado = Object.entries(ladoCnt).sort((a,b)=>b[1]-a[1])[0];
+  if(!bestLado) return null;
+
+  // Dominant parte in last 5
+  const parteCnt = {};
+  last5.forEach(e=>{ if(e.parte&&e.parte!=="—") parteCnt[e.parte]=(parteCnt[e.parte]||0)+1; });
+  const bestParte = Object.entries(parteCnt).sort((a,b)=>b[1]-a[1])[0];
+  if(!bestParte) return null;
+
+  const [duz, duzQty] = bestDuz;
+  const [lado, ladoQty] = bestLado;
+  const [parte, parteQty] = bestParte;
+
+  // Find numbers matching all 3
+  const targets = [];
+  for(let n=1;n<=36;n++){
+    if(getDuzia(n)===duz && getLado(n)===lado && getParte(n)===parte) targets.push(n);
+  }
+  if(targets.length===0) return null;
+
+  const duzSch = DUZIA_CELL[duz]||{bg:"#111",text:"#aaa"};
+  const ladoSch = LADO_CELL[lado]||{bg:"#111",text:"#aaa"};
+  const parteSch = PARTE_CELL[parte]||{bg:"#111",text:"#aaa"};
+
+  return (
+    <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
+      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>ALVOS ULT 5</div>
+      <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:6}}>
+        <span style={{fontSize:9,fontWeight:"bold",color:duzSch.text,background:duzSch.bg,padding:"2px 6px",borderRadius:2}}>{duz} {duzQty}/5</span>
+        <span style={{fontSize:9,fontWeight:"bold",color:ladoSch.text,background:ladoSch.bg,padding:"2px 6px",borderRadius:2}}>{lado} {ladoQty}/5</span>
+        <span style={{fontSize:9,fontWeight:"bold",color:parteSch.text,background:parteSch.bg,padding:"2px 6px",borderRadius:2}}>{parte} {parteQty}/5</span>
+      </div>
+      <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{fontSize:7,color:"#FFD700",fontWeight:"bold",flexShrink:0}}>▶</span>
+        {targets.map(n=>{
+          const cor=getColor(n); const s=NUM_BALL[cor];
+          return (
+            <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",
+              alignItems:"center",justifyContent:"center",
+              background:s.bg,border:"2px solid #FFD700",
+              color:s.text,fontSize:11,fontWeight:"bold",flexShrink:0}}>
+              {n}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function PairCatalog({ sharedEntries }) {
   const [catalog, setCatalog] = useState({});
   const [totalSeq, setTotalSeq] = useState(0);
@@ -1804,6 +1867,7 @@ export default function DestroyerRaceTable() {
           <PairCatalog sharedEntries={entries}/>
         </div>
         <MicroGroupCard entries={entries}/>
+        <TargetNumbers entries={entries}/>
       </div>
     </div>
   );
