@@ -659,6 +659,191 @@ function MicroGroupCard({ entries }) {
   );
 }
 
+// ── ROULETTE ANALYZER ENGINE (fiel ao original) ──────────────────────────────
+const RA_WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const RA_NBR={};
+RA_WHEEL.forEach(function(n,i){ RA_NBR[n]=[RA_WHEEL[(i-1+37)%37],RA_WHEEL[(i+1)%37]]; });
+const RA_OPP={};
+RA_WHEEL.forEach(function(n,i){ RA_OPP[n]=RA_WHEEL[(i+18)%37]; });
+const RA_REGIONS={
+  "2/3":{n:[2,11,20,14,21,25,30,36],c:"#a855f7"},
+  "6/5":{n:[6,15,24,33,16,27,32],c:"#ef4444"},
+  "7/6":{n:[7,18,25,34,6,17,28,29],c:"#f97316"},
+  "8/3":{n:[8,26,35,0,3,12,30],c:"#eab308"},
+  "9/4":{n:[9,18,27,36,13,31,22,29],c:"#22c55e"},
+  "5"  :{n:[5,10,23,14,16,27,32],c:"#f59e0b"},
+};
+const RA_DEPS=[
+  {reg:"6/5",trig:[16],pick:[19]},
+  {reg:"7/6",trig:[18,19,29,16,4],pick:[27]},
+  {reg:"8/3",trig:[20,27],pick:[17,25]},
+  {reg:"8/3",trig:null,pick:[28],strongReg:"8/3"},
+  {reg:"9/4",trig:[9,19],pick:[4]},
+];
+const RA_HIDDEN={1:[13],2:[18],3:[30,8],4:[7],5:[8],6:[14],7:[4],8:[5],9:[17]};
+const RA_CONF={1:[7,5,4,3,9,6,8,2],2:[5,7,3,9,4,6,8],3:[3,8],4:[7],5:[8],6:[3,8,7],7:[4],8:[5],9:[5,3,7,6,8]};
+const RA_RED_SET=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const RA_BLK_SET=new Set([2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]);
+
+function raIsIn(arr,n){ return arr.indexOf(n)>=0; }
+function raDigR(n){
+  if(n===0) return [];
+  const s=String(n);
+  if(s.length===1) return [n];
+  const a=parseInt(s[0]),b=parseInt(s[1]);
+  const r=[];
+  const soma=a+b, sub=Math.abs(a-b);
+  if(soma>=1&&soma<=36) r.push(soma);
+  if(sub>=1&&sub<=36&&sub!==soma) r.push(sub);
+  return r;
+}
+function raCalcScores(l14){
+  const sc={};
+  Object.keys(RA_REGIONS).forEach(k=>{sc[k]=0;});
+  l14.forEach((n,i)=>{
+    const w=(i>=12&&i<14)?2:1;
+    Object.keys(RA_REGIONS).forEach(k=>{ if(raIsIn(RA_REGIONS[k].n,n)) sc[k]+=w; });
+  });
+  return sc;
+}
+function raFullAnalyse(l14){
+  let reds=0,blacks=0,greens=0;
+  l14.forEach(n=>{ if(RA_RED_SET.has(n)) reds++; else if(n===0) greens++; else blacks++; });
+  const cols=[{l:"Vermelho",v:reds,c:"#cc0000"},{l:"Preto",v:blacks,c:"#888888"},{l:"Verde",v:greens,c:"#22c55e"}];
+  let dom=cols[0]; cols.forEach(x=>{if(x.v>dom.v)dom=x;});
+  let mn=cols[0];  cols.forEach(x=>{if(x.v<mn.v)mn=x;});
+  let cnums=[];
+  if(dom.l==="Vermelho") cnums=[...RA_RED_SET].filter(n=>!raIsIn(l14,n));
+  else if(dom.l==="Preto") cnums=[...RA_BLK_SET].filter(n=>!raIsIn(l14,n));
+  // Dígitos
+  const dc={};for(let i=0;i<=36;i++)dc[i]=0;
+  l14.forEach(n=>{ raDigR(n).forEach(r=>{dc[r]++;}); });
+  const tdn=Object.keys(dc).filter(k=>dc[k]>0).sort((a,b)=>dc[b]-dc[a]).slice(0,7).map(k=>({n:parseInt(k),v:dc[k]}));
+  // Cor mínima → vizinhos → dígitos
+  const minColorNums=l14.filter(n=>{
+    if(mn.l==="Vermelho") return RA_RED_SET.has(n);
+    if(mn.l==="Preto") return RA_BLK_SET.has(n);
+    return n===0;
+  });
+  const nbrSet={};
+  minColorNums.forEach(n=>{ (RA_NBR[n]||[]).forEach(nb=>{nbrSet[nb]=true;}); });
+  const nbrList=Object.keys(nbrSet).map(Number);
+  const ndc={};for(let j=0;j<=36;j++)ndc[j]=0;
+  nbrList.forEach(n=>{ raDigR(n).forEach(r=>{ndc[r]++;}); });
+  const topVO=Object.keys(ndc).filter(k=>ndc[k]>0).sort((a,b)=>ndc[b]-ndc[a]).slice(0,5).map(k=>({n:parseInt(k),v:ndc[k]}));
+  // Alvo ouro
+  const allDigCount={};for(let di=0;di<=11;di++)allDigCount[di]=0;
+  l14.forEach(n=>{ raDigR(n).forEach(r=>{if(r>=1&&r<=36)allDigCount[r]++;}); });
+  let topDig=0,topDigVal=0;
+  for(let d=1;d<=9;d++){if(allDigCount[d]>topDigVal){topDigVal=allDigCount[d];topDig=d;}}
+  const numsProduzem=[];
+  for(let n2=1;n2<=36;n2++){if(raIsIn(raDigR(n2),topDig))numsProduzem.push(n2);}
+  const scReg={};Object.keys(RA_REGIONS).forEach(k=>{scReg[k]=0;});
+  l14.forEach((n,i)=>{const w=(i>=12&&i<14)?2:1;Object.keys(RA_REGIONS).forEach(k=>{if(raIsIn(RA_REGIONS[k].n,n))scReg[k]+=w;});});
+  const regRanked=Object.keys(scReg).sort((a,b)=>scReg[b]-scReg[a]);
+  let goldN=null,goldReg=null,goldCandidates=[];
+  regRanked.forEach(rk=>{
+    if(scReg[rk]===0) return;
+    const matches=RA_REGIONS[rk].n.filter(n=>raIsIn(numsProduzem,n)&&!raIsIn(l14,n));
+    matches.forEach(m=>{if(!goldCandidates.find(x=>x.n===m))goldCandidates.push({n:m,reg:rk,regScore:scReg[rk]});});
+    if(goldN===null&&matches.length>0){goldN=matches[0];goldReg=rk;}
+  });
+  if(goldN===null&&regRanked.length>0){
+    const rk0=regRanked[0];
+    if(scReg[rk0]>0){const m2=RA_REGIONS[rk0].n.filter(n=>raIsIn(numsProduzem,n));if(m2.length>0){goldN=m2[0];goldReg=rk0;}}
+  }
+  const ocultosFrente=[];
+  l14.forEach(n=>{
+    if(n>=1&&n<=9&&RA_HIDDEN[n]){
+      RA_HIDDEN[n].forEach(h=>{if(!raIsIn(l14,h)&&!raIsIn(ocultosFrente,h))ocultosFrente.push(h);});
+    }
+  });
+  const confNums=[];
+  l14.forEach(n=>{
+    if(n>=1&&n<=9&&RA_CONF[n]){
+      RA_CONF[n].forEach(c=>{if(!raIsIn(l14,c)&&!raIsIn(confNums,c))confNums.push(c);});
+    }
+  });
+  let d1=0,d2=0,d3=0;
+  l14.forEach(n=>{if(n>=1&&n<=12)d1++;else if(n>=13&&n<=24)d2++;else if(n>=25&&n<=36)d3++;});
+  const topDuz=d1>=d2&&d1>=d3?[1,12]:d2>=d1&&d2>=d3?[13,24]:[25,36];
+  const duzNums=cnums.filter(n=>n>=topDuz[0]&&n<=topDuz[1]).slice(0,4);
+  return {reds,blacks,greens,dom,mn,cnums,tdn,minColorNums,nbrList,topVO,goldN,goldDig:topDig,goldReg,goldDigVal:topDigVal,goldCandidates,ocultosFrente,confNums,duzNums};
+}
+
+function raScoreAll(entries){
+  if(!entries||entries.length<7) return [];
+  const l14=entries.slice(-14).map(e=>e.num);
+  const sc=raCalcScores(l14);
+  let maxSc=0;Object.keys(sc).forEach(k=>{if(sc[k]>maxSc)maxSc=sc[k];});
+  const ranked=Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
+  const strongReg=maxSc>0?ranked[0]:null;
+  if(!strongReg) return [];
+  const an=raFullAnalyse(l14);
+  const rc=RA_REGIONS[strongReg].c;
+  const rn=RA_REGIONS[strongReg].n;
+  const S={};
+  const add=(n,pts,src,clr)=>{
+    if(n<0||n>36) return;
+    if(!S[n])S[n]={n,pts:0,srcs:[],clr:clr||"#888"};
+    S[n].pts+=pts;
+    if(!raIsIn(S[n].srcs,src))S[n].srcs.push(src);
+    if(clr)S[n].clr=clr;
+  };
+  // REG
+  rn.forEach(n=>{if(!raIsIn(l14,n)){const gap=l14.indexOf(n)<0?50:l14.indexOf(n);add(n,3+Math.min(gap,12),"REG",rc);}});
+  // COR
+  an.cnums.slice(0,10).forEach(n=>add(n,2,"COR",an.dom.c));
+  // DIG
+  an.tdn.forEach(x=>add(x.n,x.v*2,"DIG","#a78bfa"));
+  // VIZ
+  an.topVO.forEach(x=>add(x.n,x.v*2,"VIZ","#60a5fa"));
+  // OURO
+  if(an.goldN!==null)add(an.goldN,12,"OURO","#fbbf24");
+  if(an.goldCandidates)an.goldCandidates.slice(1,3).forEach(c=>add(c.n,6,"OURO","#fbbf24"));
+  // CONF
+  an.confNums.slice(0,8).forEach(n=>add(n,4,"CONF","#34d399"));
+  // DUZ
+  an.duzNums.forEach(n=>add(n,2,"DUZ",an.dom.c));
+  // DEP
+  RA_DEPS.forEach(d=>{
+    const active=d.strongReg?(strongReg===d.strongReg&&maxSc>0):l14.some(n=>raIsIn(d.trig||[],n));
+    if(active)d.pick.forEach(p=>add(p,6,"DEP",RA_REGIONS[d.reg].c));
+  });
+  // OBS
+  if(strongReg==="6/5")add(1,4,"OBS","#f97316");
+  // OPP
+  l14.slice(0,2).forEach(n=>{const op=RA_OPP[n];if(op!==undefined&&!raIsIn(l14.slice(0,2),op))add(op,4,"OPP","#a78bfa");});
+  // CICLO
+  l14.slice(7,10).forEach(n=>{if(!raIsIn(l14.slice(0,7),n))add(n,5,"CICLO","#34d399");});
+  // OCT/HIDDEN
+  an.ocultosFrente.forEach(h=>add(h,7,"OCT","#fbbf24"));
+  Object.values(S).filter(x=>x.n>=1&&x.n<=9&&x.pts>=6).forEach(x=>{
+    (RA_HIDDEN[x.n]||[]).forEach(h=>{if(!raIsIn(l14,h))add(h,Math.round(x.pts*0.5),"OCT","#fbbf24");});
+  });
+  an.tdn.slice(0,3).forEach(x=>{
+    if(x.n>=1&&x.n<=9)(RA_HIDDEN[x.n]||[]).forEach(h=>{if(!raIsIn(l14,h))add(h,x.v,"OCT","#fbbf24");});
+  });
+  // Recency penalty
+  l14.slice(0,2).forEach(n=>{if(S[n])S[n].pts=Math.round(S[n].pts*0.3);});
+  // Bonus multi-fonte
+  const bonusTable=[0,0,4,10,18,28,40];
+  return Object.values(S).map(x=>{
+    const b=bonusTable[Math.min(x.srcs.length,6)];
+    x.finalScore=x.pts+b; return x;
+  }).filter(x=>x.srcs.length>=2||x.pts>=12)
+    .sort((a,b)=>b.finalScore-a.finalScore)
+    .slice(0,8)
+    .map(x=>({
+      n:x.n,
+      pts:Math.round(x.finalScore),
+      tier:x.srcs.length>=4||x.finalScore>=35?"A":x.srcs.length>=3||x.finalScore>=20?"B":"C",
+      sources:x.srcs,
+      clr:x.clr,
+    }));
+}
+// ── FIM ROULETTE ANALYZER ENGINE ─────────────────────────────────────────────
+
 function TargetNumbers({ entries }) {
   if(!entries || entries.length < 5) return null;
   const last5 = entries.slice(-5);
@@ -678,6 +863,10 @@ function TargetNumbers({ entries }) {
   const bestLado  = dominant(last5, 'lado');
   const bestParte = dominant(last5, 'parte');
   if(!bestDuz || !bestLado || !bestParte) return null;
+
+  // Analyzer engine signal
+  const analyzerNums = useMemo ? useMemo(()=>raScoreAll(entries),[entries]) : raScoreAll(entries);
+  const analyzerSet = new Set(analyzerNums.map(x=>x.n));
 
   const [duz, duzQty] = bestDuz;
   const [lado, ladoQty] = bestLado;
@@ -726,19 +915,24 @@ function TargetNumbers({ entries }) {
         {targets.map(n=>{
           const cor=getColor(n); const s=NUM_BALL[cor];
           const inTop2Col = top2cols.includes(getColuna(n));
+          const fusion = analyzerSet.has(n);
+          const analyzerEntry = analyzerNums.find(x=>x.n===n);
           return (
-            <div key={n} style={{
-              width: inTop2Col ? 30 : 24,
-              height: inTop2Col ? 30 : 24,
-              borderRadius:"50%",display:"flex",
-              alignItems:"center",justifyContent:"center",
-              background:s.bg,
-              border: inTop2Col ? "3px solid #00e5ff" : "1px solid "+s.border,
-              boxShadow: inTop2Col ? "0 0 8px #00e5ff" : "none",
-              color:s.text,
-              fontSize: inTop2Col ? 12 : 10,
-              fontWeight:"bold",flexShrink:0}}>
-              {n}
+            <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+              <div style={{
+                width: fusion ? 32 : inTop2Col ? 30 : 24,
+                height: fusion ? 32 : inTop2Col ? 30 : 24,
+                borderRadius:"50%",display:"flex",
+                alignItems:"center",justifyContent:"center",
+                background: fusion ? s.bg : s.bg,
+                border: fusion ? "3px solid #FFD700" : inTop2Col ? "3px solid #00e5ff" : "1px solid "+s.border,
+                boxShadow: fusion ? "0 0 12px #FFD700" : inTop2Col ? "0 0 8px #00e5ff" : "none",
+                color:s.text,
+                fontSize: fusion ? 13 : inTop2Col ? 12 : 10,
+                fontWeight:"bold",flexShrink:0}}>
+                {n}
+              </div>
+              {fusion && <span style={{fontSize:6,color:"#FFD700",fontWeight:"bold"}}>⚡</span>}
             </div>
           );
         })}
@@ -1757,24 +1951,29 @@ export default function DestroyerRaceTable() {
 
         {/* Card: 3+ com mesmo LADO + mesma PARTE, persiste até 2+ contrários consecutivos */}
         {entries.length >= 3 && (() => {
+          // Find the MOST RECENT trigger (3 consecutive same lado+parte), scanning forward
+          // and tracking the latest valid trigger found, then verify it hasn't been broken since
           let triggerLado = null, triggerParte = null, triggerEnd = -1;
-          for(let i = entries.length - 3; i >= 0; i--) {
+          for(let i = 0; i <= entries.length - 3; i++) {
             const e0=entries[i], e1=entries[i+1], e2=entries[i+2];
             if(e0.lado===e1.lado && e1.lado===e2.lado &&
                e0.parte===e1.parte && e1.parte===e2.parte) {
-              triggerLado = e0.lado; triggerParte = e0.parte; triggerEnd = i+2; break;
+              triggerLado = e0.lado; triggerParte = e0.parte; triggerEnd = i+2;
             }
           }
           if(triggerLado === null) return null;
           const afterTrigger = entries.slice(triggerEnd + 1);
           if(afterTrigger.length >= 2) {
             let oppositeStreak = 0;
-            for(let i = afterTrigger.length - 1; i >= 0; i--) {
+            for(let i = 0; i < afterTrigger.length; i++) {
               const e = afterTrigger[i];
-              if(e.lado !== triggerLado || e.parte !== triggerParte) oppositeStreak++;
-              else break;
+              if(e.lado !== triggerLado || e.parte !== triggerParte) {
+                oppositeStreak++;
+                if(oppositeStreak >= 2) return null;
+              } else {
+                oppositeStreak = 0;
+              }
             }
-            if(oppositeStreak >= 2) return null;
           }
           const ladoSch = LADO_CELL[triggerLado] || {bg:"#111",text:"#fff"};
           const parteSch = PARTE_CELL[triggerParte] || {bg:"#111",text:"#fff"};
