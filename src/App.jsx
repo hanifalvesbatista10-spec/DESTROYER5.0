@@ -844,6 +844,83 @@ function raScoreAll(entries){
 }
 // ── FIM ROULETTE ANALYZER ENGINE ─────────────────────────────────────────────
 
+function QuadrantSignal({ entries }) {
+  if(!entries || entries.length < 14) return null;
+  const last5 = entries.slice(-5);
+  const last14 = entries.slice(-14);
+
+  const dominant = (arr, key) => {
+    const cnt = {};
+    arr.forEach(e=>{ if(e[key]&&e[key]!=="—") cnt[e[key]]=(cnt[e[key]]||0)+1; });
+    const vals = arr.map(e=>e[key]);
+    return Object.entries(cnt).sort((a,b)=>{
+      if(b[1]!==a[1]) return b[1]-a[1];
+      return vals.lastIndexOf(b[0]) - vals.lastIndexOf(a[0]);
+    })[0] || null;
+  };
+
+  // 2 strongest columns in last 5
+  const colCnt = {};
+  last5.forEach(e=>{ if(e.coluna&&e.coluna!=="0"&&e.coluna!=="—") colCnt[e.coluna]=(colCnt[e.coluna]||0)+1; });
+  const colVals = last5.map(e=>e.coluna);
+  const top2cols = Object.entries(colCnt).sort((a,b)=>{
+    if(b[1]!==a[1]) return b[1]-a[1];
+    return colVals.lastIndexOf(b[0]) - colVals.lastIndexOf(a[0]);
+  }).slice(0,2).map(([c])=>c);
+  if(top2cols.length===0) return null;
+
+  // Strongest parte in last 5
+  const bestParte = dominant(last5, 'parte');
+  if(!bestParte) return null;
+
+  // Strongest duzia in last 14 AND last 5 — must match
+  const duz14 = dominant(last14, 'duzia');
+  const duz5 = dominant(last5, 'duzia');
+  if(!duz14 || !duz5 || duz14[0] !== duz5[0]) return null;
+  const duz = duz14[0];
+
+  // Build target numbers: must be in top2cols + match parte + match duzia
+  const targets = [];
+  for(let n=1;n<=36;n++){
+    if(!top2cols.includes(getColuna(n))) continue;
+    if(getParte(n) !== bestParte[0]) continue;
+    if(getDuzia(n) !== duz) continue;
+    targets.push(n);
+  }
+  if(targets.length===0) return null;
+
+  const parteSch = PARTE_CELL[bestParte[0]] || {bg:"#111",text:"#aaa"};
+  const duzSch = DUZIA_CELL[duz] || {bg:"#111",text:"#aaa"};
+
+  return (
+    <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
+      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>QUADRANTE</div>
+      <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:6}}>
+        {top2cols.map(c=>{
+          const sch = c==="C1"?COL_C1_CELL:c==="C2"?COL_C2_CELL:COL_C3_CELL;
+          return <span key={c} style={{fontSize:9,fontWeight:"bold",color:sch.text,background:sch.bg,padding:"2px 6px",borderRadius:2}}>{c}</span>;
+        })}
+        <span style={{fontSize:9,fontWeight:"bold",color:parteSch.text,background:parteSch.bg,padding:"2px 6px",borderRadius:2}}>{bestParte[0]}</span>
+        <span style={{fontSize:9,fontWeight:"bold",color:duzSch.text,background:duzSch.bg,padding:"2px 6px",borderRadius:2}}>{duz}</span>
+      </div>
+      <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{fontSize:7,color:"#FFD700",fontWeight:"bold",flexShrink:0}}>▶</span>
+        {targets.map(n=>{
+          const cor=getColor(n); const s=NUM_BALL[cor];
+          return (
+            <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",
+              alignItems:"center",justifyContent:"center",
+              background:s.bg,border:"2px solid #FFD700",
+              color:s.text,fontSize:11,fontWeight:"bold",flexShrink:0}}>
+              {n}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TargetNumbers({ entries }) {
   if(!entries || entries.length < 5) return null;
   const last5 = entries.slice(-5);
@@ -1752,6 +1829,73 @@ export default function DestroyerRaceTable() {
           </table>
         </div>
 
+        {/* Avaliador de intervalo entre colunas */}
+        {entries.length >= 10 && (() => {
+          // For each column, find last 10 occurrences and measure gap to next same-column occurrence
+          const cols = ["C1","C2","C3"];
+          const colSchemes = {C1:COL_C1_CELL, C2:COL_C2_CELL, C3:COL_C3_CELL};
+
+          const results = cols.map(col => {
+            // Find indices where this column occurred (oldest to newest order in entries)
+            const occIndices = [];
+            entries.forEach((e,i) => { if(e.coluna===col) occIndices.push(i); });
+            // Take last 10 occurrences
+            const last10occ = occIndices.slice(-10);
+            // For each occurrence (except the very last), measure gap to NEXT occurrence of same column
+            const gaps = [];
+            for(let k=0;k<last10occ.length-1;k++){
+              const gap = last10occ[k+1] - last10occ[k] - 1; // numbers in between
+              gaps.push(gap);
+            }
+            // Distribution: count how many times each gap value occurred
+            const dist = {};
+            gaps.forEach(g => { dist[g] = (dist[g]||0)+1; });
+            const total = gaps.length;
+            return { col, total, dist, occCount: last10occ.length };
+          });
+
+          if(results.every(r=>r.total===0)) return null;
+
+          return (
+            <div style={{padding:"6px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
+              <div style={{fontSize:7,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6,fontWeight:"bold"}}>
+                INTERVALO ENTRE COLUNAS (ÚLT 10 OCORRÊNCIAS)
+              </div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                {results.map(({col,total,dist,occCount}) => {
+                  const sch = colSchemes[col];
+                  if(total===0) return null;
+                  const sortedGaps = Object.entries(dist).sort((a,b)=>parseInt(a[0])-parseInt(b[0]));
+                  return (
+                    <div key={col} style={{display:"flex",flexDirection:"column",gap:3,minWidth:140,
+                      background:"#0a0a0a",border:"1px solid #222",borderRadius:4,padding:"6px 10px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{fontSize:11,fontWeight:"bold",color:sch.text,background:sch.bg,padding:"2px 8px",borderRadius:2}}>{col}</span>
+                        <span style={{fontSize:8,color:"#666"}}>{occCount}x nos últimos</span>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                        {sortedGaps.map(([gap,cnt])=>{
+                          const pct = Math.round(cnt/total*100);
+                          const label = gap==="0" ? "imediato" : gap+" rodada"+(gap==="1"?"":"s");
+                          return (
+                            <div key={gap} style={{display:"flex",alignItems:"center",gap:4}}>
+                              <span style={{fontSize:7,color:"#999",minWidth:60}}>{label}</span>
+                              <div style={{flex:1,height:8,background:"#1a1a1a",borderRadius:1,overflow:"hidden"}}>
+                                <div style={{height:"100%",width:pct+"%",background:sch.bg}}/>
+                              </div>
+                              <span style={{fontSize:7,color:"#aaa",minWidth:24,textAlign:"right"}}>{cnt}x</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Barra de dominância */}
         {Object.keys(colDominance).length > 0 && (() => {
           const sortedDomCols = visibleCols.filter(c=>c.toggleable&&colDominance[c.key]).sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));
@@ -2091,6 +2235,7 @@ export default function DestroyerRaceTable() {
           <PairCatalog sharedEntries={entries}/>
         </div>
         <MicroGroupCard entries={entries}/>
+        <QuadrantSignal entries={entries}/>
         <TargetNumbers entries={entries}/>
       </div>
     </div>
