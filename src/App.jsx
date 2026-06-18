@@ -844,6 +844,112 @@ function raScoreAll(entries){
 }
 // ── FIM ROULETTE ANALYZER ENGINE ─────────────────────────────────────────────
 
+function TerminalPullAnalysis({ entries }) {
+  if(!entries || entries.length < 10) return null;
+
+  // For each terminal T0-T9, find last 3 exact occurrences and check what terminal followed
+  const TERMINAL_MEMBERS = {
+    0:[0,10,20,30], 1:[1,11,21,31], 2:[2,12,22,32], 3:[3,13,23,33],
+    4:[4,14,24,34], 5:[5,15,25,35], 6:[6,16,26,36], 7:[7,17,27],
+    8:[8,18,28], 9:[9,19,29]
+  };
+
+  const getTerminal = (n) => {
+    for(const [t, members] of Object.entries(TERMINAL_MEMBERS)){
+      if(members.includes(n)) return parseInt(t);
+    }
+    return null;
+  };
+
+  const results = [];
+
+  for(let t=0; t<=9; t++){
+    const members = TERMINAL_MEMBERS[t];
+    // Find last 3 exact occurrences of this terminal (not neighbors)
+    const occurrences = [];
+    for(let i=entries.length-1; i>=0 && occurrences.length<3; i--){
+      if(members.includes(entries[i].num) && i+1 < entries.length){
+        const nextNum = entries[i+1]?.num;
+        if(nextNum !== undefined){
+          const nextT = getTerminal(nextNum);
+          if(nextT !== null) occurrences.push({ num: entries[i].num, nextNum, nextT });
+        }
+      }
+    }
+    if(occurrences.length < 2) continue;
+
+    // Check consistency — which terminal was pulled most
+    const tCnt = {};
+    occurrences.forEach(o=>{ tCnt[o.nextT]=(tCnt[o.nextT]||0)+1; });
+    const best = Object.entries(tCnt).sort((a,b)=>b[1]-a[1])[0];
+    if(!best) continue;
+    const [bestT, cnt] = best;
+
+    // Only show if at least 2/3 consistent
+    if(cnt < 2) continue;
+
+    results.push({
+      srcT: t,
+      dstT: parseInt(bestT),
+      cnt,
+      total: occurrences.length,
+      occurrences,
+    });
+  }
+
+  if(results.length === 0) return null;
+
+  const tColors = ["#a855f7","#ef4444","#f97316","#eab308","#22c55e","#f59e0b","#60a5fa","#34d399","#f472b6","#818cf8"];
+
+  return (
+    <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
+      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:8}}>TERMINAL PUXA TERMINAL</div>
+      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+        {results.map(({srcT,dstT,cnt,total,occurrences})=>{
+          const srcC = tColors[srcT];
+          const dstC = tColors[dstT];
+          const pct = Math.round(cnt/total*100);
+          return (
+            <div key={srcT} style={{display:"flex",alignItems:"center",gap:6,
+              background:"#0a0a0a",border:"1px solid #222",borderRadius:4,padding:"4px 8px"}}>
+              {/* Source terminal */}
+              <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",
+                justifyContent:"center",background:srcC+"22",border:"2px solid "+srcC,
+                color:srcC,fontSize:10,fontWeight:"bold",flexShrink:0}}>T{srcT}</div>
+              {/* Arrow */}
+              <span style={{fontSize:12,color:"#444"}}>→</span>
+              {/* Dest terminal */}
+              <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",
+                justifyContent:"center",background:dstC+"22",border:"2px solid "+dstC,
+                color:dstC,fontSize:10,fontWeight:"bold",flexShrink:0}}>T{dstT}</div>
+              {/* Stats */}
+              <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>{cnt}/{total}</span>
+              {/* Mini bar */}
+              <div style={{flex:1,height:5,background:"#1a1a1a",borderRadius:2,overflow:"hidden"}}>
+                <div style={{height:"100%",width:pct+"%",background:pct===100?"#FFD700":dstC}}/>
+              </div>
+              <span style={{fontSize:8,color:"#555"}}>{pct}%</span>
+              {/* Last occurrences mini */}
+              <div style={{display:"flex",gap:2}}>
+                {occurrences.map((o,idx)=>{
+                  const match = o.nextT===dstT;
+                  return (
+                    <div key={idx} style={{width:14,height:14,borderRadius:"50%",
+                      background:match?dstC+"44":"#111",
+                      border:"1px solid "+(match?dstC:"#333"),
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      fontSize:7,color:match?dstC:"#444"}}>{o.nextNum}</div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function QuadrantSignal({ entries }) {
   if(!entries || entries.length < 14) return null;
   const last5 = entries.slice(-5);
@@ -2235,6 +2341,7 @@ export default function DestroyerRaceTable() {
           <PairCatalog sharedEntries={entries}/>
         </div>
         <MicroGroupCard entries={entries}/>
+        <TerminalPullAnalysis entries={entries}/>
         <QuadrantSignal entries={entries}/>
         <TargetNumbers entries={entries}/>
       </div>
