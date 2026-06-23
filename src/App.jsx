@@ -1400,6 +1400,7 @@ export default function DestroyerRaceTable() {
   const [showRep, setShowRep] = useState(false);
   const [showAlt, setShowAlt] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [filterSel, setFilterSel] = useState({});
 
   const dragKey  = useRef(null);
   const dragOver = useRef(null);
@@ -2284,47 +2285,109 @@ export default function DestroyerRaceTable() {
         })()}
 
 
-        {/* Regras */}
-        {entries.length >= 6 && (() => {
-          const signals = detectRules(entries);
-          if(signals.length === 0) return null;
-          const fieldMap = {
-            PTE:n=>getParte(n), LADO:n=>getLado(n), "A/B":n=>getAltoBaixo(n), "P/I":n=>getParidade(n),
-            ZNA:n=>getRegiao(n), GP:n=>getGP(n), SET:n=>getSetor(n), COL:n=>getColuna(n),
-            RUA:n=>getRua(n), CAV:n=>getCavalo(n), RGT:n=>getRegTrack(n),
+
+        {/* Filtro manual de características */}
+        {(() => {
+          const FILTER_GROUPS = [
+            { label:"LADO",   key:"lado",     vals:["PB e VA","PA e VB"],  pal:LADO_CELL },
+            { label:"PARTE",  key:"parte",    vals:["P1","P2"],            pal:PARTE_CELL },
+            { label:"COR",    key:"cor",      vals:["Vermelho","Preto"],   pal:COR_CELL },
+            { label:"P/I",    key:"paridade", vals:["Par","Ímpar"],        pal:PAR_CELL },
+            { label:"A/B",    key:"altobaixo",vals:["ALTO","BAIXO"],       pal:ALTOBAIXO_CELL },
+            { label:"DÚZIA",  key:"duzia",    vals:["D1","D2","D3"],       pal:DUZIA_CELL },
+            { label:"COL",    key:"coluna",   vals:["C1","C2","C3"],       pal:COLUNA_CELL },
+            { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },
+            { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },
+          ];
+
+          const NFLD = {
+            lado:      n=>getLado(n),
+            parte:     n=>getParte(n),
+            cor:       n=>getColor(n),
+            paridade:  n=>getParidade(n),
+            altobaixo: n=>getAltoBaixo(n),
+            duzia:     n=>getDuzia(n),
+            coluna:    n=>getColuna(n),
+            cavalo:    n=>getCavalo(n),
+            opo:       n=>getOpo(n),
           };
-          const allCandidateSets = signals.map(sig => {
-            const fn = fieldMap[sig.label];
-            return fn ? new Set(Array.from({length:37},(_,i)=>i).filter(n=>fn(n)===sig.val&&n>0)) : new Set();
-          }).filter(s=>s.size>0);
-          const intersection = allCandidateSets.length > 0
-            ? Array.from({length:37},(_,i)=>i).filter(n=>allCandidateSets.every(s=>s.has(n))) : [];
+
+          const toggleFilter = (key, val) => {
+            setFilterSel(prev => {
+              const cur = prev[key];
+              if(cur === val) {
+                const next = {...prev}; delete next[key]; return next;
+              }
+              return {...prev, [key]: val};
+            });
+          };
+
+          const activeKeys = Object.keys(filterSel);
+          const results = activeKeys.length > 0
+            ? Array.from({length:36},(_,i)=>i+1).filter(n =>
+                activeKeys.every(k => NFLD[k] && NFLD[k](n) === filterSel[k])
+              )
+            : [];
+
           return (
-            <div style={{padding:"4px 0",borderTop:"1px solid #CC0000",marginTop:4}}>
-              <div style={{fontSize:7,color:"#CC0000",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4,fontWeight:"bold"}}>◆ REGRAS ATIVAS</div>
-              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
-                {signals.map((sig,si) => (
-                  <div key={si} style={{display:"flex",flexDirection:"column",alignItems:"center",background:sig.pal.bg,borderRadius:3,padding:"2px 6px",border:"1px solid "+sig.pal.text,minWidth:44,textAlign:"center",flexShrink:0}}>
-                    <span style={{fontSize:6,color:sig.pal.text,opacity:0.7}}>R{sig.rule} {sig.label}</span>
-                    <span style={{fontSize:11,fontWeight:"bold",color:sig.pal.text}}>{sig.val}</span>
-                    <span style={{fontSize:6,color:sig.pal.text,opacity:0.8}}>{sig.desc}</span>
+            <div style={{padding:"8px 0",borderTop:"1px solid #CC0000",marginTop:4}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                <span style={{fontSize:8,color:"#CC0000",fontWeight:"bold",letterSpacing:"0.1em",textTransform:"uppercase"}}>◆ FILTRO</span>
+                {activeKeys.length > 0 && (
+                  <button onClick={()=>setFilterSel({})}
+                    style={{fontSize:7,color:"#555",background:"transparent",border:"1px solid #333",borderRadius:2,padding:"1px 6px",cursor:"pointer"}}>
+                    limpar
+                  </button>
+                )}
+              </div>
+              {/* Button groups */}
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+                {FILTER_GROUPS.map(({label,key,vals,pal})=>(
+                  <div key={key} style={{display:"flex",alignItems:"center",gap:3}}>
+                    <span style={{fontSize:7,color:"#444",minWidth:28,textAlign:"right"}}>{label}</span>
+                    {vals.map(val=>{
+                      const sch = pal[val]||{bg:"#111",text:"#888"};
+                      const active = filterSel[key]===val;
+                      return (
+                        <button key={val} onClick={()=>toggleFilter(key,val)}
+                          style={{
+                            fontSize:9,fontWeight:"bold",
+                            color: active ? sch.text : "#555",
+                            background: active ? sch.bg : "#0a0a0a",
+                            border: active ? "2px solid "+sch.text : "1px solid #222",
+                            borderRadius:2,padding:"2px 7px",cursor:"pointer",
+                            fontFamily:"Arial, sans-serif",
+                            transition:"all 0.15s",
+                            boxShadow: active ? "0 0 6px "+sch.bg : "none",
+                          }}>
+                          {val==="Vermelho"?"VRM":val==="Preto"?"PRT":val}
+                        </button>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
-              {intersection.length > 0 && (
+              {/* Results */}
+              {activeKeys.length > 0 && (
                 <div style={{display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
                   <span style={{fontSize:7,color:"#CC0000",fontWeight:"bold",flexShrink:0}}>▶</span>
-                  {intersection.map(n=>{
+                  {results.length > 0 ? results.map(n=>{
                     const cor=getColor(n); const s=NUM_BALL[cor];
                     return (
-                      <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:s.bg,border:"2px solid "+s.border,color:s.text,fontSize:10,fontWeight:"bold",flexShrink:0,boxShadow:"0 0 4px "+s.border}}>{n}</div>
+                      <div key={n} style={{width:26,height:26,borderRadius:"50%",
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        background:s.bg,border:"2px solid "+s.border,
+                        color:s.text,fontSize:11,fontWeight:"bold",flexShrink:0}}>
+                        {n}
+                      </div>
                     );
-                  })}
+                  }) : <span style={{fontSize:9,color:"#333",fontStyle:"italic"}}>nenhum número</span>}
                 </div>
               )}
             </div>
           );
         })()}
+
       </div>{/* fim rodapé */}
       </div>{/* fim coluna central */}
 
