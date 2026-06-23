@@ -92,10 +92,55 @@ function getRegTrack(n) {
   return "—";
 }
 
+const FRA_MAP = {
+  "F1e": new Set([32,15,19,4,21,2]),
+  "F2e": new Set([25,17,34,6,27,13]),
+  "F3e": new Set([36,11,30,8,23,10]),
+  "F1d": new Set([26,3,35,12,28,7]),
+  "F2d": new Set([29,18,22,9,31,14]),
+  "F3d": new Set([20,1,33,16,24,5]),
+};
+
+const FRA_CELL = {
+  "F1e": {bg:"#0e3460", text:"#93c5fd"},
+  "F1d": {bg:"#1e4d8c", text:"#bfdbfe"},
+  "F2e": {bg:"#14532d", text:"#86efac"},
+  "F2d": {bg:"#166534", text:"#bbf7d0"},
+  "F3e": {bg:"#7c2d00", text:"#fb923c"},
+  "F3d": {bg:"#c2410c", text:"#fed7aa"},
+  "—":   {bg:"#111",   text:"#444"},
+};
+
+function getFra(n) {
+  if(n===0) return "—";
+  for(const [key, set] of Object.entries(FRA_MAP)){
+    if(set.has(n)) return key;
+  }
+  return "—";
+}
+
+const OPO_MAP = {
+  "ZERO": new Set([26,3,35,12,28,7,29,18,22,32,15,19,4,21,2,25,17,34]),
+  "DEZ":  new Set([6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9]),
+};
+
+const OPO_CELL = {
+  "ZERO": {bg:"#14532d", text:"#86efac"},
+  "DEZ":  {bg:"#1e3a8a", text:"#93c5fd"},
+  "—":    {bg:"#111",   text:"#444"},
+};
+
+function getOpo(n) {
+  if(n===0) return "—";
+  if(OPO_MAP["ZERO"].has(n)) return "ZERO";
+  if(OPO_MAP["DEZ"].has(n))  return "DEZ";
+  return "—";
+}
+
 function buildEntry(n, id) {
   return { id, num:n, cor:getColor(n), corAbrev:getCorAbrev(getColor(n)),
     lado:getLado(n), regiao:getRegiao(n), duzia:getDuzia(n),
-    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n), setor:getSetor(n), regtrack:getRegTrack(n), cavalo:getCavalo(n) };
+    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n), setor:getSetor(n), regtrack:getRegTrack(n), cavalo:getCavalo(n), fra:getFra(n), opo:getOpo(n) };
 }
 function parseInput(raw) {
   return raw.split(/[\s,;\n\r]+/).map(t=>parseInt(t.trim())).filter(n=>!isNaN(n)&&n>=0&&n<=36);
@@ -158,6 +203,8 @@ const CELL_VAL = (e, key) => {
   if (key==="gp_d1")     return e.duzia==="D1" ? "D1" : "";
   if (key==="gp_d2")     return e.duzia==="D2" ? "D2" : "";
   if (key==="gp_d3")     return e.duzia==="D3" ? "D3" : "";
+  if (key==="fra")       return e.fra;
+  if (key==="opo")       return e.opo;
   if (key==="viz")       return "";
   if (key==="vn")        return "";
   if (key==="col_c1")    return e.coluna==="C1" ? "C1" : "";
@@ -183,6 +230,8 @@ const CELL_SCHEME = (e, key) => {
   if (key==="gp_d1") return e.duzia==="D1" ? DUZIA_CELL["D1"] : {bg:"#f5f0e8",text:"#f5f0e8"};
   if (key==="gp_d2") return e.duzia==="D2" ? DUZIA_CELL["D2"] : {bg:"#f5f0e8",text:"#f5f0e8"};
   if (key==="gp_d3") return e.duzia==="D3" ? DUZIA_CELL["D3"] : {bg:"#f5f0e8",text:"#f5f0e8"};
+  if (key==="fra")    return FRA_CELL[e.fra] || FRA_CELL["—"];
+  if (key==="opo")    return OPO_CELL[e.opo] || OPO_CELL["—"];
   if (key==="viz")    return {bg:"#0d0d0d",text:"#fff"};
   if (key==="col_c1") return e.coluna==="C1" ? {bg:"#4a5320",text:"#e5e5e5"} : {bg:"#f5f0e8",text:"#f5f0e8"};
   if (key==="col_c2") return e.coluna==="C2" ? {bg:"#0891b2",text:"#0a0a0a"} : {bg:"#f5f0e8",text:"#f5f0e8"};
@@ -277,6 +326,8 @@ const MULTI_FIELDS = [
   {k:"gp",      fn:e=>e.gp,      label:"GP",  pal:GP_CELL},
   {k:"setor",   fn:e=>e.setor,   label:"SET", pal:SETOR_CELL},
   {k:"regtrack",fn:e=>e.regtrack,label:"RGT", pal:REGTRACK_CELL},
+  {k:"fra",     fn:e=>e.fra,     label:"FRA", pal:FRA_CELL},
+  {k:"opo",     fn:e=>e.opo,     label:"OPO", pal:OPO_CELL},
 ];
 
 const PAIR_INTERVAL_FIELDS = [
@@ -372,10 +423,12 @@ const INIT_COLS = [
   { key:"num",       label:"Nº",   toggleable:false, mode:"fixed"    },
   { key:"hist",      label:"PUX",  toggleable:false, mode:"fixed"    },
   { key:"viz",       label:"VIZ",  toggleable:false, mode:"fixed"    },
+  { key:"fra",       label:"FRA",  toggleable:true,  mode:"priority" },
   { key:"gp_d1",     label:"D1",   toggleable:true,  mode:"priority" },
   { key:"gp_d2",     label:"D2",   toggleable:true,  mode:"priority" },
   { key:"gp_d3",     label:"D3",   toggleable:true,  mode:"priority" },
   { key:"lado",      label:"LADO", toggleable:true,  mode:"pinned"   },
+  { key:"opo",       label:"OPO",  toggleable:true,  mode:"pinned"   },
   { key:"parte",     label:"PTE",  toggleable:true,  mode:"pinned"   },
   { key:"col_c1",    label:"C1",   toggleable:true,  mode:"pinned"   },
   { key:"col_c2",    label:"C2",   toggleable:true,  mode:"pinned"   },
@@ -587,6 +640,8 @@ function CatalogFooterStats({ entries, terminalStats }) {
       {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
       {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
       {label:"Cavalo",key:"cavalo", vals:["369","258","147"],             pal:CAVALO_CELL},
+      {label:"FRA",   key:"fra",    vals:["F1e","F2e","F3e","F1d","F2d","F3d"], pal:FRA_CELL},
+      {label:"OPO",   key:"opo",    vals:["ZERO","DEZ"],                        pal:OPO_CELL},
     ];
     const puxados = sorted.map(p => {
       const arr = [];
@@ -1598,6 +1653,8 @@ export default function DestroyerRaceTable() {
       paridade:["Par","Ímpar"], parte:["P1","P2"], cavalo:["369","258","147"],
       regiao:["Tier","Orphelins","Voisins"], setor:["S1","S2","S3","S4","S5","S6"],
       regtrack:["32-29","25-30","15-2","8-24","16-18"],
+      fra:["F1e","F2e","F3e","F1d","F2d","F3d"],
+      opo:["ZERO","DEZ"],
       col_c1:["C1"], col_c2:["C2"], col_c3:["C3"],
       gp_d1:["d1V","d1P"], gp_d2:["d2I","d2P"], gp_d3:["d3V","d3P"],
       ruaPar:["R.Ímpar","R.Par"],
@@ -1607,6 +1664,8 @@ export default function DestroyerRaceTable() {
         if (field==="ruaPar") return getRuaParidade(e.num);
         if (field==="setor") return getSetor(e.num);
         if (field==="regtrack") return getRegTrack(e.num);
+        if (field==="fra") return getFra(e.num);
+        if (field==="opo") return getOpo(e.num);
         if (field==="col_c1") return e.coluna==="C1" ? "C1" : null;
         if (field==="col_c2") return e.coluna==="C2" ? "C2" : null;
         if (field==="col_c3") return e.coluna==="C3" ? "C3" : null;
@@ -1771,7 +1830,7 @@ export default function DestroyerRaceTable() {
                                ["vn"].includes(col.key) ? 34 :
                                ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 42 :
                                ["duzia","rua"].includes(col.key) ? 32 :
-                               ["setor"].includes(col.key) ? 32 : ["regtrack"].includes(col.key) ? 36 : undefined,
+                               ["setor"].includes(col.key) ? 32 : ["regtrack"].includes(col.key) ? 36 : ["fra"].includes(col.key) ? 36 : ["opo"].includes(col.key) ? 36 : undefined,
                         minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 : 20,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
@@ -1946,6 +2005,8 @@ export default function DestroyerRaceTable() {
             paridade:n=>getParidade(n), parte:n=>getParte(n), cavalo:n=>getCavalo(n),
             regiao:n=>getRegiao(n), duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
             ruaPar:n=>getRuaParidade(n),
+            fra:n=>getFra(n),
+            opo:n=>getOpo(n),
             col_c1:n=>getColuna(n)==="C1"?"C1":null, col_c2:n=>getColuna(n)==="C2"?"C2":null, col_c3:n=>getColuna(n)==="C3"?"C3":null,
             gp_d1:n=>{const g=getGP(n);return["d1V","d1P"].includes(g)?g:null;},
             gp_d2:n=>{const g=getGP(n);return["d2I","d2P"].includes(g)?g:null;},
@@ -1964,7 +2025,7 @@ export default function DestroyerRaceTable() {
                     <span style={{fontSize:7,color:"#777",lineHeight:1,textTransform:"uppercase"}}>{col.label}</span>
                     <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,
                       color: col.key==="cor"?(dom.val==="Vermelho"?"#ff6666":dom.val==="Verde"?"#4ade80":"#e5e5e5"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.text||"#fff"):col.key==="paridade"?(PAR_CELL[dom.val]?.text||"#fff"):col.key==="parte"?(PARTE_CELL[dom.val]?.text||"#fff"):col.key==="lado"?(LADO_CELL[dom.val]?.text||"#fff"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.text||"#fff"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.text||"#fff"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.text||"#fff"):"#00e5ff",
-                      background: col.key==="cor"?(dom.val==="Vermelho"?"#CC0000":dom.val==="Verde"?"#1B7A3E":"#222"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.bg||"#111"):col.key==="paridade"?(PAR_CELL[dom.val]?.bg||"#111"):col.key==="parte"?(PARTE_CELL[dom.val]?.bg||"#111"):col.key==="lado"?(LADO_CELL[dom.val]?.bg||"#111"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.bg||"#111"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.bg||"#111"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.bg||"#111"):"transparent",
+                      background: col.key==="cor"?(dom.val==="Vermelho"?"#CC0000":dom.val==="Verde"?"#1B7A3E":"#222"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.bg||"#111"):col.key==="paridade"?(PAR_CELL[dom.val]?.bg||"#111"):col.key==="parte"?(PARTE_CELL[dom.val]?.bg||"#111"):col.key==="lado"?(LADO_CELL[dom.val]?.bg||"#111"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.bg||"#111"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.bg||"#111"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.bg||"#111"):col.key==="fra"?(FRA_CELL[dom.val]?.bg||"#111"):col.key==="opo"?(OPO_CELL[dom.val]?.bg||"#111"):"transparent",
                       padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
                       {dom.val}
                     </span>
