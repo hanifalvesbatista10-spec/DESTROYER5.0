@@ -2019,4 +2019,417 @@ export default function DestroyerRaceTable() {
           const matchNums = [];
           for(let n=0;n<=36;n++){ if(domKeys.length>0 && domKeys.every(k=>NFIELDX[k](n)===allDomVals[k])) matchNums.push(n); }
           return (
-            <div style={{display:"flex",gap:3,padding:"3px 0",flexWr
+            <div style={{display:"flex",gap:3,padding:"3px 0",flexWrap:"wrap",alignItems:"center",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",marginTop:2,marginBottom:2}}>
+              {sortedDomCols.map(col => {
+                const dom = colDominance[col.key];
+                if (!dom) return null;
+                return (
+                  <div key={col.key} style={{display:"flex",flexDirection:"column",alignItems:"center",background:"#0a0a0a",border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
+                    <span style={{fontSize:7,color:"#777",lineHeight:1,textTransform:"uppercase"}}>{col.label}</span>
+                    <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,
+                      color: col.key==="cor"?(dom.val==="Vermelho"?"#ff6666":dom.val==="Verde"?"#4ade80":"#e5e5e5"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.text||"#fff"):col.key==="paridade"?(PAR_CELL[dom.val]?.text||"#fff"):col.key==="parte"?(PARTE_CELL[dom.val]?.text||"#fff"):col.key==="lado"?(LADO_CELL[dom.val]?.text||"#fff"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.text||"#fff"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.text||"#fff"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.text||"#fff"):"#00e5ff",
+                      background: col.key==="cor"?(dom.val==="Vermelho"?"#CC0000":dom.val==="Verde"?"#1B7A3E":"#222"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.bg||"#111"):col.key==="paridade"?(PAR_CELL[dom.val]?.bg||"#111"):col.key==="parte"?(PARTE_CELL[dom.val]?.bg||"#111"):col.key==="lado"?(LADO_CELL[dom.val]?.bg||"#111"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.bg||"#111"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.bg||"#111"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.bg||"#111"):col.key==="fra"?(FRA_CELL[dom.val]?.bg||"#111"):col.key==="opo"?(OPO_CELL[dom.val]?.bg||"#111"):"transparent",
+                      padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
+                      {dom.val}
+                    </span>
+                    <span style={{fontSize:11,fontWeight:"bold",color:"#fff",lineHeight:1}}>{dom.pct}%</span>
+                  </div>
+                );
+              })}
+              {colDominance.ruaPar && (
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",background:colDominance.ruaPar.val==="R.Par"?"#005a5a":"#4a0080",border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
+                  <span style={{fontSize:7,color:"#aaa",lineHeight:1,textTransform:"uppercase"}}>RUA</span>
+                  <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,color:"#fff",padding:"1px 5px",borderRadius:2,display:"inline-block"}}>{colDominance.ruaPar.val}</span>
+                  <span style={{fontSize:8,color:"#aaa",lineHeight:1}}>{colDominance.ruaPar.pct}%</span>
+                </div>
+              )}
+              {matchNums.length > 0 && matchNums.length <= 12 && (
+                <div style={{display:"flex",gap:2,alignItems:"center",marginLeft:4,flexWrap:"wrap"}}>
+                  <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
+                  {matchNums.map(n=>{
+                    const cor=getColor(n);
+                    return (
+                      <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:NUM_BALL[cor].bg,border:"2px solid "+NUM_BALL[cor].border,color:"#fff",fontSize:11,fontWeight:"bold",flexShrink:0}}>{n}</div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Barra de toggle */}
+        <div style={{display:"flex",gap:3,padding:"4px 0",flexWrap:"wrap",borderTop:"1px solid #1a1a1a",marginTop:4,alignItems:"center"}}>
+          <button onClick={exportPDF} style={{padding:"1px 10px",background:"#7c0000",border:"1px solid #CC0000",borderRadius:2,color:"#fca5a5",fontSize:9,cursor:"pointer",fontFamily:"Arial, sans-serif",fontWeight:"bold",letterSpacing:"0.05em"}}>⬇ PDF</button>
+          <div style={{width:"0.5px",height:14,background:"#2a2a2a"}}/>
+          {INIT_COLS.filter(c=>c.toggleable).map(col => {
+            const vis = isColVisible(col.key);
+            return (
+              <button key={col.key} onClick={()=>toggleHide(col.key)}
+                style={{padding:"1px 7px",background:vis?"#1a1a1a":"#0a0a0a",border:vis?"1px solid #333":"1px solid #1a1a1a",borderRadius:2,color:vis?"#aaa":"#333",fontSize:9,cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.04em",transition:"all 0.15s"}}>
+                {vis ? "−" : "+"} {col.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Rodapé */}
+      <div style={{background:"#080808",borderTop:"1px solid #1e1e1e",padding:"10px 16px"}}>
+        <div style={{display:"flex",gap:8,marginBottom:last14.length>0?10:0}}>
+          <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey}
+            placeholder="Cole ou digite: 23 10 11  ou  23,10,11  — Enter para adicionar" rows={2}
+            style={{flex:1,background:"#111",border:"1px solid #2a2a2a",borderRadius:2,color:"#e5e5e5",padding:"7px 10px",fontSize:12,fontFamily:"Arial, sans-serif",resize:"none",outline:"none"}}/>
+          <button onClick={addNumbers} style={{padding:"0 20px",background:"#CC0000",border:"none",borderRadius:2,color:"#fff",fontSize:11,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",fontFamily:"Arial, sans-serif"}}>ADD</button>
+          <button onClick={()=>{ setEntries([]); try{ window.storage.set("destroyer-pair-v6", JSON.stringify({catalog:{},totalSeq:0,totalNum:0})); }catch(e){} }} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",borderRadius:2,color:"#666",fontSize:11,cursor:"pointer",fontFamily:"Arial, sans-serif"}}>CLR</button>
+          <button onClick={()=>{setEntries(prev=>prev.slice(0,-1));setFilterSel({});}} disabled={entries.length===0} style={{padding:"0 14px",background:"transparent",border:"1px solid #444",borderRadius:2,color:entries.length===0?"#333":"#aaa",fontSize:11,cursor:entries.length===0?"default":"pointer",fontFamily:"Arial, sans-serif"}}>↩</button>
+          <button onClick={()=>setShowRep(v=>!v)} style={{padding:"0 12px",background:showRep?"#166534":"transparent",border:showRep?"1px solid #22c55e":"1px solid #333",borderRadius:2,color:showRep?"#22c55e":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showRep?"● REP":"○ REP"}</button>
+          <button onClick={()=>setShowAlt(v=>!v)} style={{padding:"0 12px",background:showAlt?"#7c2d12":"transparent",border:showAlt?"1px solid #f97316":"1px solid #333",borderRadius:2,color:showAlt?"#f97316":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showAlt?"● ALT":"○ ALT"}</button>
+          <button onClick={()=>setShowAll(v=>!v)} style={{padding:"0 12px",background:showAll?"#1e3a5f":"transparent",border:showAll?"1px solid #60a5fa":"1px solid #333",borderRadius:2,color:showAll?"#60a5fa":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showAll?"● HIST":"○ HIST"}</button>
+          <button onClick={()=>setShowCards(v=>!v)} style={{padding:"0 12px",background:showCards?"#2d1a00":"transparent",border:showCards?"1px solid #f97316":"1px solid #333",borderRadius:2,color:showCards?"#f97316":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showCards?"● INFO":"○ INFO"}</button>
+        </div>
+
+        {showCards && <>
+
+        {(top3Stats.length > 0 || absentCard) && (
+          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8,marginTop:2,flexWrap:"wrap"}}>
+            {top3Stats.length > 0 && <>
+              <span style={{fontSize:7,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",whiteSpace:"nowrap",flexShrink:0}}>ult 5 →</span>
+              {top3Stats.map((s,idx) => {
+                const hot = s.pct >= 80;
+                return (
+                  <div key={idx} className={hot ? "pulse-cell" : ""}
+                    style={{display:"flex",alignItems:"center",gap:4,background:hot?s.scheme.bg:"#111",borderRadius:3,padding:"3px 8px",border:hot?"2px solid "+s.scheme.text:"0.5px solid #222",transition:"all 0.3s"}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:hot?s.scheme.text:s.scheme.bg,border:"0.5px solid "+s.scheme.text,flexShrink:0}}/>
+                    <span style={{fontSize:9,color:s.scheme.text,fontWeight:"bold",fontFamily:"Arial, sans-serif"}}>{s.label}</span>
+                    <span style={{fontSize:9,color:hot?s.scheme.text:"#666",fontFamily:"Arial, sans-serif",fontWeight:hot?"bold":"normal"}}>{s.pct}%</span>
+                  </div>
+                );
+              })}
+            </>}
+            {absentCard && (
+              <div style={{display:"flex",gap:4,alignItems:"center",background:"#0a0a0a",border:"0.5px solid #1e1e1e",borderRadius:3,padding:"3px 8px"}}>
+                <span style={{fontSize:7,color:"#555",textTransform:"uppercase",letterSpacing:"0.08em",flexShrink:0}}>ausente</span>
+                {absentCard.duzia && (
+                  <div style={{display:"flex",alignItems:"center",gap:3}}>
+                    <span style={{fontSize:7,color:"#666"}}>D</span>
+                    {absentCard.duzia.present.map(v=>(
+                      <span key={v} style={{fontSize:8,fontWeight:"bold",color:DUZIA_CELL[v]?.text,background:DUZIA_CELL[v]?.bg,padding:"1px 4px",borderRadius:2}}>{v}</span>
+                    ))}
+                    <span style={{fontSize:7,color:"#555"}}>→</span>
+                    <span style={{fontSize:8,fontWeight:"bold",color:"#fff",background:"#CC0000",padding:"1px 4px",borderRadius:2,border:"1px solid #ff6666"}}>{absentCard.duzia.absent}?</span>
+                  </div>
+                )}
+                {absentCard.duzia && absentCard.coluna && <div style={{width:"0.5px",height:12,background:"#2a2a2a"}}/>}
+                {absentCard.coluna && (
+                  <div style={{display:"flex",alignItems:"center",gap:3}}>
+                    <span style={{fontSize:7,color:"#666"}}>C</span>
+                    {absentCard.coluna.present.map(v=>(
+                      <span key={v} style={{fontSize:8,fontWeight:"bold",color:COLUNA_CELL[v]?.text,background:COLUNA_CELL[v]?.bg,padding:"1px 4px",borderRadius:2}}>{v}</span>
+                    ))}
+                    <span style={{fontSize:7,color:"#555"}}>→</span>
+                    <span style={{fontSize:8,fontWeight:"bold",color:"#fff",background:"#CC0000",padding:"1px 4px",borderRadius:2,border:"1px solid #ff6666"}}>{absentCard.coluna.absent}?</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sinal interseção: dúzia ausente + coluna ausente + colDominance */}
+        {(() => {
+          if(entries.length < 5) return null;
+          const l5 = entries.slice(-5);
+
+          // Dúzia ausente nos últimos 5
+          const duzPresent = [...new Set(l5.map(e=>e.duzia).filter(v=>v!=="—"))];
+          const duzAbsent = ["D1","D2","D3"].filter(v=>!duzPresent.includes(v));
+
+          // Coluna ausente nos últimos 5
+          const colPresent = [...new Set(l5.map(e=>e.coluna).filter(v=>v!=="0"&&v!=="—"))];
+          const colAbsent = ["C1","C2","C3"].filter(v=>!colPresent.includes(v));
+
+          if(duzAbsent.length === 0 && colAbsent.length === 0) return null;
+
+          // Usar colDominance (já calculado, >=80% últimos 5)
+          const NFLD = {
+            cor:n=>getColor(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
+            paridade:n=>getParidade(n), parte:n=>getParte(n),
+            cavalo:n=>getCavalo(n), regiao:n=>getRegiao(n),
+            duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
+            ruaPar:n=>getRuaParidade(n),
+          };
+
+          // Map colDominance keys to NFLD keys
+          const domMap = {
+            cor:"cor", lado:"lado", altobaixo:"altobaixo", paridade:"paridade",
+            parte:"parte", cavalo:"cavalo", regiao:"regiao", duzia:"duzia",
+            coluna:"coluna", ruaPar:"ruaPar",
+          };
+
+          const cands = [];
+          for(let n=1;n<=36;n++){
+            if(duzAbsent.length>0 && duzAbsent.includes(getDuzia(n))) continue;
+            if(colAbsent.length>0 && colAbsent.includes(getColuna(n))) continue;
+            // Check all colDominance fields
+            let match = true;
+            for(const [field, {val}] of Object.entries(colDominance)){
+              const fn = NFLD[domMap[field]];
+              if(fn && fn(n) !== val){ match = false; break; }
+            }
+            if(!match) continue;
+            cands.push(n);
+          }
+          if(cands.length===0) return null;
+
+          return (
+            <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",marginTop:4,padding:"3px 6px",background:"#0a0a0a",border:"1px solid #333",borderRadius:3}}>
+              <span style={{fontSize:7,color:"#00e5ff",textTransform:"uppercase",letterSpacing:"0.08em",flexShrink:0,fontWeight:"bold"}}>
+                {duzAbsent.length>0?"✗"+duzAbsent.join(","):""}
+                {duzAbsent.length>0&&colAbsent.length>0?" ":""}
+                {colAbsent.length>0?"✗"+colAbsent.join(","):""}
+              </span>
+              <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
+              {cands.map(n=>{
+                const cor=getColor(n);const s=NUM_BALL[cor];
+                return(
+                  <div key={n} style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:s.bg,border:"2px solid #00e5ff",color:s.text,fontSize:9,fontWeight:"bold",flexShrink:0}}>{n}</div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* Card: 3+ com mesmo LADO + mesma PARTE, persiste até 2+ contrários consecutivos */}
+        {entries.length >= 3 && (() => {
+          // Find the MOST RECENT trigger (3 consecutive same lado+parte), scanning forward
+          // and tracking the latest valid trigger found, then verify it hasn't been broken since
+          let triggerLado = null, triggerParte = null, triggerEnd = -1;
+          for(let i = 0; i <= entries.length - 3; i++) {
+            const e0=entries[i], e1=entries[i+1], e2=entries[i+2];
+            if(e0.lado===e1.lado && e1.lado===e2.lado &&
+               e0.parte===e1.parte && e1.parte===e2.parte) {
+              triggerLado = e0.lado; triggerParte = e0.parte; triggerEnd = i+2;
+            }
+          }
+          if(triggerLado === null) return null;
+          const afterTrigger = entries.slice(triggerEnd + 1);
+          if(afterTrigger.length >= 2) {
+            let oppositeStreak = 0;
+            for(let i = 0; i < afterTrigger.length; i++) {
+              const e = afterTrigger[i];
+              if(e.lado !== triggerLado || e.parte !== triggerParte) {
+                oppositeStreak++;
+                if(oppositeStreak >= 2) return null;
+              } else {
+                oppositeStreak = 0;
+              }
+            }
+          }
+          const ladoSch = LADO_CELL[triggerLado] || {bg:"#111",text:"#fff"};
+          const parteSch = PARTE_CELL[triggerParte] || {bg:"#111",text:"#fff"};
+          return (
+            <div style={{display:"flex",gap:8,alignItems:"center",padding:"6px 12px",marginTop:4,background:"#0a0a0a",border:"2px solid #FFD700",borderRadius:3}}>
+              <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.08em"}}>3x SEQ:</span>
+              <span style={{fontSize:14,fontWeight:"bold",color:ladoSch.text,background:ladoSch.bg,padding:"3px 12px",borderRadius:3}}>{triggerLado}</span>
+              <span style={{fontSize:14,fontWeight:"bold",color:parteSch.text,background:parteSch.bg,padding:"3px 12px",borderRadius:3}}>{triggerParte}</span>
+            </div>
+          );
+        })()}
+
+        {/* Top 5 e Top 2 GP */}
+        {entries.length >= 5 && (() => {
+          const last50 = entries.slice(-50);
+          const numCnt = {};
+          last50.forEach(e => { numCnt[e.num]=(numCnt[e.num]||0)+1; });
+          const top5 = Object.entries(numCnt).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,c])=>({n:parseInt(n),c}));
+          const gpCnt = {};
+          last50.forEach(e => { if(e.gp&&e.gp!=="—") gpCnt[e.gp]=(gpCnt[e.gp]||0)+1; });
+          const top2gp = Object.entries(gpCnt).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([g,c])=>({g,c}));
+          return (
+            <div style={{padding:"4px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
+              <div style={{display:"flex",gap:6,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}}>
+                <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 5 ULT 50</span>
+                {top5.map(({n,c},i)=>{
+                  const cor=getColor(n); const s=NUM_BALL[cor];
+                  return (
+                    <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+                      <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>#{i+1}</span>
+                      <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:s.bg,border:"2px solid "+s.border,color:s.text,fontSize:10,fontWeight:"bold"}}>{n}</div>
+                      <span style={{fontSize:9,color:"#888",fontWeight:"bold"}}>{c}x</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {(() => {
+                const last5gp = entries.slice(-5).map(e=>e.gp).filter(v=>v&&v!=="—");
+                const gpAlert = top2gp.find(({g})=>last5gp.filter(v=>v===g).length>=3);
+                return gpAlert ? (
+                  <div style={{display:"flex",alignItems:"center",gap:6,background:"#1a0a00",border:"2px solid #FFD700",borderRadius:4,padding:"4px 10px",marginBottom:4}}>
+                    <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>⚡ TAKE</span>
+                    <span style={{fontSize:12,fontWeight:"bold",color:GP_CELL[gpAlert.g]?.text||"#fff"}}>{gpAlert.g}</span>
+                    <span style={{fontSize:9,color:"#FFD700"}}>{last5gp.filter(v=>v===gpAlert.g).length}/5</span>
+                  </div>
+                ) : null;
+              })()}
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 2 GP</span>
+                {top2gp.map(({g,c},i)=>{
+                  const sch=GP_CELL[g]||{bg:"#111",text:"#aaa"};
+                  return (
+                    <div key={g} style={{display:"flex",alignItems:"center",gap:4,background:sch.bg,borderRadius:3,padding:"3px 10px",border:"1px solid "+sch.text+"88"}}>
+                      <span style={{fontSize:9,color:sch.text,opacity:0.7}}>#{i+1}</span>
+                      <span style={{fontSize:13,fontWeight:"bold",color:sch.text}}>{g}</span>
+                      <span style={{fontSize:10,color:sch.text,opacity:0.9}}>{c}x</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+
+
+        </>}
+
+        {/* Filtro manual de características */}
+        {(() => {
+          // MULTI_KEYS: duzia e coluna aceitam até 2 seleções (array), resto é single
+          const MULTI_KEYS = ["duzia","coluna"];
+          const FILTER_GROUPS = [
+            { label:"LADO",   key:"lado",     vals:["PB e VA","PA e VB"],  pal:LADO_CELL },
+            { label:"PARTE",  key:"parte",    vals:["P1","P2"],            pal:PARTE_CELL },
+            { label:"COR",    key:"cor",      vals:["Vermelho","Preto"],   pal:{"Vermelho":{bg:"#CC0000",text:"#fff"},"Preto":{bg:"#222",text:"#e5e5e5"}} },
+            { label:"P/I",    key:"paridade", vals:["Par","Ímpar"],        pal:PAR_CELL },
+            { label:"A/B",    key:"altobaixo",vals:["ALTO","BAIXO"],       pal:ALTOBAIXO_CELL },
+            { label:"DÚZIA",  key:"duzia",    vals:["D1","D2","D3"],       pal:DUZIA_CELL },
+            { label:"COL",    key:"coluna",   vals:["C1","C2","C3"],       pal:COLUNA_CELL },
+            { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },
+            { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },
+          ];
+
+          const NFLD = {
+            lado:n=>getLado(n), parte:n=>getParte(n), cor:n=>getColor(n),
+            paridade:n=>getParidade(n), altobaixo:n=>getAltoBaixo(n),
+            duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
+            cavalo:n=>getCavalo(n), opo:n=>getOpo(n),
+          };
+
+          const toggleFilter = (key, val) => {
+            setFilterSel(prev => {
+              if(MULTI_KEYS.includes(key)){
+                const cur = Array.isArray(prev[key]) ? prev[key] : prev[key] ? [prev[key]] : [];
+                if(cur.includes(val)){
+                  const next = cur.filter(v=>v!==val);
+                  const np = {...prev};
+                  if(next.length===0) delete np[key]; else np[key]=next;
+                  return np;
+                }
+                if(cur.length>=2) return {...prev, [key]:[cur[1],val]};
+                return {...prev, [key]:[...cur,val]};
+              } else {
+                if(prev[key]===val){ const np={...prev}; delete np[key]; return np; }
+                return {...prev, [key]:val};
+              }
+            });
+          };
+
+          const isActive = (key,val) => {
+            if(MULTI_KEYS.includes(key)){
+              const cur = Array.isArray(filterSel[key]) ? filterSel[key] : filterSel[key] ? [filterSel[key]] : [];
+              return cur.includes(val);
+            }
+            return filterSel[key]===val;
+          };
+
+          const activeKeys = Object.keys(filterSel);
+          const hasFilter = activeKeys.length > 0;
+
+          const results = hasFilter
+            ? Array.from({length:36},(_,i)=>i+1).filter(n =>
+                activeKeys.every(k => {
+                  const fn = NFLD[k];
+                  if(!fn) return true;
+                  const sel = filterSel[k];
+                  if(Array.isArray(sel)) return sel.includes(fn(n));
+                  return fn(n) === sel;
+                })
+              )
+            : [];
+
+          return (
+            <div style={{padding:"8px 0",borderTop:"1px solid #CC0000",marginTop:4}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                <span style={{fontSize:8,color:"#CC0000",fontWeight:"bold",letterSpacing:"0.1em",textTransform:"uppercase"}}>◆ FILTRO</span>
+                {hasFilter && (
+                  <button onClick={()=>setFilterSel({})}
+                    style={{fontSize:7,color:"#555",background:"transparent",border:"1px solid #333",borderRadius:2,padding:"1px 6px",cursor:"pointer"}}>
+                    limpar
+                  </button>
+                )}
+              </div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+                {FILTER_GROUPS.map(({label,key,vals,pal})=>(
+                  <div key={key} style={{display:"flex",alignItems:"center",gap:3}}>
+                    <span style={{fontSize:7,color:"#444",minWidth:28,textAlign:"right"}}>{label}</span>
+                    {vals.map(val=>{
+                      const sch = pal[val]||{bg:"#111",text:"#888"};
+                      const active = isActive(key,val);
+                      return (
+                        <button key={val} onClick={()=>toggleFilter(key,val)}
+                          style={{
+                            fontSize:9,fontWeight:"bold",
+                            color: active ? sch.text : "#444",
+                            background: active ? sch.bg : "#0d0d0d",
+                            border: active ? "2px solid "+sch.text+"aa" : "1px solid #222",
+                            borderRadius:2,padding:"2px 7px",cursor:"pointer",
+                            fontFamily:"Arial, sans-serif",
+                            transition:"all 0.15s",
+                            boxShadow: active ? "0 0 6px "+sch.bg : "none",
+                          }}>
+                          {val==="Vermelho"?"VRM":val==="Preto"?"PRT":val}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+              {hasFilter && (
+                <div style={{display:"flex",gap:3,alignItems:"center",flexWrap:"wrap"}}>
+                  <span style={{fontSize:7,color:"#CC0000",fontWeight:"bold",flexShrink:0}}>▶</span>
+                  {results.length > 0 ? results.map(n=>{
+                    const cor=getColor(n); const s=NUM_BALL[cor];
+                    return (
+                      <div key={n} style={{width:26,height:26,borderRadius:"50%",
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        background:s.bg,border:"2px solid "+s.border,
+                        color:s.text,fontSize:11,fontWeight:"bold",flexShrink:0}}>
+                        {n}
+                      </div>
+                    );
+                  }) : <span style={{fontSize:9,color:"#333",fontStyle:"italic"}}>nenhum número</span>}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+      </div>{/* fim rodapé */}
+      </div>{/* fim coluna central */}
+
+      <div style={{width:220,flexShrink:0}}/>
+      {/* ── Painel lateral: Pair Catalog ── */}
+      <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",position:"fixed",top:0,right:0,zIndex:50}}>
+        <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
+        <div style={{flex:1,overflowY:"auto"}}>
+          <PairCatalog sharedEntries={entries}/>
+        </div>
+        <MicroGroupCard entries={entries}/>
+        <TerminalPullAnalysis entries={entries}/>
+        <QuadrantSignal entries={entries}/>
+        <TargetNumbers entries={entries}/>
+      </div>
+    </div>
+  );
+}
