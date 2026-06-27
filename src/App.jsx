@@ -2136,106 +2136,6 @@ export default function DestroyerRaceTable() {
           </div>
         )}
 
-        {/* Sinal interseção: dúzia ausente + coluna ausente + colDominance */}
-        {(() => {
-          if(entries.length < 5) return null;
-          const l5 = entries.slice(-5);
-
-          // Dúzia ausente nos últimos 5
-          const duzPresent = [...new Set(l5.map(e=>e.duzia).filter(v=>v!=="—"))];
-          const duzAbsent = ["D1","D2","D3"].filter(v=>!duzPresent.includes(v));
-
-          // Coluna ausente nos últimos 5
-          const colPresent = [...new Set(l5.map(e=>e.coluna).filter(v=>v!=="0"&&v!=="—"))];
-          const colAbsent = ["C1","C2","C3"].filter(v=>!colPresent.includes(v));
-
-          if(duzAbsent.length === 0 && colAbsent.length === 0) return null;
-
-          // Usar colDominance (já calculado, >=80% últimos 5)
-          const NFLD = {
-            cor:n=>getColor(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
-            paridade:n=>getParidade(n), parte:n=>getParte(n),
-            cavalo:n=>getCavalo(n), regiao:n=>getRegiao(n),
-            duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
-            ruaPar:n=>getRuaParidade(n),
-          };
-
-          // Map colDominance keys to NFLD keys
-          const domMap = {
-            cor:"cor", lado:"lado", altobaixo:"altobaixo", paridade:"paridade",
-            parte:"parte", cavalo:"cavalo", regiao:"regiao", duzia:"duzia",
-            coluna:"coluna", ruaPar:"ruaPar",
-          };
-
-          const cands = [];
-          for(let n=1;n<=36;n++){
-            if(duzAbsent.length>0 && duzAbsent.includes(getDuzia(n))) continue;
-            if(colAbsent.length>0 && colAbsent.includes(getColuna(n))) continue;
-            // Check all colDominance fields
-            let match = true;
-            for(const [field, {val}] of Object.entries(colDominance)){
-              const fn = NFLD[domMap[field]];
-              if(fn && fn(n) !== val){ match = false; break; }
-            }
-            if(!match) continue;
-            cands.push(n);
-          }
-          if(cands.length===0) return null;
-
-          return (
-            <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",marginTop:4,padding:"3px 6px",background:"#0a0a0a",border:"1px solid #333",borderRadius:3}}>
-              <span style={{fontSize:7,color:"#00e5ff",textTransform:"uppercase",letterSpacing:"0.08em",flexShrink:0,fontWeight:"bold"}}>
-                {duzAbsent.length>0?"✗"+duzAbsent.join(","):""}
-                {duzAbsent.length>0&&colAbsent.length>0?" ":""}
-                {colAbsent.length>0?"✗"+colAbsent.join(","):""}
-              </span>
-              <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
-              {cands.map(n=>{
-                const cor=getColor(n);const s=NUM_BALL[cor];
-                return(
-                  <div key={n} style={{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:s.bg,border:"2px solid #00e5ff",color:s.text,fontSize:9,fontWeight:"bold",flexShrink:0}}>{n}</div>
-                );
-              })}
-            </div>
-          );
-        })()}
-
-        {/* Card: 3+ com mesmo LADO + mesma PARTE, persiste até 2+ contrários consecutivos */}
-        {entries.length >= 3 && (() => {
-          // Find the MOST RECENT trigger (3 consecutive same lado+parte), scanning forward
-          // and tracking the latest valid trigger found, then verify it hasn't been broken since
-          let triggerLado = null, triggerParte = null, triggerEnd = -1;
-          for(let i = 0; i <= entries.length - 3; i++) {
-            const e0=entries[i], e1=entries[i+1], e2=entries[i+2];
-            if(e0.lado===e1.lado && e1.lado===e2.lado &&
-               e0.parte===e1.parte && e1.parte===e2.parte) {
-              triggerLado = e0.lado; triggerParte = e0.parte; triggerEnd = i+2;
-            }
-          }
-          if(triggerLado === null) return null;
-          const afterTrigger = entries.slice(triggerEnd + 1);
-          if(afterTrigger.length >= 2) {
-            let oppositeStreak = 0;
-            for(let i = 0; i < afterTrigger.length; i++) {
-              const e = afterTrigger[i];
-              if(e.lado !== triggerLado || e.parte !== triggerParte) {
-                oppositeStreak++;
-                if(oppositeStreak >= 2) return null;
-              } else {
-                oppositeStreak = 0;
-              }
-            }
-          }
-          const ladoSch = LADO_CELL[triggerLado] || {bg:"#111",text:"#fff"};
-          const parteSch = PARTE_CELL[triggerParte] || {bg:"#111",text:"#fff"};
-          return (
-            <div style={{display:"flex",gap:8,alignItems:"center",padding:"6px 12px",marginTop:4,background:"#0a0a0a",border:"2px solid #FFD700",borderRadius:3}}>
-              <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold",textTransform:"uppercase",letterSpacing:"0.08em"}}>3x SEQ:</span>
-              <span style={{fontSize:14,fontWeight:"bold",color:ladoSch.text,background:ladoSch.bg,padding:"3px 12px",borderRadius:3}}>{triggerLado}</span>
-              <span style={{fontSize:14,fontWeight:"bold",color:parteSch.text,background:parteSch.bg,padding:"3px 12px",borderRadius:3}}>{triggerParte}</span>
-            </div>
-          );
-        })()}
 
         {/* Top 5 e Top 2 GP */}
         {entries.length >= 5 && (() => {
@@ -2292,6 +2192,103 @@ export default function DestroyerRaceTable() {
 
 
         </>}
+
+        {/* Sinal 3 fichas — coluna dominante + parte + lado/OPO mais consistente */}
+        {(() => {
+          if(entries.length < 5) return null;
+          const l5 = entries.slice(-5);
+
+          // 1. Coluna mais forte com vantagem de 3+ números
+          const colCnt = {C1:0,C2:0,C3:0};
+          l5.forEach(e=>{ if(colCnt[e.coluna]!==undefined) colCnt[e.coluna]++; });
+          const colSorted = Object.entries(colCnt).sort((a,b)=>b[1]-a[1]);
+          const [bestCol, bestColCnt] = colSorted[0];
+          const [,secondColCnt] = colSorted[1]||["",0];
+          // Must have 3+ advantage (e.g. 4-1, 5-0, 3-0)
+          if(bestColCnt - secondColCnt < 3) return null;
+
+          // 2. Parte mais evidente nos últimos 5
+          const parteCnt = {P1:0,P2:0};
+          l5.forEach(e=>{ if(parteCnt[e.parte]!==undefined) parteCnt[e.parte]++; });
+          const bestParte = Object.entries(parteCnt).sort((a,b)=>b[1]-a[1])[0][0];
+
+          // 3. Lado race vs OPO — avalia qual tem mais consistência (presença + sequência)
+          const ladoCnt = {"PB e VA":0,"PA e VB":0};
+          const opoCnt  = {ZERO:0,DEZ:0};
+          l5.forEach(e=>{
+            if(ladoCnt[e.lado]!==undefined) ladoCnt[e.lado]++;
+            if(opoCnt[e.opo]!==undefined)  opoCnt[e.opo]++;
+          });
+          const bestLado = Object.entries(ladoCnt).sort((a,b)=>b[1]-a[1])[0];
+          const bestOpo  = Object.entries(opoCnt).sort((a,b)=>b[1]-a[1])[0];
+
+          // Sequência consecutiva — quem tem mais números seguidos nos últimos 5
+          const ladoSeq = (val) => {
+            let max=0,cur=0;
+            l5.forEach(e=>{ if(e.lado===val){cur++;max=Math.max(max,cur);}else cur=0; });
+            return max;
+          };
+          const opoSeq = (val) => {
+            let max=0,cur=0;
+            l5.forEach(e=>{ if(e.opo===val){cur++;max=Math.max(max,cur);}else cur=0; });
+            return max;
+          };
+
+          // Score: count + sequence bonus
+          const ladoScore = bestLado[1] + ladoSeq(bestLado[0]);
+          const opoScore  = bestOpo[1]  + opoSeq(bestOpo[0]);
+
+          const useOpo = opoScore > ladoScore;
+          const thirdKey   = useOpo ? "opo"  : "lado";
+          const thirdVal   = useOpo ? bestOpo[0] : bestLado[0];
+          const thirdCount = useOpo ? bestOpo[1]  : bestLado[1];
+          const thirdFn    = useOpo ? n=>getOpo(n) : n=>getLado(n);
+          const thirdSch   = useOpo ? (OPO_CELL[thirdVal]||{bg:"#111",text:"#aaa"}) : (LADO_CELL[thirdVal]||{bg:"#111",text:"#aaa"});
+
+          // Build candidates
+          const colSch   = thirdKey==="coluna"?COLUNA_CELL[bestCol]:(bestCol==="C1"?COL_C1_CELL:bestCol==="C2"?COL_C2_CELL:COL_C3_CELL);
+          const parteSch = PARTE_CELL[bestParte]||{bg:"#111",text:"#aaa"};
+
+          const cands = [];
+          for(let n=1;n<=36;n++){
+            if(getColuna(n)!==bestCol) continue;
+            if(getParte(n)!==bestParte) continue;
+            if(thirdFn(n)!==thirdVal) continue;
+            cands.push(n);
+          }
+          if(cands.length===0) return null;
+
+          // Fusion with analyzer
+          const analyzerNums = raScoreAll(entries);
+          const analyzerSet  = new Set(analyzerNums.map(x=>x.n));
+
+          return (
+            <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",
+              padding:"4px 6px",background:"#0a0a0a",border:"1px solid #333",borderRadius:3,marginBottom:4}}>
+              <span style={{fontSize:8,fontWeight:"bold",color:"#aaa",flexShrink:0}}>3F:</span>
+              <span style={{fontSize:9,fontWeight:"bold",color:colSch.text,background:colSch.bg,padding:"1px 6px",borderRadius:2}}>{bestCol} {bestColCnt}/5</span>
+              <span style={{fontSize:9,fontWeight:"bold",color:parteSch.text,background:parteSch.bg,padding:"1px 6px",borderRadius:2}}>{bestParte}</span>
+              <span style={{fontSize:9,fontWeight:"bold",color:thirdSch.text,background:thirdSch.bg,padding:"1px 6px",borderRadius:2}}>{thirdVal} {thirdCount}/5</span>
+              <span style={{fontSize:7,color:"#555"}}>▶</span>
+              {cands.map(n=>{
+                const cor=getColor(n); const s=NUM_BALL[cor];
+                const fusion = analyzerSet.has(n);
+                return (
+                  <div key={n} style={{
+                    width:fusion?28:24,height:fusion?28:24,
+                    borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+                    background:s.bg,
+                    border:fusion?"3px solid #FFD700":"2px solid "+s.border,
+                    boxShadow:fusion?"0 0 8px #FFD700":"none",
+                    color:s.text,fontSize:fusion?11:9,fontWeight:"bold",flexShrink:0}}>
+                    {n}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
 
         {/* Filtro manual de características */}
         {(() => {
