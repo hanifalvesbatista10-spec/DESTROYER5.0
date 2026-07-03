@@ -183,7 +183,7 @@ const PARTE_CELL = {
 const CAVALO_CELL = { "369":{bg:"#7c3d00",text:"#fb923c"}, "258":{bg:"#0a1628",text:"#60a5fa"}, "147":{bg:"#4c1d95",text:"#ddd6fe"}, "—":{bg:"#111",text:"#444"} };
 const RUA_CELL    = { R1:{bg:"#4a0080",text:"#e9d5ff"}, R2:{bg:"#005a5a",text:"#99f6e4"}, R3:{bg:"#7a1c4b",text:"#fbcfe8"}, R4:{bg:"#1a3a1a",text:"#bbf7d0"}, "0":{bg:"#1B7A3E",text:"#fff"} };
 const COLUNA_CELL = { C1:{bg:"#4a5320",text:"#e5e5e5"}, C2:{bg:"#0891b2",text:"#0a0a0a"}, C3:{bg:"#ea580c",text:"#1a1a1a"}, "0":{bg:"#1B7A3E",text:"#fff"} };
-const RUA_PAR_CELL = { "R. Ímpar":{bg:"#4a0080",text:"#e9d5ff"}, "R. Par":{bg:"#005a5a",text:"#99f6e4"} };
+const RUA_PAR_CELL = { "R.Ímpar":{bg:"#4a0080",text:"#e9d5ff"}, "R.Par":{bg:"#005a5a",text:"#99f6e4"}, "—":{bg:"#111",text:"#444"} };
 const GOLD = "#D4AF37";
 
 const CELL_VAL = (e, key) => {
@@ -204,6 +204,7 @@ const CELL_VAL = (e, key) => {
   if (key==="gp_d2")     return e.duzia==="D2" ? "D2" : "";
   if (key==="gp_d3")     return e.duzia==="D3" ? "D3" : "";
   if (key==="fra")       return e.fra;
+  if (key==="ruaPar")    return getRuaParidade(e.num);
   if (key==="opo")       return e.opo;
   if (key==="viz")       return "";
   if (key==="vn")        return "";
@@ -231,6 +232,7 @@ const CELL_SCHEME = (e, key) => {
   if (key==="gp_d2") return e.duzia==="D2" ? DUZIA_CELL["D2"] : {bg:"#f5f0e8",text:"#f5f0e8"};
   if (key==="gp_d3") return e.duzia==="D3" ? DUZIA_CELL["D3"] : {bg:"#f5f0e8",text:"#f5f0e8"};
   if (key==="fra")    return FRA_CELL[e.fra] || FRA_CELL["—"];
+  if (key==="ruaPar")  return RUA_PAR_CELL[getRuaParidade(e.num)] || {bg:"#111",text:"#444"};
   if (key==="opo")    return OPO_CELL[e.opo] || OPO_CELL["—"];
   if (key==="viz")    return {bg:"#0d0d0d",text:"#fff"};
   if (key==="col_c1") return e.coluna==="C1" ? {bg:"#4a5320",text:"#e5e5e5"} : {bg:"#f5f0e8",text:"#f5f0e8"};
@@ -441,6 +443,7 @@ const INIT_COLS = [
   { key:"regtrack",  label:"RGT",  toggleable:true,  mode:"always"   },
   { key:"setor",     label:"SET",  toggleable:true,  mode:"always"   },
   { key:"rua",       label:"RUA",  toggleable:true,  mode:"always"   },
+  { key:"ruaPar",    label:"R/P",  toggleable:true,  mode:"always"   },
   { key:"duzia",     label:"GP",   toggleable:true,  mode:"always"   },
 ];
 
@@ -1401,6 +1404,7 @@ export default function DestroyerRaceTable() {
   const [showAlt, setShowAlt] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [filterSel, setFilterSel] = useState({});
+  const [excludedDom, setExcludedDom] = useState(new Set());
   const [showCards, setShowCards] = useState(true);
 
   const dragKey  = useRef(null);
@@ -1425,6 +1429,19 @@ export default function DestroyerRaceTable() {
     setColOrder(prev => { const arr = [...prev]; const fi = arr.indexOf(from), ti = arr.indexOf(to); arr.splice(fi,1); arr.splice(ti,0,from); return arr; });
     dragKey.current=null; dragOver.current=null;
   };
+
+  // Auto-reset excludedDom on new entry
+  const prevEntriesLen = useRef(entries.length);
+  if(prevEntriesLen.current !== entries.length){
+    prevEntriesLen.current = entries.length;
+    // Reset after render via state update trick
+  }
+  const entriesLen = entries.length;
+  const [lastEntriesLen, setLastEntriesLen] = useState(0);
+  if(entriesLen !== lastEntriesLen){
+    setLastEntriesLen(entriesLen);
+    if(excludedDom.size > 0) setExcludedDom(new Set());
+  }
 
   const last14 = useMemo(()=>entries.slice(-14),[entries]);
   const last14b = useMemo(()=>entries.slice(-14),[entries]);
@@ -1649,7 +1666,7 @@ export default function DestroyerRaceTable() {
 
   const colDominance = useMemo(() => {
     if (entries.length < 3) return {};
-    const last5 = entries.slice(-5);
+    const last5 = entries.slice(-6);
     const result = {};
     const checks = {
       cor:["Vermelho","Preto","Verde"], lado:["PB e VA","PA e VB"], altobaixo:["ALTO","BAIXO"],
@@ -1833,7 +1850,7 @@ export default function DestroyerRaceTable() {
                                ["vn"].includes(col.key) ? 34 :
                                ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 42 :
                                ["duzia","rua"].includes(col.key) ? 32 :
-                               ["setor"].includes(col.key) ? 32 : ["regtrack"].includes(col.key) ? 36 : ["fra"].includes(col.key) ? 36 : ["opo"].includes(col.key) ? 36 : undefined,
+                               ["setor"].includes(col.key) ? 32 : ["regtrack"].includes(col.key) ? 36 : ["fra"].includes(col.key) ? 36 : ["opo"].includes(col.key) ? 36 : ["ruaPar"].includes(col.key) ? 36 : undefined,
                         minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 : 20,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
@@ -2000,9 +2017,9 @@ export default function DestroyerRaceTable() {
 
         {/* Barra de dominância */}
         {Object.keys(colDominance).length > 0 && (() => {
-          const sortedDomCols = visibleCols.filter(c=>c.toggleable&&colDominance[c.key]).sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));
+          const sortedDomCols = visibleCols.filter(c=>c.toggleable&&colDominance[c.key]&&!excludedDom.has(c.key)).sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));
           const allDomVals = {};
-          Object.entries(colDominance).forEach(([k,v]) => { allDomVals[k] = v.val; });
+          Object.entries(colDominance).filter(([k])=>!excludedDom.has(k)).forEach(([k,v]) => { allDomVals[k] = v.val; });
           const NFIELDX = {
             cor:n=>getColor(n), lado:n=>getLado(n), altobaixo:n=>getAltoBaixo(n),
             paridade:n=>getParidade(n), parte:n=>getParte(n), cavalo:n=>getCavalo(n),
@@ -2024,7 +2041,7 @@ export default function DestroyerRaceTable() {
                 const dom = colDominance[col.key];
                 if (!dom) return null;
                 return (
-                  <div key={col.key} style={{display:"flex",flexDirection:"column",alignItems:"center",background:"#0a0a0a",border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
+                  <div key={col.key} onClick={()=>setExcludedDom(prev=>{const n=new Set(prev);n.has(col.key)?n.delete(col.key):n.add(col.key);return n;})} style={{display:"flex",flexDirection:"column",alignItems:"center",background:"#0a0a0a",border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center",cursor:"pointer",userSelect:"none"}}>
                     <span style={{fontSize:7,color:"#777",lineHeight:1,textTransform:"uppercase"}}>{col.label}</span>
                     <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,
                       color: col.key==="cor"?(dom.val==="Vermelho"?"#ff6666":dom.val==="Verde"?"#4ade80":"#e5e5e5"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.text||"#fff"):col.key==="paridade"?(PAR_CELL[dom.val]?.text||"#fff"):col.key==="parte"?(PARTE_CELL[dom.val]?.text||"#fff"):col.key==="lado"?(LADO_CELL[dom.val]?.text||"#fff"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.text||"#fff"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.text||"#fff"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.text||"#fff"):"#00e5ff",
@@ -2033,6 +2050,23 @@ export default function DestroyerRaceTable() {
                       {dom.val}
                     </span>
                     <span style={{fontSize:11,fontWeight:"bold",color:"#fff",lineHeight:1}}>{dom.pct}%</span>
+                  </div>
+                );
+              })}
+              {/* Excluded dom cards — show dimmed with strikethrough */}
+              {[...excludedDom].filter(k=>colDominance[k]).map(k=>{
+                const dom = colDominance[k];
+                const col = visibleCols.find(c=>c.key===k);
+                if(!col||!dom) return null;
+                return (
+                  <div key={"ex-"+k} onClick={()=>setExcludedDom(prev=>{const n=new Set(prev);n.delete(k);return n;})}
+                    style={{display:"flex",flexDirection:"column",alignItems:"center",
+                      background:"#0a0a0a",border:"1px dashed #333",borderRadius:3,
+                      padding:"3px 8px",minWidth:44,textAlign:"center",cursor:"pointer",
+                      opacity:0.35,userSelect:"none"}}>
+                    <span style={{fontSize:7,color:"#555",lineHeight:1,textTransform:"uppercase",textDecoration:"line-through"}}>{col.label}</span>
+                    <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,color:"#555",textDecoration:"line-through"}}>{dom.val}</span>
+                    <span style={{fontSize:11,fontWeight:"bold",color:"#555",lineHeight:1,textDecoration:"line-through"}}>{dom.pct}%</span>
                   </div>
                 );
               })}
@@ -2136,6 +2170,100 @@ export default function DestroyerRaceTable() {
           </div>
         )}
 
+
+
+        {/* Ausência nos últimos 50 */}
+        {entries.length >= 10 && (() => {
+          const last50 = entries.slice(-50);
+          const nums50 = last50.map(e=>e.num);
+
+          // 1. Setor mais ausente
+          const setores = ["S1","S2","S3","S4","S5","S6"];
+          const setorAbsence = setores.map(s=>{
+            const lastIdx = last50.map(e=>e.setor).lastIndexOf(s);
+            const ausente = lastIdx===-1 ? last50.length : last50.length-1-lastIdx;
+            return {val:s, ausente};
+          }).sort((a,b)=>b.ausente-a.ausente)[0];
+
+          // 2. GP mais ausente
+          const gps = ["d1V","d1P","d2I","d2P","d3V","d3P"];
+          const gpAbsence = gps.map(g=>{
+            const lastIdx = last50.map(e=>e.gp).lastIndexOf(g);
+            const ausente = lastIdx===-1 ? last50.length : last50.length-1-lastIdx;
+            return {val:g, ausente};
+          }).sort((a,b)=>b.ausente-a.ausente)[0];
+
+          // 3. Número mais ausente (1-36)
+          const numAbsence = Array.from({length:36},(_,i)=>i+1).map(n=>{
+            const lastIdx = nums50.lastIndexOf(n);
+            const ausente = lastIdx===-1 ? last50.length : last50.length-1-lastIdx;
+            return {val:n, ausente};
+          }).sort((a,b)=>b.ausente-a.ausente)[0];
+
+          // 3b. Terminal mais ausente (T0-T9)
+          const TERM_MEMBERS = {
+            0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
+            4:[4,14,24,34],5:[5,15,25,35],6:[6,16,26,36],7:[7,17,27],
+            8:[8,18,28],9:[9,19,29]
+          };
+          const termAbsence = Object.entries(TERM_MEMBERS).map(([t,members])=>{
+            const lastIdx = last50.map((e,i)=>members.includes(e.num)?i:-1).filter(i=>i>=0).pop();
+            const ausente = lastIdx===undefined ? last50.length : last50.length-1-lastIdx;
+            return {val:parseInt(t), ausente};
+          }).sort((a,b)=>b.ausente-a.ausente)[0];
+
+          const setorSch = SETOR_CELL[setorAbsence.val]||{bg:"#111",text:"#aaa"};
+          const gpSch = GP_CELL[gpAbsence.val]||{bg:"#111",text:"#aaa"};
+          const numCor = getColor(numAbsence.val);
+          const numS = NUM_BALL[numCor];
+          const tColors = ["#a855f7","#ef4444","#f97316","#eab308","#22c55e","#f59e0b","#60a5fa","#34d399","#f472b6","#818cf8"];
+          const termC = tColors[termAbsence.val];
+
+          return (
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",
+              padding:"4px 0",marginTop:4,borderTop:"1px solid #1a1a1a"}}>
+              <span style={{fontSize:7,color:"#555",textTransform:"uppercase",letterSpacing:"0.08em",flexShrink:0}}>AUSÊNCIA ULT 50:</span>
+
+              {/* Setor */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+                background:setorSch.bg,borderRadius:3,padding:"2px 8px",border:"1px solid "+setorSch.text+"55"}}>
+                <span style={{fontSize:7,color:setorSch.text,opacity:0.7}}>SET</span>
+                <span style={{fontSize:11,fontWeight:"bold",color:setorSch.text}}>{setorAbsence.val}</span>
+                <span style={{fontSize:7,color:setorSch.text,opacity:0.8}}>{setorAbsence.ausente}x</span>
+              </div>
+
+              {/* GP */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",
+                background:gpSch.bg,borderRadius:3,padding:"2px 8px",border:"1px solid "+gpSch.text+"55"}}>
+                <span style={{fontSize:7,color:gpSch.text,opacity:0.7}}>GP</span>
+                <span style={{fontSize:11,fontWeight:"bold",color:gpSch.text}}>{gpAbsence.val}</span>
+                <span style={{fontSize:7,color:gpSch.text,opacity:0.8}}>{gpAbsence.ausente}x</span>
+              </div>
+
+              {/* Número */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                <span style={{fontSize:7,color:"#555"}}>Nº</span>
+                <div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",
+                  justifyContent:"center",background:numS.bg,border:"2px solid #FFD700",
+                  color:numS.text,fontSize:11,fontWeight:"bold"}}>
+                  {numAbsence.val}
+                </div>
+                <span style={{fontSize:7,color:"#888"}}>{numAbsence.ausente}x</span>
+              </div>
+
+              {/* Terminal */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                <span style={{fontSize:7,color:"#555"}}>TRM</span>
+                <div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",
+                  justifyContent:"center",background:termC+"22",border:"2px solid "+termC,
+                  color:termC,fontSize:10,fontWeight:"bold"}}>
+                  T{termAbsence.val}
+                </div>
+                <span style={{fontSize:7,color:"#888"}}>{termAbsence.ausente}x</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Top 5 e Top 2 GP */}
         {entries.length >= 5 && (() => {
@@ -2304,6 +2432,7 @@ export default function DestroyerRaceTable() {
             { label:"COL",    key:"coluna",   vals:["C1","C2","C3"],       pal:COLUNA_CELL },
             { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },
             { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },
+            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },
           ];
 
           const NFLD = {
