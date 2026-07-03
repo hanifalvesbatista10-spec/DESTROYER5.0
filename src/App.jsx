@@ -1677,7 +1677,6 @@ export default function DestroyerRaceTable() {
       opo:["ZERO","DEZ"],
       col_c1:["C1"], col_c2:["C2"], col_c3:["C3"],
       gp_d1:["d1V","d1P"], gp_d2:["d2I","d2P"], gp_d3:["d3V","d3P"],
-      ruaPar:["R.Ímpar","R.Par"],
     };
     Object.entries(checks).forEach(([field, vals]) => {
       const getVal = (e) => {
@@ -2070,13 +2069,7 @@ export default function DestroyerRaceTable() {
                   </div>
                 );
               })}
-              {colDominance.ruaPar && (
-                <div style={{display:"flex",flexDirection:"column",alignItems:"center",background:colDominance.ruaPar.val==="R.Par"?"#005a5a":"#4a0080",border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center"}}>
-                  <span style={{fontSize:7,color:"#aaa",lineHeight:1,textTransform:"uppercase"}}>RUA</span>
-                  <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,color:"#fff",padding:"1px 5px",borderRadius:2,display:"inline-block"}}>{colDominance.ruaPar.val}</span>
-                  <span style={{fontSize:8,color:"#aaa",lineHeight:1}}>{colDominance.ruaPar.pct}%</span>
-                </div>
-              )}
+
               {matchNums.length > 0 && matchNums.length <= 12 && (
                 <div style={{display:"flex",gap:2,alignItems:"center",marginLeft:4,flexWrap:"wrap"}}>
                   <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
@@ -2440,6 +2433,7 @@ export default function DestroyerRaceTable() {
             paridade:n=>getParidade(n), altobaixo:n=>getAltoBaixo(n),
             duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
             cavalo:n=>getCavalo(n), opo:n=>getOpo(n),
+            ruaPar:n=>getRuaParidade(n),
           };
 
           const toggleFilter = (key, val) => {
