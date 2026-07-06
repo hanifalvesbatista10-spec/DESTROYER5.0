@@ -1481,42 +1481,117 @@ function PatternCatalog({ entries }) {
 
   const renderSection = (results, title, groupPal) => {
     if(results.length===0) return null;
+
+    // Group patterns by their group value (D1/D2/D3 or C1/C2/C3)
+    const grouped = {};
+    results.forEach(p=>{
+      if(!grouped[p.group]) grouped[p.group]=[];
+      grouped[p.group].push(p);
+    });
+
+    // Find ALFA across all: characteristic in most patterns
+    const featCount = {};
+    results.forEach(p=>{
+      Object.entries(p.common).forEach(([k,v])=>{
+        const key=k+":"+v;
+        featCount[key]=(featCount[key]||0)+1;
+      });
+    });
+    const alfaKey = Object.entries(featCount).sort((a,b)=>b[1]-a[1])[0]?.[0];
+    const alfaParts = alfaKey ? alfaKey.split(":") : [null,null];
+    const alfaField = alfaParts[0], alfaVal = alfaParts.slice(1).join(":");
+
     return (
       <div style={{marginBottom:8}}>
-        <div style={{fontSize:7,color:"#888",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4,fontWeight:"bold"}}>{title}</div>
-        <div style={{display:"flex",flexDirection:"column",gap:4}}>
-          {results.map((p,idx)=>{
-            const grpSch = groupPal[p.group]||{bg:"#111",text:"#aaa"};
+        {/* Section title + global ALFA */}
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,
+          borderBottom:"1px solid #1a1a1a",paddingBottom:4}}>
+          <span style={{fontSize:7,color:"#888",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:"bold"}}>{title}</span>
+          {alfaField && alfaVal && (() => {
+            const pal=FEAT_PAL[alfaField];
+            const sch=pal?pal[alfaVal]||{bg:"#222",text:"#888"}:{bg:"#222",text:"#888"};
             return (
-              <div key={idx} style={{display:"flex",alignItems:"center",gap:4,flexWrap:"wrap",
-                background:"#0a0a0a",border:"1px solid #1e1e1e",borderRadius:3,padding:"4px 8px"}}>
-                {/* Group + gap */}
-                <span style={{fontSize:10,fontWeight:"bold",color:grpSch.text,background:grpSch.bg,
-                  padding:"1px 6px",borderRadius:2,flexShrink:0}}>{p.group}</span>
-                <span style={{fontSize:7,color:"#555",flexShrink:0}}>{p.gapStr}</span>
-                <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold",flexShrink:0}}>{p.count}x</span>
-                {/* Common features */}
-                <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
-                  {Object.entries(p.common).map(([k,v])=>{
-                    const pal = FEAT_PAL[k];
-                    const sch = pal?pal[v]||{bg:"#222",text:"#888"}:{bg:"#222",text:"#888"};
+              <div style={{display:"flex",alignItems:"center",gap:3,background:"#1a1000",
+                border:"1px solid #FFD700",borderRadius:3,padding:"1px 6px"}}>
+                <span style={{fontSize:6,color:"#FFD700",fontWeight:"bold"}}>ALFA</span>
+                <span style={{fontSize:9,fontWeight:"bold",color:sch.text,background:sch.bg,
+                  padding:"1px 5px",borderRadius:2}}>{alfaVal}</span>
+                <span style={{fontSize:7,color:"#FFD700"}}>{featCount[alfaKey]}x</span>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* One block per group */}
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {Object.entries(grouped).map(([grp, patterns])=>{
+            const grpSch = groupPal[grp]||{bg:"#111",text:"#aaa"};
+
+            // ALFA within this group
+            const grpFeatCount = {};
+            patterns.forEach(p=>{
+              Object.entries(p.common).forEach(([k,v])=>{
+                const key=k+":"+v;
+                grpFeatCount[key]=(grpFeatCount[key]||0)+1;
+              });
+            });
+            const grpAlfaKey = Object.entries(grpFeatCount).sort((a,b)=>b[1]-a[1])[0]?.[0];
+            const grpAlfaParts = grpAlfaKey ? grpAlfaKey.split(":") : [null,null];
+            const grpAlfaField = grpAlfaParts[0], grpAlfaVal = grpAlfaParts.slice(1).join(":");
+
+            return (
+              <div key={grp} style={{background:"#080808",border:"1px solid #222",
+                borderRadius:4,padding:"5px 8px",
+                borderLeft:"3px solid "+grpSch.bg}}>
+                {/* Group header */}
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                  <span style={{fontSize:10,fontWeight:"bold",color:grpSch.text,
+                    background:grpSch.bg,padding:"1px 7px",borderRadius:2}}>{grp}</span>
+                  <span style={{fontSize:7,color:"#555"}}>{patterns.length} padrão{patterns.length>1?"s":""}</span>
+                  {grpAlfaField && grpAlfaVal && (() => {
+                    const pal=FEAT_PAL[grpAlfaField];
+                    const sch=pal?pal[grpAlfaVal]||{bg:"#222",text:"#888"}:{bg:"#222",text:"#888"};
                     return (
-                      <span key={k} style={{fontSize:8,fontWeight:"bold",color:sch.text,
-                        background:sch.bg,padding:"1px 5px",borderRadius:2}}>
-                        {FEAT_LABEL[k]||k}: {v}
+                      <span style={{fontSize:8,fontWeight:"bold",color:sch.text,background:sch.bg,
+                        padding:"1px 5px",borderRadius:2,
+                        border:"1px solid #FFD700",boxShadow:"0 0 4px #FFD70066"}}>
+                        ★ {grpAlfaVal}
                       </span>
                     );
-                  })}
+                  })()}
                 </div>
-                {/* Example numbers */}
-                <div style={{display:"flex",gap:2,marginLeft:"auto"}}>
-                  {p.examples[0]?.map(num=>{
-                    const c=getColor(num);const s=NUM_BALL[c];
-                    return <div key={num} style={{width:18,height:18,borderRadius:"50%",
-                      display:"flex",alignItems:"center",justifyContent:"center",
-                      background:s.bg,border:"1px solid "+s.border,
-                      color:s.text,fontSize:7,fontWeight:"bold"}}>{num}</div>;
-                  })}
+                {/* Patterns */}
+                <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                  {patterns.map((p,idx)=>(
+                    <div key={idx} style={{display:"flex",alignItems:"center",gap:3,flexWrap:"wrap",
+                      background:"#0a0a0a",borderRadius:2,padding:"2px 5px"}}>
+                      <span style={{fontSize:6,color:"#555",flexShrink:0,minWidth:52}}>{p.gapStr}</span>
+                      <span style={{fontSize:7,color:"#FFD700",fontWeight:"bold",flexShrink:0}}>{p.count}x</span>
+                      {Object.entries(p.common).map(([k,v])=>{
+                        const pal=FEAT_PAL[k];
+                        const sch=pal?pal[v]||{bg:"#222",text:"#888"}:{bg:"#222",text:"#888"};
+                        const isAlfa = k===alfaField && v===alfaVal;
+                        const isGrpAlfa = k===grpAlfaField && v===grpAlfaVal;
+                        return (
+                          <span key={k} style={{fontSize:7,fontWeight:"bold",color:sch.text,
+                            background:sch.bg,padding:"1px 4px",borderRadius:2,
+                            border:isAlfa?"1px solid #FFD700":isGrpAlfa?"1px solid #FFD70066":"none",
+                            boxShadow:isAlfa?"0 0 4px #FFD700":"none"}}>
+                            {v}
+                          </span>
+                        );
+                      })}
+                      <div style={{display:"flex",gap:2,marginLeft:"auto"}}>
+                        {p.examples[0]?.map(num=>{
+                          const c=getColor(num);const s=NUM_BALL[c];
+                          return <div key={num} style={{width:14,height:14,borderRadius:"50%",
+                            display:"flex",alignItems:"center",justifyContent:"center",
+                            background:s.bg,border:"1px solid "+s.border,
+                            color:s.text,fontSize:5,fontWeight:"bold"}}>{num}</div>;
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
@@ -2780,4 +2855,4 @@ export default function DestroyerRaceTable() {
       </div>
     </div>
   );
-   }
+}
