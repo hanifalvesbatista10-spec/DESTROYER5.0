@@ -119,9 +119,25 @@ function getFra(n) {
   return "—";
 }
 
+function getGrupoDezena(n) {
+  if (n >= 0 && n <= 9) return "0";
+  if (n >= 10 && n <= 19) return "10";
+  if (n >= 20 && n <= 29) return "20";
+  if (n >= 30 && n <= 36) return "30";
+  return "—";
+}
+
 const OPO_MAP = {
   "ZERO": new Set([26,3,35,12,28,7,29,18,22,32,15,19,4,21,2,25,17,34]),
   "DEZ":  new Set([6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9]),
+};
+
+const GRUPO_DEZENA_CELL = {
+  "0":  {bg:"#14532d", text:"#bbf7d0"},
+  "10": {bg:"#1e3a8a", text:"#bfdbfe"},
+  "20": {bg:"#9a3412", text:"#fed7aa"},
+  "30": {bg:"#581c87", text:"#e9d5ff"},
+  "—":  {bg:"#111",   text:"#444"},
 };
 
 const OPO_CELL = {
@@ -140,7 +156,7 @@ function getOpo(n) {
 function buildEntry(n, id) {
   return { id, num:n, cor:getColor(n), corAbrev:getCorAbrev(getColor(n)),
     lado:getLado(n), regiao:getRegiao(n), duzia:getDuzia(n),
-    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n), setor:getSetor(n), regtrack:getRegTrack(n), cavalo:getCavalo(n), fra:getFra(n), opo:getOpo(n) };
+    paridade:getParidade(n), gp:getGP(n), rua:getRua(n), coluna:getColuna(n), parte:getParte(n), altobaixo:getAltoBaixo(n), setor:getSetor(n), regtrack:getRegTrack(n), cavalo:getCavalo(n), grupoDezena:getGrupoDezena(n), fra:getFra(n), opo:getOpo(n) };
 }
 function parseInput(raw) {
   return raw.split(/[\s,;\n\r]+/).map(t=>parseInt(t.trim())).filter(n=>!isNaN(n)&&n>=0&&n<=36);
@@ -203,7 +219,7 @@ const CELL_VAL = (e, key) => {
   if (key==="gp_d1")     return e.duzia==="D1" ? "D1" : "";
   if (key==="gp_d2")     return e.duzia==="D2" ? "D2" : "";
   if (key==="gp_d3")     return e.duzia==="D3" ? "D3" : "";
-  if (key==="fra")       return e.fra;
+  if (key==="grupoDezena") return e.grupoDezena;
   if (key==="ruaPar")    return getRuaParidade(e.num);
   if (key==="opo")       return e.opo;
   if (key==="viz")       return "";
@@ -231,7 +247,7 @@ const CELL_SCHEME = (e, key) => {
   if (key==="gp_d1") return e.duzia==="D1" ? DUZIA_CELL["D1"] : {bg:"#f5f0e8",text:"#f5f0e8"};
   if (key==="gp_d2") return e.duzia==="D2" ? DUZIA_CELL["D2"] : {bg:"#f5f0e8",text:"#f5f0e8"};
   if (key==="gp_d3") return e.duzia==="D3" ? DUZIA_CELL["D3"] : {bg:"#f5f0e8",text:"#f5f0e8"};
-  if (key==="fra")    return FRA_CELL[e.fra] || FRA_CELL["—"];
+  if (key==="grupoDezena") return GRUPO_DEZENA_CELL[e.grupoDezena] || GRUPO_DEZENA_CELL["—"];
   if (key==="ruaPar")  return RUA_PAR_CELL[getRuaParidade(e.num)] || {bg:"#111",text:"#444"};
   if (key==="opo")    return OPO_CELL[e.opo] || OPO_CELL["—"];
   if (key==="viz")    return {bg:"#0d0d0d",text:"#fff"};
@@ -425,7 +441,7 @@ const INIT_COLS = [
   { key:"num",       label:"Nº",   toggleable:false, mode:"fixed"    },
   { key:"hist",      label:"PUX",  toggleable:false, mode:"fixed"    },
   { key:"viz",       label:"VIZ",  toggleable:false, mode:"fixed"    },
-  { key:"fra",       label:"FRA",  toggleable:true,  mode:"priority" },
+  { key:"grupoDezena", label:"10S",  toggleable:true,  mode:"priority" },
   { key:"gp_d1",     label:"D1",   toggleable:true,  mode:"priority" },
   { key:"gp_d2",     label:"D2",   toggleable:true,  mode:"priority" },
   { key:"gp_d3",     label:"D3",   toggleable:true,  mode:"priority" },
@@ -2150,7 +2166,7 @@ export default function DestroyerRaceTable() {
                                ["vn"].includes(col.key) ? 34 :
                                ["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 42 :
                                ["duzia","rua"].includes(col.key) ? 32 :
-                               ["setor"].includes(col.key) ? 32 : ["regtrack"].includes(col.key) ? 36 : ["fra"].includes(col.key) ? 36 : ["opo"].includes(col.key) ? 36 : ["ruaPar"].includes(col.key) ? 36 : undefined,
+                               ["setor"].includes(col.key) ? 32 : ["regtrack"].includes(col.key) ? 36 : ["grupoDezena"].includes(col.key) ? 36 : ["opo"].includes(col.key) ? 36 : ["ruaPar"].includes(col.key) ? 36 : undefined,
                         minWidth: ["gp_d1","gp_d2","gp_d3","col_c1","col_c2","col_c3"].includes(col.key) ? 28 : 20,
                         borderLeft: isSeparator ? "3px solid #FFD700" : "none",
                         borderRight: isPrioritySep ? "3px solid #aaaaaa" : isPinnedSep ? "3px solid #aaaaaa" : "1px solid #000",
