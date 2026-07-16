@@ -919,8 +919,9 @@ function raScoreAll(entries){
 // ── FIM ROULETTE ANALYZER ENGINE ─────────────────────────────────────────────
 
 function TerminalPullAnalysis({ entries }) {
-  if (!entries || entries.length < 10) return null;
+  if(!entries || entries.length < 10) return null;
 
+  // For each terminal T0-T9, find last 3 exact occurrences and check what terminal followed
   const TERMINAL_MEMBERS = {
     0:[0,10,20,30], 1:[1,11,21,31], 2:[2,12,22,32], 3:[3,13,23,33],
     4:[4,14,24,34], 5:[5,15,25,35], 6:[6,16,26,36], 7:[7,17,27],
@@ -928,95 +929,90 @@ function TerminalPullAnalysis({ entries }) {
   };
 
   const getTerminal = (n) => {
-    for (const [t, members] of Object.entries(TERMINAL_MEMBERS)) {
-      if (members.includes(n)) return Number(t);
+    for(const [t, members] of Object.entries(TERMINAL_MEMBERS)){
+      if(members.includes(n)) return parseInt(t);
     }
     return null;
   };
 
   const results = [];
 
-  for (let t = 0; t <= 9; t++) {
+  for(let t=0; t<=9; t++){
+    const members = TERMINAL_MEMBERS[t];
+    // Find last 3 exact occurrences of this terminal (not neighbors)
     const occurrences = [];
-
-    for (let i = entries.length - 2; i >= 0 && occurrences.length < 5; i--) {
-      if (!TERMINAL_MEMBERS[t].includes(entries[i].num)) continue;
-
-      const nextNum = entries[i + 1].num;
-      const nextT = getTerminal(nextNum);
-      if (nextT !== null) {
-        occurrences.push({ sourceNum: entries[i].num, nextNum, nextT });
+    for(let i=entries.length-1; i>=0 && occurrences.length<5; i--){
+      if(members.includes(entries[i].num) && i+1 < entries.length){
+        const nextNum = entries[i+1]?.num;
+        if(nextNum !== undefined){
+          const nextT = getTerminal(nextNum);
+          if(nextT !== null) occurrences.push({ num: entries[i].num, nextNum, nextT });
+        }
       }
     }
+    if(occurrences.length < 2) continue;
 
-    if (occurrences.length < 2) continue;
+    // Check consistency — which terminal was pulled most
+    const tCnt = {};
+    occurrences.forEach(o=>{ tCnt[o.nextT]=(tCnt[o.nextT]||0)+1; });
+    const best = Object.entries(tCnt).sort((a,b)=>b[1]-a[1])[0];
+    if(!best) continue;
+    const [bestT, cnt] = best;
 
-    const counts = {};
-    occurrences.forEach(({ nextT }) => {
-      counts[nextT] = (counts[nextT] || 0) + 1;
-    });
-
-    const [bestT, count] = Object.entries(counts).sort((a,b) => b[1] - a[1])[0] || [];
-    if (bestT === undefined || count < 2) continue;
+    // Only show if at least 2/3 consistent
+    if(cnt < 2) continue;
 
     results.push({
       srcT: t,
-      dstT: Number(bestT),
-      count,
+      dstT: parseInt(bestT),
+      cnt,
       total: occurrences.length,
       occurrences,
     });
   }
 
-  if (results.length === 0) return null;
+  if(results.length === 0) return null;
 
   const tColors = ["#a855f7","#ef4444","#f97316","#eab308","#22c55e","#f59e0b","#60a5fa","#34d399","#f472b6","#818cf8"];
 
   return (
-    <div style={{borderTop:"2px solid #1e1e1e",padding:"10px",background:"#080808",flexShrink:0}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-        <span style={{fontSize:7,letterSpacing:"0.12em",color:"#666",fontWeight:"bold"}}>TERMINAL PUXA TERMINAL</span>
-        <span style={{fontSize:7,color:"#FFD700",border:"1px solid #4a3b00",background:"#171200",padding:"2px 6px",borderRadius:999}}>ÚLTIMAS 5 SITUAÇÕES</span>
-      </div>
-
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {results.map(({srcT,dstT,count,total,occurrences}) => {
+    <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
+      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:8}}>TERMINAL PUXA TERMINAL</div>
+      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+        {results.map(({srcT,dstT,cnt,total,occurrences})=>{
           const srcC = tColors[srcT];
           const dstC = tColors[dstT];
-          const pct = Math.round((count / total) * 100);
-
+          const pct = Math.round(cnt/total*100);
           return (
-            <div key={srcT} style={{background:"#0d0d0d",border:"1px solid #292929",borderRadius:8,padding:8}}>
-              <div style={{display:"flex",alignItems:"center",gap:7}}>
-                <div style={{width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:srcC+"18",border:"2px solid "+srcC,color:srcC,fontSize:10,fontWeight:"900"}}>T{srcT}</div>
-                <span style={{fontSize:14,color:"#555"}}>→</span>
-                <div style={{width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:dstC+"18",border:"2px solid "+dstC,color:dstC,fontSize:10,fontWeight:"900"}}>T{dstT}</div>
-
-                <div style={{marginLeft:"auto",textAlign:"right"}}>
-                  <div style={{fontSize:12,color:"#FFD700",fontWeight:"900"}}>{count}/{total}</div>
-                  <div style={{fontSize:7,color:"#666"}}>{pct}%</div>
-                </div>
+            <div key={srcT} style={{display:"flex",alignItems:"center",gap:6,
+              background:"#0a0a0a",border:"1px solid #222",borderRadius:4,padding:"4px 8px"}}>
+              {/* Source terminal */}
+              <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",
+                justifyContent:"center",background:srcC+"22",border:"2px solid "+srcC,
+                color:srcC,fontSize:10,fontWeight:"bold",flexShrink:0}}>T{srcT}</div>
+              {/* Arrow */}
+              <span style={{fontSize:12,color:"#444"}}>→</span>
+              {/* Dest terminal */}
+              <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",
+                justifyContent:"center",background:dstC+"22",border:"2px solid "+dstC,
+                color:dstC,fontSize:10,fontWeight:"bold",flexShrink:0}}>T{dstT}</div>
+              {/* Stats */}
+              <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>{cnt}/{total}</span>
+              {/* Mini bar */}
+              <div style={{flex:1,height:5,background:"#1a1a1a",borderRadius:2,overflow:"hidden"}}>
+                <div style={{height:"100%",width:pct+"%",background:pct===100?"#FFD700":dstC}}/>
               </div>
-
-              <div style={{height:5,background:"#1a1a1a",borderRadius:999,overflow:"hidden",margin:"7px 0"}}>
-                <div style={{height:"100%",width:pct+"%",background:pct===100?"#FFD700":dstC,borderRadius:999}}/>
-              </div>
-
-              <div style={{display:"grid",gridTemplateColumns:"repeat(5, 1fr)",gap:5}}>
-                {Array.from({length:5}).map((_,idx) => {
-                  const item = occurrences[idx];
-                  if (!item) {
-                    return <div key={idx} style={{height:34,borderRadius:6,border:"1px dashed #222",background:"#090909"}}/>;
-                  }
-
-                  const hit = item.nextT === dstT;
-                  const ball = NUM_BALL[getColor(item.nextNum)];
-
+              <span style={{fontSize:8,color:"#555"}}>{pct}%</span>
+              {/* Last occurrences mini */}
+              <div style={{display:"flex",gap:2}}>
+                {occurrences.map((o,idx)=>{
+                  const match = o.nextT===dstT;
                   return (
-                    <div key={idx} style={{height:34,borderRadius:6,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:hit?dstC+"12":"#0a0a0a",border:"1px solid "+(hit?dstC:"#262626")}}>
-                      <div style={{width:19,height:19,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:ball.bg,border:"1px solid "+ball.border,color:ball.text,fontSize:8,fontWeight:"900"}}>{item.nextNum}</div>
-                      <span style={{fontSize:6,color:hit?dstC:"#555"}}>T{item.nextT}</span>
-                    </div>
+                    <div key={idx} style={{width:14,height:14,borderRadius:"50%",
+                      background:match?dstC+"44":"#111",
+                      border:"1px solid "+(match?dstC:"#333"),
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      fontSize:7,color:match?dstC:"#444"}}>{o.nextNum}</div>
                   );
                 })}
               </div>
@@ -1261,55 +1257,49 @@ function PairCatalog({ sharedEntries }) {
     return {num:parseInt(k), count, firstIdx};
   }).sort((a,b) => b.count !== a.count ? b.count-a.count : a.firstIdx-b.firstIdx);
   const pTotal = sorted.reduce((s,x) => s+x.count, 0);
+  const pMax   = sorted.length ? sorted[0].count : 1;
 
   return (
-    <div style={{padding:"10px 12px",background:"#0d0d0d",display:"flex",flexDirection:"column"}}>
+    <div style={{padding:"12px 16px",background:"#0d0d0d",display:"flex",flexDirection:"column",minHeight:"100vh"}}>
       {queryNum !== null && (
-        <div style={{display:"flex",alignItems:"center",gap:8,paddingBottom:8,borderBottom:"1px solid #202020"}}>
-          <span style={{fontSize:8,color:"#555",letterSpacing:"0.08em",textTransform:"uppercase"}}>Após</span>
-          <CatalogNumBall n={queryNum} size={28}/>
-          <span style={{marginLeft:"auto",fontSize:9,color:"#777"}}>{pTotal} resultados</span>
+        <div style={{marginBottom:6}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+            <span style={{fontSize:9,color:"#555"}}>Consultando:</span>
+            <CatalogNumBall n={queryNum} size={28}/>
+            <span style={{fontSize:10,color:"#888"}}>{pTotal} apariç.</span>
+          </div>
         </div>
       )}
-
       {queryNum !== null ? (
         sorted.length === 0 ? (
-          <div style={{textAlign:"center",color:"#333",padding:"18px 8px",fontSize:9,letterSpacing:"0.08em"}}>
-            NENHUM RESULTADO AINDA
+          <div style={{textAlign:"center",color:"#333",padding:24,fontSize:11,letterSpacing:"0.1em",border:"1px solid #1a1a1a",borderRadius:2,fontFamily:"Arial, sans-serif"}}>
+            NENHUM DADO AINDA PARA O NÚMERO {queryNum}
           </div>
         ) : (
-          <div style={{display:"flex",flexDirection:"column"}}>
-            {sorted.map((p,i) => {
-              const cor = getColor(p.num);
-              const ball = NUM_BALL[cor];
-              return (
-                <div key={p.num} style={{
-                  display:"flex",alignItems:"center",gap:8,
-                  minHeight:34,padding:"4px 2px",
-                  borderBottom:"1px solid #1f1f1f"
-                }}>
-                  <span style={{width:18,fontSize:8,color:"#444",textAlign:"center"}}>#{i+1}</span>
-                  <div style={{
-                    width:24,height:24,borderRadius:"50%",display:"flex",
-                    alignItems:"center",justifyContent:"center",
-                    background:ball.bg,border:`2px solid ${ball.border}`,
-                    color:ball.text,fontSize:10,fontWeight:"bold",flexShrink:0
-                  }}>
-                    {p.num}
-                  </div>
-                  <span style={{fontSize:9,color:"#777"}}>veio depois</span>
-                  <div style={{marginLeft:"auto",display:"flex",alignItems:"baseline",gap:3}}>
-                    <span style={{fontSize:15,fontWeight:"900",color:"#FFD700",lineHeight:1}}>{p.count}</span>
-                    <span style={{fontSize:7,color:"#555",textTransform:"uppercase"}}>vez{p.count===1?"":"es"}</span>
-                  </div>
-                </div>
-              );
-            })}
+          <div style={{overflowX:"auto"}}>
+            <table style={{borderCollapse:"collapse",fontSize:11,width:"100%",borderLeft:"1px solid #000",borderTop:"1px solid #000"}}>
+              <thead>
+                <tr>
+                  <CatalogTH>RNK</CatalogTH><CatalogTH>NÚM</CatalogTH>
+                  <CatalogTH>GP</CatalogTH><CatalogTH>LADO</CatalogTH><CatalogTH>COL</CatalogTH>
+                  <CatalogTH>PARTE</CatalogTH><CatalogTH>CAVALO</CatalogTH><CatalogTH>COR</CatalogTH>
+                  <CatalogTH>A/B</CatalogTH><CatalogTH>PAR/ÍMP</CatalogTH><CatalogTH>ZONA</CatalogTH>
+                  <CatalogTH>DÚZIA</CatalogTH><CatalogTH>RUA</CatalogTH>
+                  <CatalogTH>SET</CatalogTH><CatalogTH>RGT</CatalogTH>
+                  <CatalogTH>VEZES</CatalogTH><CatalogTH>%</CatalogTH><CatalogTH>FREQ</CatalogTH>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((p,i) => (
+                  <CatalogTableRow key={p.num} n={p.num} rank={i+1} count={p.count} total={pTotal} maxCount={pMax}/>
+                ))}
+              </tbody>
+            </table>
           </div>
         )
       ) : (
-        <div style={{textAlign:"center",color:"#222",padding:"22px 8px",fontSize:9,letterSpacing:"0.1em"}}>
-          AGUARDANDO NÚMEROS
+        <div style={{textAlign:"center",color:"#222",padding:32,fontSize:11,letterSpacing:"0.15em",border:"1px solid #1a1a1a",borderRadius:2,fontFamily:"Arial, sans-serif"}}>
+          AGUARDANDO NÚMEROS DA TABELA PRINCIPAL
         </div>
       )}
     </div>
@@ -2867,9 +2857,9 @@ export default function DestroyerRaceTable() {
       </div>{/* fim rodapé */}
       </div>{/* fim coluna central */}
 
-      <div style={{width:280,flexShrink:0}}/>
+      <div style={{width:220,flexShrink:0}}/>
       {/* ── Painel lateral: Pair Catalog ── */}
-      <div style={{width:280,background:"#080808",borderLeft:"1px solid #1e1e1e",flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",position:"fixed",top:0,right:0,zIndex:50}}>
+      <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",position:"fixed",top:0,right:0,zIndex:50}}>
         <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
         <div style={{flex:1,overflowY:"auto"}}>
           <PairCatalog sharedEntries={entries}/>
