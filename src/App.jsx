@@ -925,7 +925,7 @@ function TerminalPullAnalysis({ entries }) {
     const members = TERMINAL_MEMBERS[t];
     // Find last 3 exact occurrences of this terminal (not neighbors)
     const occurrences = [];
-    for(let i=entries.length-1; i>=0 && occurrences.length<3; i--){
+    for(let i=entries.length-1; i>=0 && occurrences.length<5; i--){
       if(members.includes(entries[i].num) && i+1 < entries.length){
         const nextNum = entries[i+1]?.num;
         if(nextNum !== undefined){
