@@ -1989,6 +1989,7 @@ export default function DestroyerRaceTable() {
       regtrack:["32-29","25-30","15-2","8-24","16-18"],
       fra:["F1e","F2e","F3e","F1d","F2d","F3d"],
       opo:["ZERO","DEZ"],
+      grupoDezena:["0","10","20","30"],
       col_c1:["C1"], col_c2:["C2"], col_c3:["C3"],
       gp_d1:["d1V","d1P"], gp_d2:["d2I","d2P"], gp_d3:["d3V","d3P"],
     };
@@ -1999,6 +2000,7 @@ export default function DestroyerRaceTable() {
         if (field==="regtrack") return getRegTrack(e.num);
         if (field==="fra") return getFra(e.num);
         if (field==="opo") return getOpo(e.num);
+        if (field==="grupoDezena") return e.grupoDezena || getGrupoDezena(e.num);
         if (field==="col_c1") return e.coluna==="C1" ? "C1" : null;
         if (field==="col_c2") return e.coluna==="C2" ? "C2" : null;
         if (field==="col_c3") return e.coluna==="C3" ? "C3" : null;
@@ -2343,6 +2345,7 @@ export default function DestroyerRaceTable() {
             ruaPar:n=>getRuaParidade(n),
             fra:n=>getFra(n),
             opo:n=>getOpo(n),
+            grupoDezena:n=>getGrupoDezena(n),
             col_c1:n=>getColuna(n)==="C1"?"C1":null, col_c2:n=>getColuna(n)==="C2"?"C2":null, col_c3:n=>getColuna(n)==="C3"?"C3":null,
             gp_d1:n=>{const g=getGP(n);return["d1V","d1P"].includes(g)?g:null;},
             gp_d2:n=>{const g=getGP(n);return["d2I","d2P"].includes(g)?g:null;},
@@ -2360,8 +2363,8 @@ export default function DestroyerRaceTable() {
                   <div key={col.key} onClick={()=>setExcludedDom(prev=>{const n=new Set(prev);n.has(col.key)?n.delete(col.key):n.add(col.key);return n;})} style={{display:"flex",flexDirection:"column",alignItems:"center",background:"#0a0a0a",border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center",cursor:"pointer",userSelect:"none"}}>
                     <span style={{fontSize:7,color:"#777",lineHeight:1,textTransform:"uppercase"}}>{col.label}</span>
                     <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,
-                      color: col.key==="cor"?(dom.val==="Vermelho"?"#ff6666":dom.val==="Verde"?"#4ade80":"#e5e5e5"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.text||"#fff"):col.key==="paridade"?(PAR_CELL[dom.val]?.text||"#fff"):col.key==="parte"?(PARTE_CELL[dom.val]?.text||"#fff"):col.key==="lado"?(LADO_CELL[dom.val]?.text||"#fff"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.text||"#fff"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.text||"#fff"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.text||"#fff"):"#00e5ff",
-                      background: col.key==="cor"?(dom.val==="Vermelho"?"#CC0000":dom.val==="Verde"?"#1B7A3E":"#222"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.bg||"#111"):col.key==="paridade"?(PAR_CELL[dom.val]?.bg||"#111"):col.key==="parte"?(PARTE_CELL[dom.val]?.bg||"#111"):col.key==="lado"?(LADO_CELL[dom.val]?.bg||"#111"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.bg||"#111"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.bg||"#111"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.bg||"#111"):col.key==="fra"?(FRA_CELL[dom.val]?.bg||"#111"):col.key==="opo"?(OPO_CELL[dom.val]?.bg||"#111"):"transparent",
+                      color: col.key==="cor"?(dom.val==="Vermelho"?"#ff6666":dom.val==="Verde"?"#4ade80":"#e5e5e5"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.text||"#fff"):col.key==="paridade"?(PAR_CELL[dom.val]?.text||"#fff"):col.key==="parte"?(PARTE_CELL[dom.val]?.text||"#fff"):col.key==="lado"?(LADO_CELL[dom.val]?.text||"#fff"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.text||"#fff"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.text||"#fff"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.text||"#fff"):col.key==="grupoDezena"?(GRUPO_DEZENA_CELL[dom.val]?.text||"#fff"):"#00e5ff",
+                      background: col.key==="cor"?(dom.val==="Vermelho"?"#CC0000":dom.val==="Verde"?"#1B7A3E":"#222"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.bg||"#111"):col.key==="paridade"?(PAR_CELL[dom.val]?.bg||"#111"):col.key==="parte"?(PARTE_CELL[dom.val]?.bg||"#111"):col.key==="lado"?(LADO_CELL[dom.val]?.bg||"#111"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.bg||"#111"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.bg||"#111"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.bg||"#111"):col.key==="fra"?(FRA_CELL[dom.val]?.bg||"#111"):col.key==="opo"?(OPO_CELL[dom.val]?.bg||"#111"):col.key==="grupoDezena"?(GRUPO_DEZENA_CELL[dom.val]?.bg||"#111"):"transparent",
                       padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
                       {dom.val}
                     </span>
