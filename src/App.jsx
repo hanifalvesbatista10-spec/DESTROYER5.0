@@ -1713,7 +1713,9 @@ export default function DestroyerRaceTable() {
   const [entries, setEntries] = useState([]);
   const [input, setInput]     = useState("");
   const [colOrder, setColOrder] = useState(() => INIT_COLS.map(c=>c.key));
-  const [hidden, setHidden]     = useState(new Set());
+  const [hidden, setHidden] = useState(
+    new Set(["fra", "regiao", "cavalo", "regtrack", "setor", "rua", "duzia"])
+  );
   const [showRep, setShowRep] = useState(false);
   const [showAlt, setShowAlt] = useState(false);
   const [showAll, setShowAll] = useState(false);
