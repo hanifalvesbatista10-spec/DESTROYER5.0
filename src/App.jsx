@@ -294,6 +294,32 @@ function analyzeTerminal(puxouList) {
   return { terminal, count, total: puxouList.length, pct: Math.round(pct*100) };
 }
 
+function analyzeCasaPuxada(puxouList) {
+  if (!puxouList || puxouList.length === 0) return null;
+
+  const counts = {"0":0, "10":0, "20":0, "30":0};
+
+  puxouList.forEach(h => {
+    const casa = h.grupoDezena || getGrupoDezena(h.num);
+    if (counts[casa] !== undefined) counts[casa]++;
+  });
+
+  const best = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  if (!best) return null;
+
+  const [casa, count] = best;
+  const pct = count / puxouList.length;
+
+  if (pct < 0.60) return null;
+
+  return {
+    casa,
+    count,
+    total: puxouList.length,
+    pct: Math.round(pct * 100),
+  };
+}
+
 const MICRO_GROUPS = {
   "C1D1": { nums:[1,4,7,10],   viz:{1:[33,20],  4:[19,21],  7:[29,28],  10:[23,5]}  },
   "C2D1": { nums:[2,5,8,11],   viz:{2:[21,25],  5:[10,24],  8:[30,23],  11:[36,30]} },
@@ -440,17 +466,17 @@ const INIT_COLS = [
   { key:"seq",       label:"#",    toggleable:false, mode:"fixed"    },
   { key:"num",       label:"Nº",   toggleable:false, mode:"fixed"    },
   { key:"hist",      label:"PUX",  toggleable:false, mode:"fixed"    },
-  { key:"viz",       label:"VIZ",  toggleable:false, mode:"fixed"    },
+  { key:"viz",       label:"CASA", toggleable:false, mode:"fixed"    },
   { key:"grupoDezena", label:"10S",  toggleable:true,  mode:"priority" },
-  { key:"gp_d1",     label:"D1",   toggleable:true,  mode:"priority" },
-  { key:"gp_d2",     label:"D2",   toggleable:true,  mode:"priority" },
-  { key:"gp_d3",     label:"D3",   toggleable:true,  mode:"priority" },
+  { key:"col_c1",    label:"C1",   toggleable:true,  mode:"priority" },
+  { key:"col_c2",    label:"C2",   toggleable:true,  mode:"priority" },
+  { key:"col_c3",    label:"C3",   toggleable:true,  mode:"priority" },
   { key:"lado",      label:"LADO", toggleable:true,  mode:"pinned"   },
   { key:"opo",       label:"OPO",  toggleable:true,  mode:"pinned"   },
   { key:"parte",     label:"PTE",  toggleable:true,  mode:"pinned"   },
-  { key:"col_c1",    label:"C1",   toggleable:true,  mode:"pinned"   },
-  { key:"col_c2",    label:"C2",   toggleable:true,  mode:"pinned"   },
-  { key:"col_c3",    label:"C3",   toggleable:true,  mode:"pinned"   },
+  { key:"gp_d1",     label:"D1",   toggleable:true,  mode:"pinned"   },
+  { key:"gp_d2",     label:"D2",   toggleable:true,  mode:"pinned"   },
+  { key:"gp_d3",     label:"D3",   toggleable:true,  mode:"pinned"   },
   { key:"cor",       label:"COR",  toggleable:true,  mode:"auto"     },
   { key:"altobaixo", label:"A/B",  toggleable:true,  mode:"auto"     },
   { key:"paridade",  label:"P/I",  toggleable:true,  mode:"auto"     },
@@ -481,6 +507,16 @@ function getHistorico(entries, currentIndex, num) {
     if (entries[i].num === num && i + 1 < entries.length) { nexts.push(entries[i + 1]); }
   }
   return nexts.slice(-5);
+}
+
+function getHistoricoCompleto(entries, currentIndex, num) {
+  const nexts = [];
+  for (let i = 0; i < currentIndex; i++) {
+    if (entries[i].num === num && i + 1 <= currentIndex) {
+      nexts.push(entries[i + 1]);
+    }
+  }
+  return nexts;
 }
 
 function calcRepAltPerValue(arr, field, value) {
@@ -2309,14 +2345,23 @@ export default function DestroyerRaceTable() {
                         );
                       }
                       if (col.key==="viz") {
-                        const hist = getHistorico(entries, realIndex, e.num);
-                        const result = analyzeTerminal(hist);
+                        const histCompleto = getHistoricoCompleto(entries, realIndex, e.num);
+                        const result = analyzeCasaPuxada(histCompleto);
+                        const casaScheme = result
+                          ? (GRUPO_DEZENA_CELL[result.casa] || GRUPO_DEZENA_CELL["—"])
+                          : GRUPO_DEZENA_CELL["—"];
+
                         return (
-                          <td key="viz" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:28}}>
+                          <td key="viz" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:34}}>
                             {result ? (
-                              <div style={{display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",background:"#1a1a00",border:"2px solid #FFD700",color:"#FFD700",fontFamily:"Arial, sans-serif"}}>
-                                <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>T{result.terminal}</span>
-                                <span style={{fontSize:6,lineHeight:1,opacity:0.85}}>{result.pct}%</span>
+                              <div style={{
+                                display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+                                minWidth:32,height:28,borderRadius:3,padding:"0 3px",
+                                background:casaScheme.bg,border:"2px solid "+casaScheme.text,
+                                color:casaScheme.text,fontFamily:"Arial, sans-serif"
+                              }}>
+                                <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>{result.casa}</span>
+                                <span style={{fontSize:6,lineHeight:1,opacity:0.9}}>{result.pct}%</span>
                               </div>
                             ) : <span style={{color:"#2a2a2a",fontSize:8}}>—</span>}
                           </td>
@@ -2738,7 +2783,7 @@ export default function DestroyerRaceTable() {
         {/* Filtro manual de características */}
         {(() => {
           // MULTI_KEYS: duzia e coluna aceitam até 2 seleções (array), resto é single
-          const MULTI_KEYS = ["duzia","coluna"];
+          const MULTI_KEYS = ["duzia","coluna","grupoDezena"];
           const FILTER_GROUPS = [
             { label:"LADO",   key:"lado",     vals:["PB e VA","PA e VB"],  pal:LADO_CELL },
             { label:"PARTE",  key:"parte",    vals:["P1","P2"],            pal:PARTE_CELL },
@@ -2747,6 +2792,7 @@ export default function DestroyerRaceTable() {
             { label:"A/B",    key:"altobaixo",vals:["ALTO","BAIXO"],       pal:ALTOBAIXO_CELL },
             { label:"DÚZIA",  key:"duzia",    vals:["D1","D2","D3"],       pal:DUZIA_CELL },
             { label:"COL",    key:"coluna",   vals:["C1","C2","C3"],       pal:COLUNA_CELL },
+            { label:"CASAS",  key:"grupoDezena", vals:["0","10","20","30"], pal:GRUPO_DEZENA_CELL },
             { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },
             { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },
             { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },
@@ -2756,6 +2802,7 @@ export default function DestroyerRaceTable() {
             lado:n=>getLado(n), parte:n=>getParte(n), cor:n=>getColor(n),
             paridade:n=>getParidade(n), altobaixo:n=>getAltoBaixo(n),
             duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
+            grupoDezena:n=>getGrupoDezena(n),
             cavalo:n=>getCavalo(n), opo:n=>getOpo(n),
             ruaPar:n=>getRuaParidade(n),
           };
