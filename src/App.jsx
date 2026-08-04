@@ -297,26 +297,35 @@ function analyzeTerminal(puxouList) {
 function analyzeCasaPuxada(puxouList) {
   if (!puxouList || puxouList.length === 0) return null;
 
+  const ultimos5 = puxouList.slice(-5);
   const counts = {"0":0, "10":0, "20":0, "30":0};
+  const casasNaOrdem = [];
 
-  puxouList.forEach(h => {
+  ultimos5.forEach(h => {
     const casa = h.grupoDezena || getGrupoDezena(h.num);
-    if (counts[casa] !== undefined) counts[casa]++;
+    if (counts[casa] !== undefined) {
+      counts[casa]++;
+      casasNaOrdem.push(casa);
+    }
   });
 
-  const best = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
-  if (!best) return null;
+  const ranking = Object.entries(counts)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return casasNaOrdem.lastIndexOf(b[0]) - casasNaOrdem.lastIndexOf(a[0]);
+    });
 
-  const [casa, count] = best;
-  const pct = count / puxouList.length;
+  if (ranking.length === 0) return null;
 
-  if (pct < 0.60) return null;
+  const [casa, count] = ranking[0];
+  const total = casasNaOrdem.length;
 
   return {
     casa,
     count,
-    total: puxouList.length,
-    pct: Math.round(pct * 100),
+    total,
+    pct: Math.round((count / total) * 100),
   };
 }
 
@@ -509,14 +518,18 @@ function getHistorico(entries, currentIndex, num) {
   return nexts.slice(-5);
 }
 
-function getHistoricoCompleto(entries, currentIndex, num) {
+function getHistoricoCasaUltimos5(entries, currentIndex, casaOrigem) {
   const nexts = [];
+
   for (let i = 0; i < currentIndex; i++) {
-    if (entries[i].num === num && i + 1 <= currentIndex) {
+    const casaDaOcorrencia = entries[i].grupoDezena || getGrupoDezena(entries[i].num);
+
+    if (casaDaOcorrencia === casaOrigem && i + 1 <= currentIndex) {
       nexts.push(entries[i + 1]);
     }
   }
-  return nexts;
+
+  return nexts.slice(-5);
 }
 
 function calcRepAltPerValue(arr, field, value) {
@@ -977,7 +990,7 @@ function TerminalPullAnalysis({ entries }) {
     const members = TERMINAL_MEMBERS[t];
     // Find last 3 exact occurrences of this terminal (not neighbors)
     const occurrences = [];
-    for(let i=entries.length-1; i>=0 && occurrences.length<3; i--){
+    for(let i=entries.length-1; i>=0 && occurrences.length<5; i--){
       if(members.includes(entries[i].num) && i+1 < entries.length){
         const nextNum = entries[i+1]?.num;
         if(nextNum !== undefined){
@@ -2345,23 +2358,25 @@ export default function DestroyerRaceTable() {
                         );
                       }
                       if (col.key==="viz") {
-                        const histCompleto = getHistoricoCompleto(entries, realIndex, e.num);
-                        const result = analyzeCasaPuxada(histCompleto);
+                        const casaOrigem = e.grupoDezena || getGrupoDezena(e.num);
+                        const ultimosPuxadosDaCasa = getHistoricoCasaUltimos5(entries, realIndex, casaOrigem);
+                        const result = analyzeCasaPuxada(ultimosPuxadosDaCasa);
                         const casaScheme = result
                           ? (GRUPO_DEZENA_CELL[result.casa] || GRUPO_DEZENA_CELL["—"])
                           : GRUPO_DEZENA_CELL["—"];
 
                         return (
-                          <td key="viz" style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:34}}>
+                          <td key="viz" title={result ? `Casa ${casaOrigem} puxou a casa ${result.casa} em ${result.count}/${result.total} das últimas situações` : "Sem histórico suficiente"}
+                            style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:38}}>
                             {result ? (
                               <div style={{
                                 display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-                                minWidth:32,height:28,borderRadius:3,padding:"0 3px",
+                                minWidth:36,height:28,borderRadius:3,padding:"0 3px",
                                 background:casaScheme.bg,border:"2px solid "+casaScheme.text,
                                 color:casaScheme.text,fontFamily:"Arial, sans-serif"
                               }}>
                                 <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>{result.casa}</span>
-                                <span style={{fontSize:6,lineHeight:1,opacity:0.9}}>{result.pct}%</span>
+                                <span style={{fontSize:6,lineHeight:1,opacity:0.95}}>{result.count}/{result.total} · {result.pct}%</span>
                               </div>
                             ) : <span style={{color:"#2a2a2a",fontSize:8}}>—</span>}
                           </td>
