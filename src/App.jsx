@@ -320,12 +320,17 @@ function analyzeCasaPuxada(puxouList) {
 
   const [casa, count] = ranking[0];
   const total = casasNaOrdem.length;
+  const pct = Math.round((count / total) * 100);
+
+  // Só exibe quando houver 5 situações completas
+  // e a casa dominante alcançar pelo menos 75%.
+  if (total < 5 || pct < 75) return null;
 
   return {
     casa,
     count,
     total,
-    pct: Math.round((count / total) * 100),
+    pct,
   };
 }
 
