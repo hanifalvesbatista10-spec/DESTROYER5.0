@@ -290,7 +290,7 @@ function analyzeTerminal(puxouList) {
   const terminal = parseInt(best[0]);
   const count = parseInt(best[1]);
   const pct = count / puxouList.length;
-  if (pct < 0.8) return null;
+  if (pct < 0.75) return null;
   return { terminal, count, total: puxouList.length, pct: Math.round(pct*100) };
 }
 
