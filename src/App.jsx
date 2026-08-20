@@ -715,12 +715,15 @@ function CatalogFooterStats({ entries, terminalStats }) {
       {label:"Cavalo",key:"cavalo", vals:["369","258","147"],             pal:CAVALO_CELL},
       {label:"FRA",   key:"fra",    vals:["F1e","F2e","F3e","F1d","F2d","F3d"], pal:FRA_CELL},
       {label:"OPO",   key:"opo",    vals:["ZERO","DEZ"],                        pal:OPO_CELL},
+      {label:"Casa",  key:"grupoDezena", vals:["0","10","20","30"],            pal:GRUPO_DEZENA_CELL},
+      {label:"R/P",   key:"ruaPar", vals:["R.Ímpar","R.Par"],                     pal:RUA_PAR_CELL},
     ];
     const puxados = sorted.map(p => {
       const arr = [];
       for(let k=0;k<p.count;k++) arr.push({
         cor:getColor(p.num), lado:getLado(p.num), par:getParidade(p.num),
-        parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num), cavalo:getCavalo(p.num)
+        parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num), cavalo:getCavalo(p.num),
+        fra:getFra(p.num), opo:getOpo(p.num), grupoDezena:getGrupoDezena(p.num), ruaPar:getRuaParidade(p.num)
       });
       return arr;
     }).flat();
@@ -1254,6 +1257,7 @@ function TargetNumbers({ entries }) {
 
 function PairCatalog({ sharedEntries }) {
   const [catalog, setCatalog] = useState({});
+  const [showHistory, setShowHistory] = useState(false);
   const [totalSeq, setTotalSeq] = useState(0);
   const [totalNum, setTotalNum] = useState(0);
   const [status, setStatus] = useState("AGUARDANDO");
@@ -1314,7 +1318,15 @@ function PairCatalog({ sharedEntries }) {
   const pMax   = sorted.length ? sorted[0].count : 1;
 
   return (
-    <div style={{padding:"12px 16px",background:"#0d0d0d",display:"flex",flexDirection:"column",minHeight:"100vh"}}>
+    <div style={{padding:"12px 16px",background:"#0d0d0d",display:"flex",flexDirection:"column",minHeight:"100%"}}>
+      <button
+        type="button"
+        onClick={()=>setShowHistory(v=>!v)}
+        style={{alignSelf:"stretch",marginBottom:showHistory?8:0,padding:"5px 8px",background:"#0a0a0a",border:"1px solid #262626",borderRadius:3,color:showHistory?"#aaa":"#666",fontSize:8,fontWeight:"bold",letterSpacing:"0.08em",cursor:"pointer",textTransform:"uppercase"}}
+      >
+        {showHistory ? "▼ Ocultar histórico da análise" : "▶ Ver histórico da análise"}
+      </button>
+      <div style={{display:showHistory?"block":"none"}}>
       {queryNum !== null && (
         <div style={{marginBottom:6}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
@@ -1356,6 +1368,7 @@ function PairCatalog({ sharedEntries }) {
           AGUARDANDO NÚMEROS DA TABELA PRINCIPAL
         </div>
       )}
+      </div>
     </div>
   );
 }
