@@ -673,7 +673,7 @@ function CatalogTableRow({n, rank, count, total, maxCount}){
   );
 }
 
-function CatalogFooterStats({ entries, terminalStats }) {
+function CatalogFooterStats({ entries, terminalStats, filterSel, onSelectFilter }) {
   const allNums = entries.map(e => e.num);
   const queryNum = allNums.length > 0 ? allNums[allNums.length - 1] : null;
   if (queryNum === null) return null;
@@ -708,7 +708,7 @@ function CatalogFooterStats({ entries, terminalStats }) {
     const fields = [
       {label:"Cor",   key:"cor",    vals:["Vermelho","Preto","Verde"],   pal:COR_CELL},
       {label:"Lado",  key:"lado",   vals:["PB e VA","PA e VB"],          pal:LADO_CELL},
-      {label:"Par",   key:"par",    vals:["Par","Ímpar"],                pal:PAR_CELL},
+      {label:"Par",   key:"paridade", vals:["Par","Ímpar"],              pal:PAR_CELL},
       {label:"Parte", key:"parte",  vals:["P1","P2"],                    pal:PARTE_CELL},
       {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
       {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
@@ -721,7 +721,7 @@ function CatalogFooterStats({ entries, terminalStats }) {
     const puxados = sorted.map(p => {
       const arr = [];
       for(let k=0;k<p.count;k++) arr.push({
-        cor:getColor(p.num), lado:getLado(p.num), par:getParidade(p.num),
+        cor:getColor(p.num), lado:getLado(p.num), paridade:getParidade(p.num),
         parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num), cavalo:getCavalo(p.num),
         fra:getFra(p.num), opo:getOpo(p.num), grupoDezena:getGrupoDezena(p.num), ruaPar:getRuaParidade(p.num)
       });
@@ -733,26 +733,30 @@ function CatalogFooterStats({ entries, terminalStats }) {
         .sort((a,b)=>b.cnt-a.cnt)[0];
       if (!best || best.cnt === 0) return;
       const pct = Math.round(best.cnt/total*100);
-      if (pct >= 50) dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"}});
+      if (pct >= 50) dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"},filterKey:key});
     });
   }
 
   if (dominants.length === 0) return null;
   dominants.sort((a,b)=>b.pct-a.pct);
   const top5cards = dominants.slice(0,5);
+  const cardActive=(key,val)=>{ const cur=filterSel?.[key]; return Array.isArray(cur)?cur.includes(val):cur===val; };
 
   return (
     <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
       <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>PROBABILIDADE</div>
       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-        {top5cards.map(({label,val,pct,pal}) => (
-          <div key={label} style={{display:"flex",flexDirection:"column",alignItems:"center",
-            background:pal.bg,borderRadius:3,padding:"3px 7px",border:"1px solid "+pal.text+"88",minWidth:40,textAlign:"center"}}>
-            <span style={{fontSize:7,color:pal.text,opacity:0.7,textTransform:"uppercase",display:"block"}}>{label}</span>
-            <span style={{fontSize:11,fontWeight:"bold",color:pal.text,display:"block",lineHeight:1}}>{val}</span>
-            <span style={{fontSize:12,color:pal.text,fontWeight:"900",display:"block"}}>{pct}%</span>
-          </div>
-        ))}
+        {top5cards.map(({label,val,pct,pal,filterKey}) => {
+          const active=cardActive(filterKey,val);
+          return (
+            <button key={label} type="button" onClick={()=>filterKey&&onSelectFilter?.(filterKey,val)}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",background:pal.bg,borderRadius:3,padding:"3px 7px",border:active?"2px solid #FFD700":"1px solid "+pal.text+"88",boxShadow:active?"0 0 8px #FFD70088":"none",minWidth:40,textAlign:"center",cursor:filterKey?"pointer":"default",fontFamily:"Arial, sans-serif"}}>
+              <span style={{fontSize:7,color:pal.text,opacity:0.7,textTransform:"uppercase",display:"block"}}>{label}</span>
+              <span style={{fontSize:11,fontWeight:"bold",color:pal.text,display:"block",lineHeight:1}}>{val}</span>
+              <span style={{fontSize:12,color:pal.text,fontWeight:"900",display:"block"}}>{pct}%</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -1255,6 +1259,20 @@ function TargetNumbers({ entries }) {
   );
 }
 
+function SidebarTop50Summary({ entries }) {
+  if(!entries || entries.length<5) return null;
+  const last50=entries.slice(-50), numCnt={}, gpCnt={};
+  last50.forEach(e=>{numCnt[e.num]=(numCnt[e.num]||0)+1; if(e.gp&&e.gp!=="—") gpCnt[e.gp]=(gpCnt[e.gp]||0)+1;});
+  const top5=Object.entries(numCnt).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,c])=>({n:+n,c}));
+  const top2gp=Object.entries(gpCnt).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([g,c])=>({g,c}));
+  return <div style={{padding:"8px 0 6px",borderBottom:"1px solid #1a1a1a",marginBottom:6}}>
+    <div style={{fontSize:7,color:"#666",fontWeight:"bold",letterSpacing:"0.08em",marginBottom:5}}>TOP 5 ULT 50</div>
+    <div style={{display:"flex",gap:5,alignItems:"flex-end",marginBottom:7,flexWrap:"wrap"}}>{top5.map(({n,c},i)=>{const sch=NUM_BALL[getColor(n)];return <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}><span style={{fontSize:7,color:"#FFD700",fontWeight:"bold"}}>#{i+1}</span><div style={{width:25,height:25,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:sch.bg,border:"2px solid "+sch.border,color:sch.text,fontSize:9,fontWeight:"bold"}}>{n}</div><span style={{fontSize:7,color:"#777"}}>{c}x</span></div>})}</div>
+    <div style={{fontSize:7,color:"#666",fontWeight:"bold",letterSpacing:"0.08em",marginBottom:4}}>TOP 2 GP</div>
+    <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{top2gp.map(({g,c},i)=>{const sch=GP_CELL[g]||{bg:"#111",text:"#aaa"};return <div key={g} style={{display:"flex",alignItems:"center",gap:4,background:sch.bg,borderRadius:3,padding:"3px 7px",border:"1px solid "+sch.text+"88"}}><span style={{fontSize:7,color:sch.text,opacity:.7}}>#{i+1}</span><span style={{fontSize:10,fontWeight:"bold",color:sch.text}}>{g}</span><span style={{fontSize:8,color:sch.text,opacity:.85}}>{c}x</span></div>})}</div>
+  </div>;
+}
+
 function PairCatalog({ sharedEntries }) {
   const [catalog, setCatalog] = useState({});
   const [showHistory, setShowHistory] = useState(false);
@@ -1326,6 +1344,7 @@ function PairCatalog({ sharedEntries }) {
       >
         {showHistory ? "▼ Ocultar histórico da análise" : "▶ Ver histórico da análise"}
       </button>
+      <SidebarTop50Summary entries={sharedEntries}/>
       <div style={{display:showHistory?"block":"none"}}>
       {queryNum !== null && (
         <div style={{marginBottom:6}}>
@@ -1789,6 +1808,19 @@ export default function DestroyerRaceTable() {
   const [filterSel, setFilterSel] = useState({});
   const [excludedDom, setExcludedDom] = useState(new Set());
   const [showCards, setShowCards] = useState(true);
+  const selectProbabilityFilter = (key,val) => {
+    const MULTI_KEYS=["duzia","coluna","grupoDezena"];
+    setFilterSel(prev=>{
+      if(MULTI_KEYS.includes(key)){
+        const cur=Array.isArray(prev[key])?prev[key]:prev[key]?[prev[key]]:[];
+        if(cur.includes(val)){ const next=cur.filter(v=>v!==val); const np={...prev}; if(next.length===0) delete np[key]; else np[key]=next; return np; }
+        if(cur.length>=2) return {...prev,[key]:[cur[1],val]};
+        return {...prev,[key]:[...cur,val]};
+      }
+      if(prev[key]===val){ const np={...prev}; delete np[key]; return np; }
+      return {...prev,[key]:val};
+    });
+  };
 
   const dragKey  = useRef(null);
   const dragOver = useRef(null);
@@ -2660,57 +2692,7 @@ export default function DestroyerRaceTable() {
 
         {entries.length >= 10 && <PatternCatalog entries={entries}/>}
 
-        {/* Top 5 e Top 2 GP */}
-        {entries.length >= 5 && (() => {
-          const last50 = entries.slice(-50);
-          const numCnt = {};
-          last50.forEach(e => { numCnt[e.num]=(numCnt[e.num]||0)+1; });
-          const top5 = Object.entries(numCnt).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,c])=>({n:parseInt(n),c}));
-          const gpCnt = {};
-          last50.forEach(e => { if(e.gp&&e.gp!=="—") gpCnt[e.gp]=(gpCnt[e.gp]||0)+1; });
-          const top2gp = Object.entries(gpCnt).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([g,c])=>({g,c}));
-          return (
-            <div style={{padding:"4px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
-              <div style={{display:"flex",gap:6,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}}>
-                <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 5 ULT 50</span>
-                {top5.map(({n,c},i)=>{
-                  const cor=getColor(n); const s=NUM_BALL[cor];
-                  return (
-                    <div key={n} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-                      <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>#{i+1}</span>
-                      <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:s.bg,border:"2px solid "+s.border,color:s.text,fontSize:10,fontWeight:"bold"}}>{n}</div>
-                      <span style={{fontSize:9,color:"#888",fontWeight:"bold"}}>{c}x</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {(() => {
-                const last5gp = entries.slice(-5).map(e=>e.gp).filter(v=>v&&v!=="—");
-                const gpAlert = top2gp.find(({g})=>last5gp.filter(v=>v===g).length>=3);
-                return gpAlert ? (
-                  <div style={{display:"flex",alignItems:"center",gap:6,background:"#1a0a00",border:"2px solid #FFD700",borderRadius:4,padding:"4px 10px",marginBottom:4}}>
-                    <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>⚡ TAKE</span>
-                    <span style={{fontSize:12,fontWeight:"bold",color:GP_CELL[gpAlert.g]?.text||"#fff"}}>{gpAlert.g}</span>
-                    <span style={{fontSize:9,color:"#FFD700"}}>{last5gp.filter(v=>v===gpAlert.g).length}/5</span>
-                  </div>
-                ) : null;
-              })()}
-              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                <span style={{fontSize:9,color:"#888",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,fontWeight:"bold"}}>TOP 2 GP</span>
-                {top2gp.map(({g,c},i)=>{
-                  const sch=GP_CELL[g]||{bg:"#111",text:"#aaa"};
-                  return (
-                    <div key={g} style={{display:"flex",alignItems:"center",gap:4,background:sch.bg,borderRadius:3,padding:"3px 10px",border:"1px solid "+sch.text+"88"}}>
-                      <span style={{fontSize:9,color:sch.text,opacity:0.7}}>#{i+1}</span>
-                      <span style={{fontSize:13,fontWeight:"bold",color:sch.text}}>{g}</span>
-                      <span style={{fontSize:10,color:sch.text,opacity:0.9}}>{c}x</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
+
 
 
 
@@ -2827,6 +2809,8 @@ export default function DestroyerRaceTable() {
             { label:"COL",    key:"coluna",   vals:["C1","C2","C3"],       pal:COLUNA_CELL },
             { label:"CASAS",  key:"grupoDezena", vals:["0","10","20","30"], pal:GRUPO_DEZENA_CELL },
             { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },
+            { label:"ZONA",   key:"regiao",   vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL },
+            { label:"FRA",    key:"fra",      vals:["F1e","F2e","F3e","F1d","F2d","F3d"], pal:FRA_CELL },
             { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },
             { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },
           ];
@@ -2836,7 +2820,7 @@ export default function DestroyerRaceTable() {
             paridade:n=>getParidade(n), altobaixo:n=>getAltoBaixo(n),
             duzia:n=>getDuzia(n), coluna:n=>getColuna(n),
             grupoDezena:n=>getGrupoDezena(n),
-            cavalo:n=>getCavalo(n), opo:n=>getOpo(n),
+            cavalo:n=>getCavalo(n), regiao:n=>getRegiao(n), fra:n=>getFra(n), opo:n=>getOpo(n),
             ruaPar:n=>getRuaParidade(n),
           };
 
@@ -2945,7 +2929,7 @@ export default function DestroyerRaceTable() {
       <div style={{width:220,flexShrink:0}}/>
       {/* ── Painel lateral: Pair Catalog ── */}
       <div style={{width:220,background:"#080808",borderLeft:"1px solid #1e1e1e",flexShrink:0,display:"flex",flexDirection:"column",height:"100vh",position:"fixed",top:0,right:0,zIndex:50}}>
-        <CatalogFooterStats entries={entries} terminalStats={terminalStats}/>
+        <CatalogFooterStats entries={entries} terminalStats={terminalStats} filterSel={filterSel} onSelectFilter={selectProbabilityFilter}/>
         <div style={{flex:1,overflowY:"auto"}}>
           <PairCatalog sharedEntries={entries}/>
         </div>
