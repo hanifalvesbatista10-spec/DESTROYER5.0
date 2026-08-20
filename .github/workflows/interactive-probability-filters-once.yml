@@ -15,32 +15,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Apply focused Destroyer patch
-        shell: python
         run: |
+          python - <<'PY'
           from pathlib import Path
-          p = Path('src/App.jsx')
-          s = p.read_text(encoding='utf-8')
+          import re
+          p=Path('src/App.jsx')
+          s=p.read_text(encoding='utf-8')
+          original=s
 
-          s = s.replace('function CatalogFooterStats({ entries, terminalStats }) {','function CatalogFooterStats({ entries, terminalStats, filterSel, onSelectFilter }) {',1)
-          s = s.replace('{label:"Par",   key:"par",    vals:["Par","Ímpar"],                pal:PAR_CELL},','{label:"Par",   key:"paridade", vals:["Par","Ímpar"],              pal:PAR_CELL},',1)
-          s = s.replace('cor:getColor(p.num), lado:getLado(p.num), par:getParidade(p.num),\n        parte:getParte(p.num)','cor:getColor(p.num), lado:getLado(p.num), paridade:getParidade(p.num),\n        parte:getParte(p.num)',1)
-          s = s.replace('dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"}});','dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"},filterKey:key});',1)
+          s=s.replace('function CatalogFooterStats({ entries, terminalStats }) {','function CatalogFooterStats({ entries, terminalStats, filterSel, onSelectFilter }) {',1)
+          s=s.replace('{label:"Par",   key:"par",    vals:["Par","Ímpar"],                pal:PAR_CELL},','{label:"Par",   key:"paridade", vals:["Par","Ímpar"],              pal:PAR_CELL},',1)
+          s=s.replace('cor:getColor(p.num), lado:getLado(p.num), par:getParidade(p.num),','cor:getColor(p.num), lado:getLado(p.num), paridade:getParidade(p.num),',1)
+          s=s.replace('dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"}});','dominants.push({label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"},filterKey:key});',1)
 
-          old = '''  return (\n    <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>\n      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>PROBABILIDADE</div>\n      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>\n        {top5cards.map(({label,val,pct,pal}) => (\n          <div key={label} style={{display:"flex",flexDirection:"column",alignItems:"center",\n            background:pal.bg,borderRadius:3,padding:"3px 7px",border:"1px solid "+pal.text+"88",minWidth:40,textAlign:"center"}}>\n            <span style={{fontSize:7,color:pal.text,opacity:0.7,textTransform:"uppercase",display:"block"}}>{label}</span>\n            <span style={{fontSize:11,fontWeight:"bold",color:pal.text,display:"block",lineHeight:1}}>{val}</span>\n            <span style={{fontSize:12,color:pal.text,fontWeight:"900",display:"block"}}>{pct}%</span>\n          </div>\n        ))}\n      </div>\n    </div>\n  );\n}\n'''
-          new = '''  const cardActive = (key,val) => {\n    if(!key) return false;\n    const cur = filterSel?.[key];\n    return Array.isArray(cur) ? cur.includes(val) : cur === val;\n  };\n\n  return (\n    <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>\n      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>PROBABILIDADE · CLIQUE PARA FILTRAR</div>\n      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>\n        {top5cards.map(({label,val,pct,pal,filterKey}) => {\n          const active = cardActive(filterKey,val);\n          return (\n            <button key={label} type="button" onClick={()=>filterKey && onSelectFilter?.(filterKey,val)}\n              title={filterKey ? "Aplicar/remover este filtro" : "Informação analítica"}\n              style={{display:"flex",flexDirection:"column",alignItems:"center",background:pal.bg,borderRadius:3,padding:"3px 7px",border:active ? "2px solid #FFD700" : "1px solid "+pal.text+"88",boxShadow:active ? "0 0 8px #FFD70088" : "none",minWidth:40,textAlign:"center",cursor:filterKey?"pointer":"default",fontFamily:"Arial, sans-serif"}}>\n              <span style={{fontSize:7,color:pal.text,opacity:0.7,textTransform:"uppercase",display:"block"}}>{label}</span>\n              <span style={{fontSize:11,fontWeight:"bold",color:pal.text,display:"block",lineHeight:1}}>{val}</span>\n              <span style={{fontSize:12,color:pal.text,fontWeight:"900",display:"block"}}>{pct}%</span>\n            </button>\n          );\n        })}\n      </div>\n    </div>\n  );\n}\n'''
-          if old not in s: raise SystemExit('CatalogFooterStats render anchor not found')
-          s = s.replace(old,new,1)
+          marker='  const top5cards = dominants.slice(0,5);\n\n'
+          active='''  const cardActive = (key,val) => {\n    if(!key) return false;\n    const cur = filterSel?.[key];\n    return Array.isArray(cur) ? cur.includes(val) : cur === val;\n  };\n\n'''
+          if marker in s and 'const cardActive = (key,val)' not in s:
+              s=s.replace(marker,marker+active,1)
+          s=s.replace('>PROBABILIDADE</div>','>PROBABILIDADE · CLIQUE PARA FILTRAR</div>',1)
 
-          state_anchor = '  const [showCards, setShowCards] = useState(true);\n\n'
-          handler = '''  const selectProbabilityFilter = (key, val) => {\n    const MULTI_KEYS = ["duzia","coluna","grupoDezena"];\n    setFilterSel(prev => {\n      if (MULTI_KEYS.includes(key)) {\n        const cur = Array.isArray(prev[key]) ? prev[key] : prev[key] ? [prev[key]] : [];\n        if (cur.includes(val)) { const next=cur.filter(v=>v!==val); const np={...prev}; if(next.length===0) delete np[key]; else np[key]=next; return np; }\n        if (cur.length>=2) return {...prev,[key]:[cur[1],val]};\n        return {...prev,[key]:[...cur,val]};\n      }\n      if (prev[key]===val) { const np={...prev}; delete np[key]; return np; }\n      return {...prev,[key]:val};\n    });\n  };\n\n'''
-          if state_anchor not in s: raise SystemExit('App state anchor not found')
-          s = s.replace(state_anchor,state_anchor+handler,1)
+          prob_pattern=re.compile(r'\{top5cards\.map\(\(\{label,val,pct,pal\}\) => \(.*?\n        \)\)\}',re.S)
+          prob_new='''{top5cards.map(({label,val,pct,pal,filterKey}) => {\n          const active = cardActive(filterKey,val);\n          return (\n            <button key={label} type="button" onClick={()=>filterKey && onSelectFilter?.(filterKey,val)}\n              title={filterKey ? "Aplicar/remover este filtro" : "Informação analítica"}\n              style={{display:"flex",flexDirection:"column",alignItems:"center",background:pal.bg,borderRadius:3,padding:"3px 7px",border:active?"2px solid #FFD700":"1px solid "+pal.text+"88",boxShadow:active?"0 0 8px #FFD70088":"none",minWidth:40,textAlign:"center",cursor:filterKey?"pointer":"default",fontFamily:"Arial, sans-serif"}}>\n              <span style={{fontSize:7,color:pal.text,opacity:0.7,textTransform:"uppercase",display:"block"}}>{label}</span>\n              <span style={{fontSize:11,fontWeight:"bold",color:pal.text,display:"block",lineHeight:1}}>{val}</span>\n              <span style={{fontSize:12,color:pal.text,fontWeight:"900",display:"block"}}>{pct}%</span>\n            </button>\n          );\n        })}'''
+          s,n=prob_pattern.subn(prob_new,s,count=1)
+          print('prob render replacements',n)
 
-          s = s.replace('            { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },\n            { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },','            { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },\n            { label:"ZONA",   key:"regiao",   vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL },\n            { label:"FRA",    key:"fra",      vals:["F1e","F2e","F3e","F1d","F2d","F3d"], pal:FRA_CELL },\n            { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },',1)
-          s = s.replace('            cavalo:n=>getCavalo(n), opo:n=>getOpo(n),\n            ruaPar:n=>getRuaParidade(n),','            cavalo:n=>getCavalo(n), regiao:n=>getRegiao(n), fra:n=>getFra(n), opo:n=>getOpo(n),\n            ruaPar:n=>getRuaParidade(n),',1)
+          state_anchor='  const [showCards, setShowCards] = useState(true);\n\n'
+          handler='''  const selectProbabilityFilter = (key, val) => {\n    const MULTI_KEYS = ["duzia","coluna","grupoDezena"];\n    setFilterSel(prev => {\n      if (MULTI_KEYS.includes(key)) {\n        const cur = Array.isArray(prev[key]) ? prev[key] : prev[key] ? [prev[key]] : [];\n        if (cur.includes(val)) { const next=cur.filter(v=>v!==val); const np={...prev}; if(next.length===0) delete np[key]; else np[key]=next; return np; }\n        if (cur.length>=2) return {...prev,[key]:[cur[1],val]};\n        return {...prev,[key]:[...cur,val]};\n      }\n      if (prev[key]===val) { const np={...prev}; delete np[key]; return np; }\n      return {...prev,[key]:val};\n    });\n  };\n\n'''
+          if state_anchor in s and 'const selectProbabilityFilter =' not in s:
+              s=s.replace(state_anchor,state_anchor+handler,1)
 
-          pair_anchor='function PairCatalog({ sharedEntries }) {'
-          sidebar_component=r'''function SidebarTop50Summary({ entries }) {
+          if '{ label:"ZONA",   key:"regiao"' not in s:
+              s=s.replace('            { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },\n            { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },','            { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },\n            { label:"ZONA",   key:"regiao",   vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL },\n            { label:"FRA",    key:"fra",      vals:["F1e","F2e","F3e","F1d","F2d","F3d"], pal:FRA_CELL },\n            { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },',1)
+          s=s.replace('            cavalo:n=>getCavalo(n), opo:n=>getOpo(n),\n            ruaPar:n=>getRuaParidade(n),','            cavalo:n=>getCavalo(n), regiao:n=>getRegiao(n), fra:n=>getFra(n), opo:n=>getOpo(n),\n            ruaPar:n=>getRuaParidade(n),',1)
+
+          if 'function SidebarTop50Summary' not in s:
+              comp=r'''function SidebarTop50Summary({ entries }) {
   if(!entries || entries.length < 5) return null;
   const last50=entries.slice(-50), numCnt={}, gpCnt={};
   last50.forEach(e=>{ numCnt[e.num]=(numCnt[e.num]||0)+1; if(e.gp&&e.gp!=="—") gpCnt[e.gp]=(gpCnt[e.gp]||0)+1; });
@@ -61,19 +70,25 @@ jobs:
 }
 
 '''
-          if pair_anchor not in s: raise SystemExit('PairCatalog anchor not found')
-          s=s.replace(pair_anchor,sidebar_component+pair_anchor,1)
-          oldbtn='''      >\n        {showHistory ? "▼ Ocultar histórico da análise" : "▶ Ver histórico da análise"}\n      </button>\n      <div style={{display:showHistory?"block":"none"}}>'''
-          newbtn='''      >\n        {showHistory ? "▼ Ocultar histórico da análise" : "▶ Ver histórico da análise"}\n      </button>\n      <SidebarTop50Summary entries={sharedEntries}/>\n      <div style={{display:showHistory?"block":"none"}}>'''
-          if oldbtn not in s: raise SystemExit('History button anchor not found')
-          s=s.replace(oldbtn,newbtn,1)
+              s=s.replace('function PairCatalog({ sharedEntries }) {',comp+'function PairCatalog({ sharedEntries }) {',1)
+
+          hist='''      </button>\n      <div style={{display:showHistory?"block":"none"}}>'''
+          if hist in s and '<SidebarTop50Summary entries={sharedEntries}/>' not in s:
+              s=s.replace(hist,'      </button>\n      <SidebarTop50Summary entries={sharedEntries}/>\n      <div style={{display:showHistory?"block":"none"}}>',1)
 
           start='        {/* Top 5 e Top 2 GP */}'
           if start in s:
-            st=s.index(start); marker='\n\n\n\n        </>}'; en=s.index(marker,st); s=s[:st]+s[en:]
+              st=s.index(start)
+              marker='\n\n\n\n        </>}'
+              en=s.index(marker,st)
+              s=s[:st]+s[en:]
 
           s=s.replace('<CatalogFooterStats entries={entries} terminalStats={terminalStats}/>','<CatalogFooterStats entries={entries} terminalStats={terminalStats} filterSel={filterSel} onSelectFilter={selectProbabilityFilter}/>',1)
+
+          if s==original:
+              raise SystemExit('No changes produced')
           p.write_text(s,encoding='utf-8')
+          PY
 
       - name: Commit focused patch
         run: |
@@ -83,4 +98,4 @@ jobs:
           git commit -m "Tornar probabilidades clicáveis e mover resumo para lateral" || exit 0
           git push
 
-# trigger 2
+# trigger 3
