@@ -27,7 +27,6 @@ export default function destroyerPatch() {
       if (getGrupoDezena(n) === casa) numsCasa.push(n);
     }
 
-    // Somente 1 vizinho de cada lado no RACETRACK para cada número da casa.
     const vizRaceDaCasa = new Set();
     numsCasa.forEach(n => {
       getRaceNeighbors(n).forEach(v => {
@@ -64,7 +63,6 @@ export default function destroyerPatch() {
     };
   });
 
-  // O vizinho nunca cria a dominância: primeiro a casa precisa ter 3/5 ou mais diretos.
   const ranking = stats
     .filter(x => x.dentro >= 3)
     .sort((a, b) => b.dentro - a.dentro || b.vizinhos - a.vizinhos);
@@ -85,12 +83,12 @@ export default function destroyerPatch() {
         if (start !== -1 && end !== -1) {
           const replacement = `  const selectProbabilityFilter = (key,val) => {
     const EXCLUSIVE_KEYS = new Set([
-      "paridade",   // Par x Ímpar
-      "parte",      // P1 x P2
-      "lado",       // PB/VA x PA/VB
-      "altobaixo",  // Alto x Baixo
-      "opo",        // ZERO x DEZ
-      "ruaPar"      // Rua Ímpar x Rua Par
+      "paridade",
+      "parte",
+      "lado",
+      "altobaixo",
+      "opo",
+      "ruaPar"
     ]);
 
     setFilterSel(prev => {
@@ -102,11 +100,9 @@ export default function destroyerPatch() {
           delete next[key];
           return next;
         }
-        // Valor oposto substitui o anterior apenas nesta característica.
         return { ...prev, [key]: val };
       }
 
-      // Demais características: seleção OR aditiva, sem limite artificial de 2 cards.
       const cur = Array.isArray(prev[key]) ? prev[key] : prev[key] ? [prev[key]] : [];
       if (cur.includes(val)) {
         const values = cur.filter(v => v !== val);
@@ -122,8 +118,7 @@ export default function destroyerPatch() {
         }
       }
 
-      // 3) A coluna CASA passa a avaliar os PUX do próprio número da linha,
-      // não mais o histórico agregado da casa de origem.
+      // 3) A coluna CASA passa a avaliar os PUX do próprio número da linha.
       {
         const start = src.indexOf('                      if (col.key==="viz") {');
         const end = src.indexOf('                      return <Cell key={col.key}', start);
@@ -163,16 +158,11 @@ export default function destroyerPatch() {
       }
 
       // 4) CADÊNCIA: repetição contínua de 2, 3, 4... casas iguais é UM bloco.
-      // As cadências só comparam blocos de repetição consecutivos; nunca pulam
-      // um bloco intermediário. A janela ativa só existe se não apareceu uma
-      // nova repetição antes da rodada-base esperada.
       {
         const start = src.indexOf('  const cadenceStats = [1,2,3].map(gap=>{');
         const end = src.indexOf('  const strongRows = transitionStats', start);
         if (start !== -1 && end !== -1) {
-          const replacement = `  // Converte a sequência em blocos contínuos de mesma CASA.
-  // Só runs com tamanho >= 2 viram eventos de repetição.
-  const repetitionBlocks = [];
+          const replacement = `  const repetitionBlocks = [];
   for(let i=0;i<entries.length;){
     const house = houseOf(entries[i]);
     let j=i+1;
@@ -186,27 +176,20 @@ export default function destroyerPatch() {
 
   const cadenceStats = [1,2,3].map(gap=>{
     let trials=0, hits=0;
-
-    // Somente blocos consecutivos: b1 -> b2. Nunca pula um REP no meio.
     for(let i=0;i<repetitionBlocks.length-1;i++){
       const first=repetitionBlocks[i];
       const second=repetitionBlocks[i+1];
       const between=second.start-first.end-1;
       if(between!==gap) continue;
-
-      // Depois da segunda REP, aguardamos exatamente 'gap' resultados.
-      // O último deles vira a base; o seguinte deve repetir sua CASA.
       const baseIdx=second.end+gap;
       const nextIdx=baseIdx+1;
       if(nextIdx>=entries.length) continue;
-
       trials++;
       const third=repetitionBlocks[i+2] || null;
       if(third && third.start===baseIdx){
         hits++;
       }
     }
-
     return {gap,trials,hits,pct:trials?Math.round(hits/trials*100):0};
   });
 
@@ -216,31 +199,88 @@ export default function destroyerPatch() {
     const second=repetitionBlocks[i+1];
     const gap=second.start-first.end-1;
     if(gap<1 || gap>3) continue;
-
     const baseIdx=second.end+gap;
     if(baseIdx!==entries.length-1) continue;
-
-    // Se já nasceu outro bloco de repetição após a segunda REP, a cadência
-    // foi interrompida/confirmada antes e não deve gerar alerta falso.
     const laterBlock=repetitionBlocks[i+2] || null;
     if(laterBlock) continue;
-
     const stat=cadenceStats.find(x=>x.gap===gap);
-    activeCadence={
-      gap,
-      first,
-      second,
-      baseIdx,
-      base:entries[baseIdx],
-      house:houseOf(entries[baseIdx]),
-      stat,
-    };
+    activeCadence={gap,first,second,baseIdx,base:entries[baseIdx],house:houseOf(entries[baseIdx]),stat};
   }
 
 `;
           src = src.slice(0, start) + replacement + src.slice(end);
         }
       }
+
+      // 5) DOMINÂNCIA: mantém a lei original intacta (mesma janela e corte de 80%),
+      // mas passa a varrer TODAS as características da tabela.
+      {
+        const start = src.indexOf('  const colDominance = useMemo(() => {');
+        const end = src.indexOf('\n\n  const top3Stats = useMemo(() => {', start);
+        if (start !== -1 && end !== -1) {
+          const replacement = `  const colDominance = useMemo(() => {
+    if (entries.length < 3) return {};
+    const last5 = entries.slice(-6);
+    const result = {};
+    const checks = {
+      grupoDezena:["0","10","20","30"],
+      parte:["P1","P2"],
+      col_c1:["C1"], col_c2:["C2"], col_c3:["C3"],
+      lado:["PB e VA","PA e VB"],
+      opo:["ZERO","DEZ"],
+      gp_d1:["d1V","d1P"], gp_d2:["d2I","d2P"], gp_d3:["d3V","d3P"],
+      cor:["Vermelho","Preto","Verde"],
+      altobaixo:["ALTO","BAIXO"],
+      paridade:["Par","Ímpar"],
+      regiao:["Tier","Orphelins","Voisins"],
+      cavalo:["369","258","147"],
+      regtrack:["32-29","25-30","15-2","8-24","16-18"],
+      setor:["S1","S2","S3","S4","S5","S6"],
+      rua:["R1","R2","R3","R4","0"],
+      ruaPar:["R.Ímpar","R.Par"],
+      duzia:["D1","D2","D3"],
+      fra:["F1e","F2e","F3e","F1d","F2d","F3d"],
+    };
+
+    Object.entries(checks).forEach(([field, vals]) => {
+      const getVal = (e) => {
+        if (field==="ruaPar") return getRuaParidade(e.num);
+        if (field==="rua") return getRua(e.num);
+        if (field==="duzia") return getDuzia(e.num);
+        if (field==="setor") return getSetor(e.num);
+        if (field==="regtrack") return getRegTrack(e.num);
+        if (field==="fra") return getFra(e.num);
+        if (field==="opo") return getOpo(e.num);
+        if (field==="grupoDezena") return e.grupoDezena || getGrupoDezena(e.num);
+        if (field==="col_c1") return e.coluna==="C1" ? "C1" : null;
+        if (field==="col_c2") return e.coluna==="C2" ? "C2" : null;
+        if (field==="col_c3") return e.coluna==="C3" ? "C3" : null;
+        if (field==="gp_d1") return ["d1V","d1P"].includes(e.gp) ? e.gp : null;
+        if (field==="gp_d2") return ["d2I","d2P"].includes(e.gp) ? e.gp : null;
+        if (field==="gp_d3") return ["d3V","d3P"].includes(e.gp) ? e.gp : null;
+        return e[field]||null;
+      };
+
+      vals.forEach(val => {
+        const cnt = last5.filter(e => getVal(e) === val).length;
+        // LEI ORIGINAL preservada: 80% ou mais.
+        if (cnt / last5.length >= 0.8) {
+          result[field] = { val, pct: Math.round(cnt/last5.length*100) };
+        }
+      });
+    });
+    return result;
+  }, [entries]);`;
+          src = src.slice(0, start) + replacement + src.slice(end);
+        }
+      }
+
+      // 6) A barra de dominância não depende de a coluna estar visível para reconhecer o sinal.
+      // Mantém apenas colunas de característica (toggleable), excluindo #/Nº/PUX/CASA técnica.
+      src = src.replace(
+        'const sortedDomCols = visibleCols.filter(c=>c.toggleable&&colDominance[c.key]&&!excludedDom.has(c.key)).sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));',
+        'const sortedDomCols = INIT_COLS.filter(c=>c.toggleable&&colDominance[c.key]&&!excludedDom.has(c.key)).sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));'
+      );
 
       return { code: src, map: null };
     },
