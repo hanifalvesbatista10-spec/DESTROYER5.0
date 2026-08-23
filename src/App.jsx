@@ -1495,304 +1495,188 @@ function SignalsPanel({ entries, terminalStats }) {
   );
 }
 
-function PatternCatalog({ entries }) {
-  if(!entries || entries.length < 10) return null;
+function PatternCatalog({ entries, onApplyFilters }) {
+  if(!entries || entries.length < 6) return null;
 
-  const nums = entries.map(e=>e.num);
-  const n = nums.length;
+  const houseOf = (e) => e?.grupoDezena || getGrupoDezena(e?.num);
+  const featureDefs = [
+    {key:"parte",label:"PTE",fn:e=>e?.parte||getParte(e?.num)},
+    {key:"coluna",label:"COL",fn:e=>e?.coluna||getColuna(e?.num)},
+    {key:"paridade",label:"P/I",fn:e=>e?.paridade||getParidade(e?.num)},
+    {key:"lado",label:"LADO",fn:e=>e?.lado||getLado(e?.num)},
+    {key:"opo",label:"OPO",fn:e=>e?.opo||getOpo(e?.num)},
+    {key:"cor",label:"COR",fn:e=>e?.cor||getColor(e?.num)},
+    {key:"altobaixo",label:"A/B",fn:e=>e?.altobaixo||getAltoBaixo(e?.num)},
+    {key:"cavalo",label:"CAV",fn:e=>e?.cavalo||getCavalo(e?.num)},
+    {key:"regiao",label:"ZNA",fn:e=>e?.regiao||getRegiao(e?.num)},
+    {key:"fra",label:"FRA",fn:e=>e?.fra||getFra(e?.num)},
+  ];
 
-  // Get all features for a number
-  const getFeats = (num) => ({
-    lado:    getLado(num),
-    parte:   getParte(num),
-    cor:     getColor(num),
-    regiao:  getRegiao(num),
-    cavalo:  getCavalo(num),
-    opo:     getOpo(num),
-    fra:     getFra(num),
+  const valid = (v) => v && v!=="—" && v!=="0";
+  const pairs = [];
+  for(let i=0;i<entries.length-1;i++){
+    const a=entries[i], b=entries[i+1];
+    const ha=houseOf(a), hb=houseOf(b);
+    if(ha && ha!=="—" && ha===hb) pairs.push({start:i,end:i+1,house:ha,a,b});
+  }
+
+  const current = entries[entries.length-1];
+  const currentHouse = houseOf(current);
+  const currentHouseScheme = GRUPO_DEZENA_CELL[currentHouse] || GRUPO_DEZENA_CELL["—"];
+
+  const sourceTransitions = [];
+  for(let i=0;i<entries.length-1;i++){
+    const a=entries[i], b=entries[i+1];
+    if(houseOf(a)===currentHouse) sourceTransitions.push({a,b,repeated:houseOf(b)===currentHouse});
+  }
+  const repeatedTransitions = sourceTransitions.filter(x=>x.repeated);
+  const repeatPct = sourceTransitions.length ? Math.round(repeatedTransitions.length/sourceTransitions.length*100) : 0;
+
+  const transitionStats = featureDefs.map(fd=>{
+    const usable = repeatedTransitions.filter(x=>valid(fd.fn(x.a))&&valid(fd.fn(x.b)));
+    if(!usable.length) return null;
+    const same = usable.filter(x=>fd.fn(x.a)===fd.fn(x.b)).length;
+    const samePct = Math.round(same/usable.length*100);
+    const currentVal = fd.fn(current);
+    const contextual = usable.filter(x=>fd.fn(x.a)===currentVal);
+    const cnt = {};
+    contextual.forEach(x=>{ const v=fd.fn(x.b); if(valid(v)) cnt[v]=(cnt[v]||0)+1; });
+    const best = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+    const bestPct = best && contextual.length ? Math.round(best[1]/contextual.length*100) : 0;
+    return {
+      ...fd, usable:usable.length, same, samePct, currentVal,
+      contextualN:contextual.length,
+      bestVal:best?.[0]||null,
+      bestCount:best?.[1]||0,
+      bestPct,
+      score:(bestPct||0)*Math.log2((contextual.length||0)+1),
+    };
+  }).filter(Boolean);
+
+  const relevant = transitionStats
+    .filter(x=>x.contextualN>=4 && x.bestPct>=65 && x.bestVal)
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,2);
+
+  const filters = {grupoDezena:[currentHouse]};
+  relevant.forEach(x=>{ filters[x.key] = ["coluna"].includes(x.key) ? [x.bestVal] : x.bestVal; });
+
+  const numberField = {
+    grupoDezena:n=>getGrupoDezena(n), parte:n=>getParte(n), coluna:n=>getColuna(n),
+    paridade:n=>getParidade(n), lado:n=>getLado(n), opo:n=>getOpo(n), cor:n=>getColor(n),
+    altobaixo:n=>getAltoBaixo(n), cavalo:n=>getCavalo(n), regiao:n=>getRegiao(n), fra:n=>getFra(n),
+  };
+  const candidateNums = [];
+  for(let num=0;num<=36;num++){
+    const ok = Object.entries(filters).every(([k,sel])=>{
+      const fn=numberField[k]; if(!fn) return true;
+      const value=fn(num); return Array.isArray(sel)?sel.includes(value):value===sel;
+    });
+    if(ok) candidateNums.push(num);
+  }
+
+  const cadenceStats = [1,2,3].map(gap=>{
+    let trials=0, hits=0;
+    for(let a=0;a<pairs.length;a++){
+      for(let b=a+1;b<pairs.length;b++){
+        if(pairs[b].start<=pairs[a].start) continue;
+        const between = pairs[b].start - pairs[a].end - 1;
+        if(between!==gap) continue;
+        const baseIdx = pairs[b].end + gap;
+        const nextIdx = baseIdx + 1;
+        if(nextIdx >= entries.length) continue;
+        trials++;
+        if(houseOf(entries[baseIdx])===houseOf(entries[nextIdx])) hits++;
+      }
+    }
+    return {gap,trials,hits,pct:trials?Math.round(hits/trials*100):0};
   });
 
-  // Find common features among 3 numbers
-  const commonFeats = (ns) => {
-    const fl = ns.map(getFeats);
-    const common = {};
-    Object.keys(fl[0]).forEach(k=>{
-      const vals = fl.map(f=>f[k]).filter(v=>v&&v!=="—");
-      if(vals.length===3 && new Set(vals).size===1) common[k]=vals[0];
-    });
-    return common;
-  };
-
-  // Find patterns for a groupFn (duzia or coluna)
-  const findPatterns = (groupFn, gap) => {
-    const step = gap+1;
-    const catalog = {}; // key = "group|feat:val,feat:val" -> count
-    const results = [];
-    for(let i=0;i<=n-1-2*step;i++){
-      const a=nums[i],b=nums[i+step],c=nums[i+2*step];
-      if(a===0||b===0||c===0) continue;
-      const ga=groupFn(a),gb=groupFn(b),gc=groupFn(c);
-      if(ga!==gb||gb!==gc) continue;
-      const common=commonFeats([a,b,c]);
-      if(Object.keys(common).length===0) continue;
-      const featKey=Object.entries(common).sort().map(([k,v])=>k+":"+v).join(",");
-      const key=ga+"|"+featKey;
-      if(!catalog[key]) catalog[key]={group:ga,common,gap,count:0,examples:[]};
-      catalog[key].count++;
-      if(catalog[key].examples.length<2) catalog[key].examples.push([a,b,c]);
+  let activeCadence = null;
+  for(let pi=pairs.length-1; pi>=0 && !activeCadence; pi--){
+    const second = pairs[pi];
+    for(const gap of [1,2,3]){
+      const first = [...pairs].slice(0,pi).reverse().find(p=>second.start-p.end-1===gap);
+      if(!first) continue;
+      const baseIdx = second.end + gap;
+      if(baseIdx !== entries.length-1) continue;
+      const laterPair = pairs.some(p=>p.start>second.start);
+      if(laterPair) continue;
+      const stat = cadenceStats.find(x=>x.gap===gap);
+      activeCadence = {gap,first,second,baseIdx,base:entries[baseIdx],house:houseOf(entries[baseIdx]),stat};
+      break;
     }
-    return Object.values(catalog).filter(x=>x.count>=2).sort((a,b)=>b.count-a.count).slice(0,5);
-  };
+  }
 
-  const gapLabel = {0:"3 seguidos",1:"alternado 1",2:"alternado 2"};
-
-  // Run for duzia and coluna, all gaps
-  const duzPatterns = [0,1,2].flatMap(g=>findPatterns(n=>getDuzia(nums[n])??"—",g).map(p=>({...p,gapLabel:gapLabel[g]})));
-  const colPatterns = [0,1,2].flatMap(g=>findPatterns(n=>getColuna(nums[n])??"—",g).map(p=>({...p,gapLabel:gapLabel[g]})));
-
-  // Fix: use index-based groupFn
-  const findPatternsIdx = (groupFn, gap) => {
-    const step = gap+1;
-    const catalog = {};
-    for(let i=0;i<=n-1-2*step;i++){
-      const a=nums[i],b=nums[i+step],c=nums[i+2*step];
-      if(a===0||b===0||c===0) continue;
-      const ga=groupFn(a),gb=groupFn(b),gc=groupFn(c);
-      if(ga==="—"||ga!==gb||gb!==gc) continue;
-      const common=commonFeats([a,b,c]);
-      if(Object.keys(common).length===0) continue;
-      const featKey=Object.entries(common).sort().map(([k,v])=>k+":"+v).join(",");
-      const key=ga+"|"+featKey+"|"+gap;
-      if(!catalog[key]) catalog[key]={group:ga,common,gap,count:0,examples:[]};
-      catalog[key].count++;
-      if(catalog[key].examples.length<2) catalog[key].examples.push([a,b,c]);
-    }
-    return Object.values(catalog).filter(x=>x.count>=2).sort((a,b)=>b.count-a.count).slice(0,4);
-  };
-
-  const duzResults = [0,1,2].flatMap(g=>findPatternsIdx(m=>getDuzia(m),g).map(p=>({...p,gapStr:gapLabel[g]})));
-  const colResults = [0,1,2].flatMap(g=>findPatternsIdx(m=>getColuna(m),g).map(p=>({...p,gapStr:gapLabel[g]})));
-
-  if(duzResults.length===0&&colResults.length===0) return null;
-
-  const FEAT_PAL = {
-    lado:LADO_CELL, parte:PARTE_CELL, cor:COR_CELL,
-    regiao:REGIAO_CELL, cavalo:CAVALO_CELL, opo:OPO_CELL, fra:FRA_CELL,
-  };
-  const FEAT_LABEL = {lado:"LADO",parte:"PTE",cor:"COR",regiao:"ZNA",cavalo:"CAV",opo:"OPO",fra:"FRA"};
-
-  const renderSection = (results, title, groupPal) => {
-    if(results.length===0) return null;
-
-    // Group patterns by their group value (D1/D2/D3 or C1/C2/C3)
-    const grouped = {};
-    results.forEach(p=>{
-      if(!grouped[p.group]) grouped[p.group]=[];
-      grouped[p.group].push(p);
-    });
-
-    // Find ALFA across all: characteristic in most patterns
-    const featCount = {};
-    results.forEach(p=>{
-      Object.entries(p.common).forEach(([k,v])=>{
-        const key=k+":"+v;
-        featCount[key]=(featCount[key]||0)+1;
-      });
-    });
-    const alfaKey = Object.entries(featCount).sort((a,b)=>b[1]-a[1])[0]?.[0];
-    const alfaParts = alfaKey ? alfaKey.split(":") : [null,null];
-    const alfaField = alfaParts[0], alfaVal = alfaParts.slice(1).join(":");
-
-    return (
-      <div style={{marginBottom:8}}>
-        {/* Section title + global ALFA */}
-        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,
-          borderBottom:"1px solid #1a1a1a",paddingBottom:4}}>
-          <span style={{fontSize:7,color:"#888",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:"bold"}}>{title}</span>
-          {alfaField && alfaVal && (() => {
-            const pal=FEAT_PAL[alfaField];
-            const sch=pal?pal[alfaVal]||{bg:"#222",text:"#888"}:{bg:"#222",text:"#888"};
-            return (
-              <div style={{display:"flex",alignItems:"center",gap:3,background:"#1a1000",
-                border:"1px solid #FFD700",borderRadius:3,padding:"1px 6px"}}>
-                <span style={{fontSize:6,color:"#FFD700",fontWeight:"bold"}}>ALFA</span>
-                <span style={{fontSize:9,fontWeight:"bold",color:sch.text,background:sch.bg,
-                  padding:"1px 5px",borderRadius:2}}>{alfaVal}</span>
-                <span style={{fontSize:7,color:"#FFD700"}}>{featCount[alfaKey]}x</span>
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* One block per group */}
-        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {Object.entries(grouped).map(([grp, patterns])=>{
-            const grpSch = groupPal[grp]||{bg:"#111",text:"#aaa"};
-
-            // ALFA within this group
-            const grpFeatCount = {};
-            patterns.forEach(p=>{
-              Object.entries(p.common).forEach(([k,v])=>{
-                const key=k+":"+v;
-                grpFeatCount[key]=(grpFeatCount[key]||0)+1;
-              });
-            });
-            const grpAlfaKey = Object.entries(grpFeatCount).sort((a,b)=>b[1]-a[1])[0]?.[0];
-            const grpAlfaParts = grpAlfaKey ? grpAlfaKey.split(":") : [null,null];
-            const grpAlfaField = grpAlfaParts[0], grpAlfaVal = grpAlfaParts.slice(1).join(":");
-
-            return (
-              <div key={grp} style={{background:"#080808",border:"1px solid #222",
-                borderRadius:4,padding:"5px 8px",
-                borderLeft:"3px solid "+grpSch.bg}}>
-                {/* Group header */}
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-                  <span style={{fontSize:10,fontWeight:"bold",color:grpSch.text,
-                    background:grpSch.bg,padding:"1px 7px",borderRadius:2}}>{grp}</span>
-                  <span style={{fontSize:7,color:"#555"}}>{patterns.length} padrão{patterns.length>1?"s":""}</span>
-                  {grpAlfaField && grpAlfaVal && (() => {
-                    const pal=FEAT_PAL[grpAlfaField];
-                    const sch=pal?pal[grpAlfaVal]||{bg:"#222",text:"#888"}:{bg:"#222",text:"#888"};
-                    return (
-                      <span style={{fontSize:8,fontWeight:"bold",color:sch.text,background:sch.bg,
-                        padding:"1px 5px",borderRadius:2,
-                        border:"1px solid #FFD700",boxShadow:"0 0 4px #FFD70066"}}>
-                        ★ {grpAlfaVal}
-                      </span>
-                    );
-                  })()}
-                </div>
-                {/* Patterns */}
-                <div style={{display:"flex",flexDirection:"column",gap:2}}>
-                  {patterns.map((p,idx)=>(
-                    <div key={idx} style={{display:"flex",alignItems:"center",gap:3,flexWrap:"wrap",
-                      background:"#0a0a0a",borderRadius:2,padding:"2px 5px"}}>
-                      <span style={{fontSize:6,color:"#555",flexShrink:0,minWidth:52}}>{p.gapStr}</span>
-                      <span style={{fontSize:7,color:"#FFD700",fontWeight:"bold",flexShrink:0}}>{p.count}x</span>
-                      {Object.entries(p.common).map(([k,v])=>{
-                        const pal=FEAT_PAL[k];
-                        const sch=pal?pal[v]||{bg:"#222",text:"#888"}:{bg:"#222",text:"#888"};
-                        const isAlfa = k===alfaField && v===alfaVal;
-                        const isGrpAlfa = k===grpAlfaField && v===grpAlfaVal;
-                        return (
-                          <span key={k} style={{fontSize:7,fontWeight:"bold",color:sch.text,
-                            background:sch.bg,padding:"1px 4px",borderRadius:2,
-                            border:isAlfa?"1px solid #FFD700":isGrpAlfa?"1px solid #FFD70066":"none",
-                            boxShadow:isAlfa?"0 0 4px #FFD700":"none"}}>
-                            {v}
-                          </span>
-                        );
-                      })}
-                      <div style={{display:"flex",gap:2,marginLeft:"auto"}}>
-                        {p.examples[0]?.map(num=>{
-                          const c=getColor(num);const s=NUM_BALL[c];
-                          return <div key={num} style={{width:14,height:14,borderRadius:"50%",
-                            display:"flex",alignItems:"center",justifyContent:"center",
-                            background:s.bg,border:"1px solid "+s.border,
-                            color:s.text,fontSize:5,fontWeight:"bold"}}>{num}</div>;
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  // ── ALERT: detect if current sequence matches a cataloged pattern ──
-  // For each cataloged pattern, check if last entries match the first 2 positions
-  const alerts = [];
-
-  const checkAlert = (results, groupFn, groupPal) => {
-    results.forEach(p => {
-      const step = p.gap + 1;
-      // GAP 0 (seguido): last 2 entries same group → next is 3rd
-      // GAP 1 (alt 1): entries[0] and entries[2] same group → entries[1] is gap → next (entries[-1+step]) is 3rd
-      // GAP 2 (alt 2): entries[0] and entries[3] same group → next would be at entries[0+2*step]
-
-      // Check: do the last entries match the START of this pattern?
-      // We need positions [0] and [step] from the END of entries to be same group as pattern
-      if(nums.length < step + 1) return;
-
-      const last  = nums[nums.length - 1];       // most recent
-      const prev  = nums[nums.length - 1 - step]; // step positions back
-
-      if(last===0||prev===0) return;
-      if(groupFn(last)!==p.group||groupFn(prev)!==p.group) return;
-
-      // Check common features match
-      const common2 = commonFeats([prev, last]);
-      const matches = Object.entries(p.common).every(([k,v])=>common2[k]===v);
-      if(!matches) return;
-
-      // This pattern is forming! Alert
-      const grpSch = groupPal[p.group]||{bg:"#111",text:"#aaa"};
-      alerts.push({
-        group: p.group,
-        gap: p.gap,
-        gapStr: p.gapStr,
-        count: p.count,
-        common: p.common,
-        grpSch,
-        nextIn: p.gap, // how many rounds to skip before 3rd
-      });
-    });
-  };
-
-  checkAlert(duzResults, m=>getDuzia(m), DUZIA_CELL);
-  checkAlert(colResults, m=>getColuna(m), COLUNA_CELL);
+  const strongRows = transitionStats
+    .filter(x=>x.usable>=4 && Math.max(x.samePct,100-x.samePct)>=60)
+    .sort((a,b)=>Math.max(b.samePct,100-b.samePct)-Math.max(a.samePct,100-a.samePct))
+    .slice(0,5);
 
   return (
-    <div style={{padding:"6px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
-      {/* ALERTS */}
-      {alerts.length > 0 && (
-        <div style={{marginBottom:8}}>
-          {alerts.map((a,idx)=>(
-            <div key={idx} style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",
-              background:"#1a0a00",border:"2px solid #FFD700",borderRadius:4,
-              padding:"6px 10px",marginBottom:4,
-              animation:"pulseBorder 0.9s ease-in-out infinite"}}>
-              <span style={{fontSize:12}}>⚡</span>
-              <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold",textTransform:"uppercase"}}>
-                PADRÃO ATIVO
-              </span>
-              <span style={{fontSize:10,fontWeight:"bold",color:a.grpSch.text,
-                background:a.grpSch.bg,padding:"1px 6px",borderRadius:2}}>{a.group}</span>
-              <span style={{fontSize:8,color:"#aaa"}}>{a.gapStr}</span>
-              <span style={{fontSize:8,color:"#FFD700"}}>{a.count}x no histórico</span>
-              <span style={{fontSize:8,color:"#888"}}>
-                {a.nextIn===0?"→ próximo":"→ pular "+a.nextIn}
-              </span>
-              {/* Common features */}
-              <div style={{display:"flex",gap:3,flexWrap:"wrap"}}>
-                {Object.entries(a.common).map(([k,v])=>{
-                  const pal=FEAT_PAL[k];
-                  const sch=pal?pal[v]||{bg:"#222",text:"#888"}:{bg:"#222",text:"#888"};
-                  return (
-                    <span key={k} style={{fontSize:8,fontWeight:"bold",color:sch.text,
-                      background:sch.bg,padding:"1px 5px",borderRadius:2}}>
-                      {FEAT_LABEL[k]}: {v}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+    <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.35fr) minmax(0,1fr)",gap:8,padding:"8px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
+      <div style={{background:"#080808",border:"1px solid #242424",borderRadius:5,padding:"8px 10px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:7}}>
+          <span style={{fontSize:8,color:"#CC0000",fontWeight:"bold",letterSpacing:"0.1em"}}>◆ RADAR DE REPETIÇÃO DE CASA</span>
+          <span style={{fontSize:10,fontWeight:"bold",color:currentHouseScheme.text,background:currentHouseScheme.bg,padding:"2px 7px",borderRadius:2}}>CASA {currentHouse}</span>
+          <span style={{fontSize:8,color:"#777"}}>{repeatedTransitions.length}/{sourceTransitions.length} repetições • {repeatPct}%</span>
         </div>
-      )}
 
-      <div style={{fontSize:8,color:"#CC0000",fontWeight:"bold",letterSpacing:"0.1em",
-        textTransform:"uppercase",marginBottom:8}}>◆ PADRÕES HISTÓRICOS</div>
-      {renderSection(duzResults,"DÚZIA",DUZIA_CELL)}
-      {renderSection(colResults,"COLUNA",COLUNA_CELL)}
+        {strongRows.length>0 ? (
+          <div style={{display:"flex",flexDirection:"column",gap:3,marginBottom:7}}>
+            {strongRows.map(x=>{
+              const keep=x.samePct>=50;
+              const pct=keep?x.samePct:100-x.samePct;
+              return <div key={x.key} style={{display:"grid",gridTemplateColumns:"48px 1fr 48px",gap:5,alignItems:"center",background:"#0b0b0b",padding:"3px 6px",borderRadius:3}}>
+                <span style={{fontSize:7,color:"#666",fontWeight:"bold"}}>{x.label}</span>
+                <span style={{fontSize:8,color:keep?"#86efac":"#fca5a5"}}>{keep?"MANTÉM":"MUDA"}</span>
+                <span style={{fontSize:8,color:"#FFD700",fontWeight:"bold",textAlign:"right"}}>{pct}% <span style={{color:"#555",fontWeight:"normal"}}>({x.usable})</span></span>
+              </div>;
+            })}
+          </div>
+        ) : <div style={{fontSize:8,color:"#444",marginBottom:7}}>Ainda sem amostra suficiente para destacar características.</div>}
+
+        <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center",marginBottom:6}}>
+          <span style={{fontSize:7,color:"#555"}}>CONTEXTO ATUAL:</span>
+          <span style={{fontSize:8,color:currentHouseScheme.text,fontWeight:"bold"}}>CASA {currentHouse}</span>
+          {relevant.map(x=><span key={x.key} style={{fontSize:8,color:"#ddd",background:"#171717",border:"1px solid #333",padding:"2px 5px",borderRadius:2}}>{x.label} {x.bestVal} • {x.bestCount}/{x.contextualN} ({x.bestPct}%)</span>)}
+        </div>
+
+        <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
+          <button type="button" onClick={()=>onApplyFilters&&onApplyFilters(filters)}
+            style={{background:"#7c0000",border:"1px solid #CC0000",color:"#fff",fontSize:8,fontWeight:"bold",padding:"5px 9px",borderRadius:3,cursor:"pointer"}}>
+            APLICAR AO FILTRO
+          </button>
+          {candidateNums.slice(0,12).map(num=>{const sch=NUM_BALL[getColor(num)];return <span key={num} style={{width:23,height:23,borderRadius:"50%",display:"inline-flex",alignItems:"center",justifyContent:"center",background:sch.bg,border:"1px solid "+sch.border,color:sch.text,fontSize:8,fontWeight:"bold"}}>{num}</span>;})}
+          {candidateNums.length>12&&<span style={{fontSize:7,color:"#555"}}>+{candidateNums.length-12}</span>}
+        </div>
+      </div>
+
+      <div style={{background:activeCadence?"#160d00":"#080808",border:activeCadence?"2px solid #FFD700":"1px solid #242424",borderRadius:5,padding:"8px 10px",boxShadow:activeCadence?"0 0 10px #FFD70022":"none"}}>
+        <div style={{fontSize:8,color:activeCadence?"#FFD700":"#888",fontWeight:"bold",letterSpacing:"0.1em",marginBottom:7}}>◆ CADÊNCIA DE DUPLAS</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4,marginBottom:7}}>
+          {cadenceStats.map(x=><div key={x.gap} style={{background:"#0b0b0b",border:"1px solid #222",borderRadius:3,padding:"4px",textAlign:"center"}}>
+            <div style={{fontSize:7,color:"#666"}}>GAP {x.gap}</div>
+            <div style={{fontSize:11,color:x.pct>=70?"#FFD700":"#ddd",fontWeight:"bold"}}>{x.trials?x.pct+"%":"—"}</div>
+            <div style={{fontSize:6,color:"#444"}}>{x.hits}/{x.trials}</div>
+          </div>)}
+        </div>
+        {activeCadence ? (()=>{
+          const sch=GRUPO_DEZENA_CELL[activeCadence.house]||GRUPO_DEZENA_CELL["—"];
+          return <div style={{background:"#1a1000",border:"1px solid #FFD700",borderRadius:4,padding:"6px 8px"}}>
+            <div style={{fontSize:9,color:"#FFD700",fontWeight:"bold",marginBottom:4}}>⚠ JANELA DE REPETIÇÃO ATIVA</div>
+            <div style={{fontSize:8,color:"#aaa",lineHeight:1.45}}>Cadência {activeCadence.gap}: passaram exatamente {activeCadence.gap} número{activeCadence.gap>1?"s":""} após a segunda dupla.</div>
+            <div style={{display:"flex",gap:5,alignItems:"center",marginTop:5,flexWrap:"wrap"}}>
+              <span style={{fontSize:8,color:"#ddd"}}>Último: <b>{activeCadence.base.num}</b></span>
+              <span style={{fontSize:9,color:sch.text,background:sch.bg,padding:"2px 6px",borderRadius:2,fontWeight:"bold"}}>CASA {activeCadence.house}</span>
+              <span style={{fontSize:8,color:"#FFD700"}}>→ próximo pode repetir esta casa</span>
+            </div>
+          </div>;
+        })() : <div style={{fontSize:8,color:"#444",lineHeight:1.5}}>Monitorando sequências com 1, 2 e 3 números entre duplas. O alerta aparece somente na rodada exata em que o último número vira a casa-base da possível terceira dupla.</div>}
+      </div>
     </div>
   );
 }
-
 let idCounter = 0;
 
 export default function DestroyerRaceTable() {
@@ -2542,8 +2426,6 @@ export default function DestroyerRaceTable() {
           <button onClick={addNumbers} style={{padding:"0 20px",background:"#CC0000",border:"none",borderRadius:2,color:"#fff",fontSize:11,fontWeight:"bold",letterSpacing:"0.1em",cursor:"pointer",fontFamily:"Arial, sans-serif"}}>ADD</button>
           <button onClick={()=>{ setEntries([]); try{ window.storage.set("destroyer-pair-v6", JSON.stringify({catalog:{},totalSeq:0,totalNum:0})); }catch(e){} }} style={{padding:"0 14px",background:"transparent",border:"1px solid #333",borderRadius:2,color:"#666",fontSize:11,cursor:"pointer",fontFamily:"Arial, sans-serif"}}>CLR</button>
           <button onClick={()=>{setEntries(prev=>prev.slice(0,-1));setFilterSel({});}} disabled={entries.length===0} style={{padding:"0 14px",background:"transparent",border:"1px solid #444",borderRadius:2,color:entries.length===0?"#333":"#aaa",fontSize:11,cursor:entries.length===0?"default":"pointer",fontFamily:"Arial, sans-serif"}}>↩</button>
-          <button onClick={()=>setShowRep(v=>!v)} style={{padding:"0 12px",background:showRep?"#166534":"transparent",border:showRep?"1px solid #22c55e":"1px solid #333",borderRadius:2,color:showRep?"#22c55e":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showRep?"● REP":"○ REP"}</button>
-          <button onClick={()=>setShowAlt(v=>!v)} style={{padding:"0 12px",background:showAlt?"#7c2d12":"transparent",border:showAlt?"1px solid #f97316":"1px solid #333",borderRadius:2,color:showAlt?"#f97316":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showAlt?"● ALT":"○ ALT"}</button>
           <button onClick={()=>setShowAll(v=>!v)} style={{padding:"0 12px",background:showAll?"#1e3a5f":"transparent",border:showAll?"1px solid #60a5fa":"1px solid #333",borderRadius:2,color:showAll?"#60a5fa":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showAll?"● HIST":"○ HIST"}</button>
           <button onClick={()=>setShowCards(v=>!v)} style={{padding:"0 12px",background:showCards?"#2d1a00":"transparent",border:showCards?"1px solid #f97316":"1px solid #333",borderRadius:2,color:showCards?"#f97316":"#555",fontSize:10,fontWeight:"bold",cursor:"pointer",fontFamily:"Arial, sans-serif",letterSpacing:"0.06em"}}>{showCards?"● INFO":"○ INFO"}</button>
         </div>
@@ -2690,7 +2572,7 @@ export default function DestroyerRaceTable() {
           );
         })()}
 
-        {entries.length >= 10 && <PatternCatalog entries={entries}/>}
+        {entries.length >= 6 && <PatternCatalog entries={entries} onApplyFilters={setFilterSel}/>}
 
 
 
