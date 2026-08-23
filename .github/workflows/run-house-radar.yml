@@ -1,0 +1,63 @@
+name: Run House Radar Patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/run-house-radar.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch stored in workflow source
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          app = Path('src/App.jsx')
+          src = app.read_text()
+          carrier = Path('.github/workflows/apply-house-radar.yml').read_text()
+
+          marker = "new_component = r'''"
+          a = carrier.find(marker)
+          if a == -1:
+              raise SystemExit('component carrier marker not found')
+          a += len(marker)
+          b = carrier.find("\n'''", a)
+          if b == -1:
+              raise SystemExit('component carrier end not found')
+          new_component = carrier[a:b]
+
+          start = src.find('function PatternCatalog({ entries }) {')
+          end = src.find('\nlet idCounter = 0;', start)
+          if start == -1 or end == -1:
+              raise SystemExit('PatternCatalog markers not found')
+          src = src[:start] + new_component + src[end:]
+
+          src = re.sub(r'\n\s*<button onClick=\{\(\)=>setShowRep\(v=>!v\)\}[^\n]*</button>', '', src)
+          src = re.sub(r'\n\s*<button onClick=\{\(\)=>setShowAlt\(v=>!v\)\}[^\n]*</button>', '', src)
+
+          old = '{entries.length >= 10 && <PatternCatalog entries={entries}/>}'
+          new = '{entries.length >= 6 && <PatternCatalog entries={entries} onApplyFilters={setFilterSel}/>}'
+          if old not in src:
+              raise SystemExit('PatternCatalog render marker not found')
+          src = src.replace(old, new, 1)
+
+          app.write_text(src)
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx
+          git commit -m "feat: replace historical patterns with house radar" || exit 0
+          git push
