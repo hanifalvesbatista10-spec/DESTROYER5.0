@@ -162,6 +162,86 @@ export default function destroyerPatch() {
         }
       }
 
+      // 4) CADÊNCIA: repetição contínua de 2, 3, 4... casas iguais é UM bloco.
+      // As cadências só comparam blocos de repetição consecutivos; nunca pulam
+      // um bloco intermediário. A janela ativa só existe se não apareceu uma
+      // nova repetição antes da rodada-base esperada.
+      {
+        const start = src.indexOf('  const cadenceStats = [1,2,3].map(gap=>{');
+        const end = src.indexOf('  const strongRows = transitionStats', start);
+        if (start !== -1 && end !== -1) {
+          const replacement = `  // Converte a sequência em blocos contínuos de mesma CASA.
+  // Só runs com tamanho >= 2 viram eventos de repetição.
+  const repetitionBlocks = [];
+  for(let i=0;i<entries.length;){
+    const house = houseOf(entries[i]);
+    let j=i+1;
+    while(j<entries.length && houseOf(entries[j])===house) j++;
+    const len=j-i;
+    if(house && house!=="—" && len>=2){
+      repetitionBlocks.push({start:i,end:j-1,house,len});
+    }
+    i=j;
+  }
+
+  const cadenceStats = [1,2,3].map(gap=>{
+    let trials=0, hits=0;
+
+    // Somente blocos consecutivos: b1 -> b2. Nunca pula um REP no meio.
+    for(let i=0;i<repetitionBlocks.length-1;i++){
+      const first=repetitionBlocks[i];
+      const second=repetitionBlocks[i+1];
+      const between=second.start-first.end-1;
+      if(between!==gap) continue;
+
+      // Depois da segunda REP, aguardamos exatamente 'gap' resultados.
+      // O último deles vira a base; o seguinte deve repetir sua CASA.
+      const baseIdx=second.end+gap;
+      const nextIdx=baseIdx+1;
+      if(nextIdx>=entries.length) continue;
+
+      trials++;
+      const third=repetitionBlocks[i+2] || null;
+      if(third && third.start===baseIdx){
+        hits++;
+      }
+    }
+
+    return {gap,trials,hits,pct:trials?Math.round(hits/trials*100):0};
+  });
+
+  let activeCadence = null;
+  for(let i=repetitionBlocks.length-2;i>=0 && !activeCadence;i--){
+    const first=repetitionBlocks[i];
+    const second=repetitionBlocks[i+1];
+    const gap=second.start-first.end-1;
+    if(gap<1 || gap>3) continue;
+
+    const baseIdx=second.end+gap;
+    if(baseIdx!==entries.length-1) continue;
+
+    // Se já nasceu outro bloco de repetição após a segunda REP, a cadência
+    // foi interrompida/confirmada antes e não deve gerar alerta falso.
+    const laterBlock=repetitionBlocks[i+2] || null;
+    if(laterBlock) continue;
+
+    const stat=cadenceStats.find(x=>x.gap===gap);
+    activeCadence={
+      gap,
+      first,
+      second,
+      baseIdx,
+      base:entries[baseIdx],
+      house:houseOf(entries[baseIdx]),
+      stat,
+    };
+  }
+
+`;
+          src = src.slice(0, start) + replacement + src.slice(end);
+        }
+      }
+
       return { code: src, map: null };
     },
   };
