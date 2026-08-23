@@ -2355,8 +2355,26 @@ export default function DestroyerRaceTable() {
               {sortedDomCols.map(col => {
                 const dom = colDominance[col.key];
                 if (!dom) return null;
+                const filterTarget = col.key==="col_c1" ? {key:"coluna",val:"C1"}
+                  : col.key==="col_c2" ? {key:"coluna",val:"C2"}
+                  : col.key==="col_c3" ? {key:"coluna",val:"C3"}
+                  : ["cor","lado","altobaixo","paridade","parte","cavalo","regiao","duzia","coluna","ruaPar","setor","regtrack","fra","opo","grupoDezena"].includes(col.key)
+                    ? {key:col.key,val:dom.val}
+                    : null;
+                const selected = filterTarget ? (()=>{
+                  const cur=filterSel[filterTarget.key];
+                  return Array.isArray(cur)?cur.includes(filterTarget.val):cur===filterTarget.val;
+                })() : false;
                 return (
-                  <div key={col.key} onClick={()=>setExcludedDom(prev=>{const n=new Set(prev);n.has(col.key)?n.delete(col.key):n.add(col.key);return n;})} style={{display:"flex",flexDirection:"column",alignItems:"center",background:"#0a0a0a",border:"1px solid #333",borderRadius:3,padding:"3px 8px",minWidth:44,textAlign:"center",cursor:"pointer",userSelect:"none"}}>
+                  <div key={col.key}
+                    onClick={filterTarget ? ()=>selectProbabilityFilter(filterTarget.key,filterTarget.val) : undefined}
+                    title={filterTarget ? (selected?"Clique para remover do filtro":"Clique para aplicar ao filtro") : "Sem filtro correspondente"}
+                    style={{display:"flex",flexDirection:"column",alignItems:"center",
+                      background:selected?"#102315":"#0a0a0a",
+                      border:selected?"2px solid #22c55e":"1px solid #333",
+                      boxShadow:selected?"0 0 7px #22c55e55":"none",
+                      borderRadius:3,padding:selected?"2px 7px":"3px 8px",minWidth:44,textAlign:"center",
+                      cursor:filterTarget?"pointer":"default",userSelect:"none",opacity:filterTarget?1:0.65}}>
                     <span style={{fontSize:7,color:"#777",lineHeight:1,textTransform:"uppercase"}}>{col.label}</span>
                     <span style={{fontSize:11,fontWeight:"bold",lineHeight:1.2,
                       color: col.key==="cor"?(dom.val==="Vermelho"?"#ff6666":dom.val==="Verde"?"#4ade80":"#e5e5e5"):col.key==="cavalo"?(CAVALO_CELL[dom.val]?.text||"#fff"):col.key==="paridade"?(PAR_CELL[dom.val]?.text||"#fff"):col.key==="parte"?(PARTE_CELL[dom.val]?.text||"#fff"):col.key==="lado"?(LADO_CELL[dom.val]?.text||"#fff"):col.key==="altobaixo"?(ALTOBAIXO_CELL[dom.val]?.text||"#fff"):col.key==="regiao"?(REGIAO_CELL[dom.val]?.text||"#fff"):col.key==="duzia"?(DUZIA_CELL[dom.val]?.text||"#fff"):col.key==="grupoDezena"?(GRUPO_DEZENA_CELL[dom.val]?.text||"#fff"):"#00e5ff",
@@ -2364,7 +2382,7 @@ export default function DestroyerRaceTable() {
                       padding:"1px 5px",borderRadius:2,display:"inline-block"}}>
                       {dom.val}
                     </span>
-                    <span style={{fontSize:11,fontWeight:"bold",color:"#fff",lineHeight:1}}>{dom.pct}%</span>
+                    <span style={{fontSize:11,fontWeight:"bold",color:"#fff",lineHeight:1}}>{dom.pct}%{selected?" ✓":""}</span>
                   </div>
                 );
               })}
