@@ -109,3 +109,53 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Marcações posicionais fixas do DESTROYER.
+   Os números entram na posição 20 e sobem; as marcações permanecem
+   presas às posições visuais 2–3, 7–8 e 16. */
+
+/* Bloco amarelo 2–3 + separador azul entre as duas linhas */
+#destroyer-table tbody tr:nth-child(2) > td {
+  border-top: 2px solid #eaff00 !important;
+  border-bottom: 2px solid #1637ff !important;
+}
+#destroyer-table tbody tr:nth-child(3) > td {
+  border-bottom: 2px solid #eaff00 !important;
+}
+#destroyer-table tbody tr:nth-child(2) > td:first-child,
+#destroyer-table tbody tr:nth-child(3) > td:first-child {
+  border-left: 2px solid #eaff00 !important;
+}
+#destroyer-table tbody tr:nth-child(2) > td:last-child,
+#destroyer-table tbody tr:nth-child(3) > td:last-child {
+  border-right: 2px solid #eaff00 !important;
+}
+
+/* Bloco amarelo 7–8 + separador azul entre as duas linhas */
+#destroyer-table tbody tr:nth-child(7) > td {
+  border-top: 2px solid #eaff00 !important;
+  border-bottom: 2px solid #1637ff !important;
+}
+#destroyer-table tbody tr:nth-child(8) > td {
+  border-bottom: 2px solid #eaff00 !important;
+}
+#destroyer-table tbody tr:nth-child(7) > td:first-child,
+#destroyer-table tbody tr:nth-child(8) > td:first-child {
+  border-left: 2px solid #eaff00 !important;
+}
+#destroyer-table tbody tr:nth-child(7) > td:last-child,
+#destroyer-table tbody tr:nth-child(8) > td:last-child {
+  border-right: 2px solid #eaff00 !important;
+}
+
+/* Moldura azul fixa na posição 16 */
+#destroyer-table tbody tr:nth-child(16) > td {
+  border-top: 2px solid #1637ff !important;
+  border-bottom: 2px solid #1637ff !important;
+}
+#destroyer-table tbody tr:nth-child(16) > td:first-child {
+  border-left: 2px solid #1637ff !important;
+}
+#destroyer-table tbody tr:nth-child(16) > td:last-child {
+  border-right: 2px solid #1637ff !important;
+}
