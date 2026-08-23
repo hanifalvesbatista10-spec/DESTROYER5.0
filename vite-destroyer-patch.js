@@ -1,0 +1,168 @@
+export default function destroyerPatch() {
+  return {
+    name: 'destroyer-casa-race-additive-patch',
+    enforce: 'pre',
+    transform(code, id) {
+      const normalized = id.replace(/\\/g, '/');
+      if (!normalized.endsWith('/src/App.jsx')) return null;
+
+      let src = code;
+
+      // 1) CASA: usa os 5 últimos PUX do número da linha. A casa é escolhida
+      // somente pela maioria direta (mín. 3/5). Depois, vizinhos imediatos
+      // no RACETRACK de qualquer número daquela casa reforçam a cobertura.
+      {
+        const start = src.indexOf('function analyzeCasaPuxada(puxouList) {');
+        const end = src.indexOf('\nconst MICRO_GROUPS = {', start);
+        if (start !== -1 && end !== -1) {
+          const replacement = `function analyzeCasaPuxada(puxouList) {
+  if (!puxouList || puxouList.length < 5) return null;
+
+  const ultimos5 = puxouList.slice(-5);
+  const casas = ["0", "10", "20", "30"];
+
+  const stats = casas.map(casa => {
+    const numsCasa = [];
+    for (let n = 0; n <= 36; n++) {
+      if (getGrupoDezena(n) === casa) numsCasa.push(n);
+    }
+
+    // Somente 1 vizinho de cada lado no RACETRACK para cada número da casa.
+    const vizRaceDaCasa = new Set();
+    numsCasa.forEach(n => {
+      getRaceNeighbors(n).forEach(v => {
+        if (getGrupoDezena(v) !== casa) vizRaceDaCasa.add(v);
+      });
+    });
+
+    const numsDentro = [];
+    const numsVizinhos = [];
+    const numsFora = [];
+
+    ultimos5.forEach(h => {
+      const n = h.num;
+      if (getGrupoDezena(n) === casa) numsDentro.push(n);
+      else if (vizRaceDaCasa.has(n)) numsVizinhos.push(n);
+      else numsFora.push(n);
+    });
+
+    const dentro = numsDentro.length;
+    const vizinhos = numsVizinhos.length;
+    const apoio = dentro + vizinhos;
+
+    return {
+      casa,
+      dentro,
+      vizinhos,
+      apoio,
+      total: 5,
+      pct: Math.round((dentro / 5) * 100),
+      apoioPct: Math.round((apoio / 5) * 100),
+      numsDentro,
+      numsVizinhos,
+      numsFora,
+    };
+  });
+
+  // O vizinho nunca cria a dominância: primeiro a casa precisa ter 3/5 ou mais diretos.
+  const ranking = stats
+    .filter(x => x.dentro >= 3)
+    .sort((a, b) => b.dentro - a.dentro || b.vizinhos - a.vizinhos);
+
+  if (!ranking.length) return null;
+  return ranking[0];
+}
+`;
+          src = src.slice(0, start) + replacement + src.slice(end);
+        }
+      }
+
+      // 2) Todos os cards de filtro são aditivos por padrão. Somente pares de
+      // características realmente opostas ficam exclusivos dentro da mesma chave.
+      {
+        const start = src.indexOf('  const selectProbabilityFilter = (key,val) => {');
+        const end = src.indexOf('\n\n  const dragKey', start);
+        if (start !== -1 && end !== -1) {
+          const replacement = `  const selectProbabilityFilter = (key,val) => {
+    const EXCLUSIVE_KEYS = new Set([
+      "paridade",   // Par x Ímpar
+      "parte",      // P1 x P2
+      "lado",       // PB/VA x PA/VB
+      "altobaixo",  // Alto x Baixo
+      "opo",        // ZERO x DEZ
+      "ruaPar"      // Rua Ímpar x Rua Par
+    ]);
+
+    setFilterSel(prev => {
+      if (EXCLUSIVE_KEYS.has(key)) {
+        const cur = prev[key];
+        const isActive = Array.isArray(cur) ? cur.includes(val) : cur === val;
+        if (isActive) {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        }
+        // Valor oposto substitui o anterior apenas nesta característica.
+        return { ...prev, [key]: val };
+      }
+
+      // Demais características: seleção OR aditiva, sem limite artificial de 2 cards.
+      const cur = Array.isArray(prev[key]) ? prev[key] : prev[key] ? [prev[key]] : [];
+      if (cur.includes(val)) {
+        const values = cur.filter(v => v !== val);
+        const next = { ...prev };
+        if (values.length === 0) delete next[key];
+        else next[key] = values;
+        return next;
+      }
+      return { ...prev, [key]: [...cur, val] };
+    });
+  };`;
+          src = src.slice(0, start) + replacement + src.slice(end);
+        }
+      }
+
+      // 3) A coluna CASA passa a avaliar os PUX do próprio número da linha,
+      // não mais o histórico agregado da casa de origem.
+      {
+        const start = src.indexOf('                      if (col.key==="viz") {');
+        const end = src.indexOf('                      return <Cell key={col.key}', start);
+        if (start !== -1 && end !== -1) {
+          const replacement = `                      if (col.key==="viz") {
+                        const ultimosPuxadosDoNumero = getHistorico(entries, realIndex, e.num);
+                        const result = analyzeCasaPuxada(ultimosPuxadosDoNumero);
+                        const casaScheme = result
+                          ? (GRUPO_DEZENA_CELL[result.casa] || GRUPO_DEZENA_CELL["—"])
+                          : GRUPO_DEZENA_CELL["—"];
+
+                        return (
+                          <td key="viz"
+                            title={result
+                              ? \`Nº \${e.num}: CASA \${result.casa} = \${result.dentro}/5 diretos (\${result.pct}%)\` + (result.vizinhos ? \` + \${result.vizinhos} vizinho(s) Race → \${result.apoio}/5 (\${result.apoioPct}%)\` : "")
+                              : "Sem maioria de CASA nos últimos 5 PUX deste número"}
+                            style={{background:"#0d0d0d",padding:"1px 2px",textAlign:"center",borderTop:bTop,borderBottom:bBot,borderRight:"1px solid #000",minWidth:38}}>
+                            {result ? (
+                              <div style={{
+                                display:"inline-flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+                                minWidth:36,height:28,borderRadius:3,padding:"0 3px",
+                                background:casaScheme.bg,border:"2px solid "+casaScheme.text,
+                                color:casaScheme.text,fontFamily:"Arial, sans-serif"
+                              }}>
+                                <span style={{fontSize:10,fontWeight:"bold",lineHeight:1}}>{result.casa}</span>
+                                <span style={{fontSize:6,lineHeight:1,opacity:0.95}}>
+                                  {result.dentro}D{result.vizinhos>0?\` +\${result.vizinhos}V\`:""} · {result.apoioPct}%
+                                </span>
+                              </div>
+                            ) : <span style={{color:"#2a2a2a",fontSize:8}}>—</span>}
+                          </td>
+                        );
+                      }
+`;
+          src = src.slice(0, start) + replacement + src.slice(end);
+        }
+      }
+
+      return { code: src, map: null };
+    },
+  };
+}
