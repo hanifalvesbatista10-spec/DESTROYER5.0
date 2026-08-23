@@ -157,7 +157,8 @@ export default function destroyerPatch() {
         }
       }
 
-      // 4) CADÊNCIA: repetição contínua de 2, 3, 4... casas iguais é UM bloco.
+      // 4) CADÊNCIA antiga: mantém a lógica interna neutra para compatibilidade,
+      // mas o quadro visual será removido mais abaixo.
       {
         const start = src.indexOf('  const cadenceStats = [1,2,3].map(gap=>{');
         const end = src.indexOf('  const strongRows = transitionStats', start);
@@ -174,38 +175,8 @@ export default function destroyerPatch() {
     i=j;
   }
 
-  const cadenceStats = [1,2,3].map(gap=>{
-    let trials=0, hits=0;
-    for(let i=0;i<repetitionBlocks.length-1;i++){
-      const first=repetitionBlocks[i];
-      const second=repetitionBlocks[i+1];
-      const between=second.start-first.end-1;
-      if(between!==gap) continue;
-      const baseIdx=second.end+gap;
-      const nextIdx=baseIdx+1;
-      if(nextIdx>=entries.length) continue;
-      trials++;
-      const third=repetitionBlocks[i+2] || null;
-      if(third && third.start===baseIdx){
-        hits++;
-      }
-    }
-    return {gap,trials,hits,pct:trials?Math.round(hits/trials*100):0};
-  });
-
-  let activeCadence = null;
-  for(let i=repetitionBlocks.length-2;i>=0 && !activeCadence;i--){
-    const first=repetitionBlocks[i];
-    const second=repetitionBlocks[i+1];
-    const gap=second.start-first.end-1;
-    if(gap<1 || gap>3) continue;
-    const baseIdx=second.end+gap;
-    if(baseIdx!==entries.length-1) continue;
-    const laterBlock=repetitionBlocks[i+2] || null;
-    if(laterBlock) continue;
-    const stat=cadenceStats.find(x=>x.gap===gap);
-    activeCadence={gap,first,second,baseIdx,base:entries[baseIdx],house:houseOf(entries[baseIdx]),stat};
-  }
+  const cadenceStats = [];
+  const activeCadence = null;
 
 `;
           src = src.slice(0, start) + replacement + src.slice(end);
@@ -263,7 +234,6 @@ export default function destroyerPatch() {
 
       vals.forEach(val => {
         const cnt = last5.filter(e => getVal(e) === val).length;
-        // LEI ORIGINAL preservada: 80% ou mais.
         if (cnt / last5.length >= 0.8) {
           result[field] = { val, pct: Math.round(cnt/last5.length*100) };
         }
@@ -275,12 +245,74 @@ export default function destroyerPatch() {
         }
       }
 
-      // 6) A barra de dominância não depende de a coluna estar visível para reconhecer o sinal.
-      // Mantém apenas colunas de característica (toggleable), excluindo #/Nº/PUX/CASA técnica.
+      // 6) A barra de dominância não depende de a coluna estar visível.
       src = src.replace(
         'const sortedDomCols = visibleCols.filter(c=>c.toggleable&&colDominance[c.key]&&!excludedDom.has(c.key)).sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));',
         'const sortedDomCols = INIT_COLS.filter(c=>c.toggleable&&colDominance[c.key]&&!excludedDom.has(c.key)).sort((a,b)=>(colDominance[b.key]?.pct||0)-(colDominance[a.key]?.pct||0));'
       );
+
+      // 7) Remove visualmente o quadro de CADÊNCIA e deixa o Radar em largura total.
+      src = src.replace(
+        'gridTemplateColumns:"minmax(0,1.35fr) minmax(0,1fr)"',
+        'gridTemplateColumns:"1fr"'
+      );
+      {
+        const cadenceUiStart = src.indexOf('      <div style={{background:activeCadence?');
+        const patternClose = src.indexOf('    </div>\n  );\n}\nlet idCounter', cadenceUiStart);
+        if (cadenceUiStart !== -1 && patternClose !== -1) {
+          src = src.slice(0, cadenceUiStart) + src.slice(patternClose);
+        }
+      }
+
+      // 8) ÍNDICE DE TRANSIÇÃO DE CASA dentro da linha de dominância.
+      // Usa a MESMA janela da dominância (últimos 6 números = 5 transições).
+      // R = mesma casa; V = mudou de casa, mas o número seguinte é vizinho imediato
+      // (1 de cada lado) do número anterior no RACETRACK; A = alternância sem proximidade.
+      // O card é SOMENTE descritivo: não é clicável, não alimenta filtros e não gera candidatos.
+      {
+        const calcMarker = '          const matchNums = [];\n          for(let n=0;n<=36;n++){ if(domKeys.length>0 && domKeys.every(k=>NFIELDX[k](n)===allDomVals[k])) matchNums.push(n); }';
+        const calcReplacement = `          const matchNums = [];
+          for(let n=0;n<=36;n++){ if(domKeys.length>0 && domKeys.every(k=>NFIELDX[k](n)===allDomVals[k])) matchNums.push(n); }
+
+          const houseTransitionIndex = (() => {
+            const recent = entries.slice(-6);
+            if (recent.length < 2) return null;
+            let rep = 0, viz = 0, alt = 0;
+            for (let i=0; i<recent.length-1; i++) {
+              const a = recent[i];
+              const b = recent[i+1];
+              const sameHouse = getGrupoDezena(a.num) === getGrupoDezena(b.num);
+              if (sameHouse) {
+                rep++;
+              } else if (getRaceNeighbors(a.num).has(b.num)) {
+                viz++;
+              } else {
+                alt++;
+              }
+            }
+            const total = rep + viz + alt;
+            if (!total) return null;
+            const continuidade = rep + viz;
+            const pct = Math.round((continuidade / total) * 100);
+            const altPct = Math.round((alt / total) * 100);
+            if (pct < 60) return null;
+            return { rep, viz, alt, total, pct, altPct };
+          })();`;
+        if (src.includes(calcMarker)) src = src.replace(calcMarker, calcReplacement);
+
+        const renderMarker = '              {sortedDomCols.map(col => {';
+        const renderReplacement = `              {houseTransitionIndex && (
+                <div title={\`Últimas \${houseTransitionIndex.total} transições: \${houseTransitionIndex.rep} repetição(ões) de CASA, \${houseTransitionIndex.viz} aproximação(ões) por vizinho imediato no Race e \${houseTransitionIndex.alt} alternância(s). Leitura descritiva, sem inferência sobre o próximo resultado.\`}
+                  style={{display:"flex",flexDirection:"column",alignItems:"center",background:"#111827",border:"1px solid #64748b",borderRadius:3,padding:"3px 8px",minWidth:58,textAlign:"center",cursor:"default",userSelect:"none"}}>
+                  <span style={{fontSize:7,color:"#94a3b8",lineHeight:1,textTransform:"uppercase"}}>ÍNDICE CASA</span>
+                  <span style={{fontSize:10,fontWeight:"bold",lineHeight:1.2,color:"#e2e8f0",padding:"1px 4px"}}>REP/VIZ</span>
+                  <span style={{fontSize:11,fontWeight:"900",color:"#fff",lineHeight:1}}>{houseTransitionIndex.pct}%</span>
+                  <span style={{fontSize:6,color:"#94a3b8",lineHeight:1.2}}>{houseTransitionIndex.rep}R + {houseTransitionIndex.viz}V · {houseTransitionIndex.alt}A</span>
+                </div>
+              )}
+              {sortedDomCols.map(col => {`;
+        if (src.includes(renderMarker)) src = src.replace(renderMarker, renderReplacement);
+      }
 
       return { code: src, map: null };
     },
