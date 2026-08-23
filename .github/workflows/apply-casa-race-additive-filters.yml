@@ -1,0 +1,123 @@
+name: Apply CASA Race + Additive Filters
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-casa-race-additive-filters.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch App.jsx
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('src/App.jsx')
+          s=p.read_text()
+
+          start=s.find('function analyzeCasaPuxada(puxouList) {')
+          end=s.find('\nconst MICRO_GROUPS = {', start)
+          if start==-1 or end==-1:
+              raise SystemExit('analyzeCasaPuxada markers not found')
+
+          new_fn=r'''function analyzeCasaPuxada(puxouList) {
+  if (!puxouList || puxouList.length < 5) return null;
+
+  // Avalia EXATAMENTE os 5 últimos números da coluna PUX daquele número.
+  // 1) A casa dominante é definida apenas pelos números DIRETOS da casa (mínimo 3/5).
+  // 2) Só depois da dominância definida, números externos podem reforçar a leitura
+  //    se forem vizinhos IMEDIATOS no RACETRACK (1 para cada lado) de qualquer número da casa.
+  const ultimos5 = puxouList.slice(-5);
+  const casas = ["0", "10", "20", "30"];
+
+  const stats = casas.map(casa => {
+    const numsCasa = [];
+    for (let n=0; n<=36; n++) {
+      if (getGrupoDezena(n) === casa) numsCasa.push(n);
+    }
+
+    const vizRaceDaCasa = new Set();
+    numsCasa.forEach(n => {
+      getRaceNeighbors(n).forEach(v => {
+        if (getGrupoDezena(v) !== casa) vizRaceDaCasa.add(v);
+      });
+    });
+
+    const numsDentro = [];
+    const numsVizinhos = [];
+    const numsFora = [];
+
+    ultimos5.forEach(h => {
+      const n = h.num;
+      if (getGrupoDezena(n) === casa) numsDentro.push(n);
+      else if (vizRaceDaCasa.has(n)) numsVizinhos.push(n);
+      else numsFora.push(n);
+    });
+
+    const dentro = numsDentro.length;
+    const vizinhos = numsVizinhos.length;
+    const apoio = dentro + vizinhos;
+
+    return {
+      casa,
+      dentro,
+      vizinhos,
+      apoio,
+      total:5,
+      pct:Math.round((dentro/5)*100),
+      apoioPct:Math.round((apoio/5)*100),
+      numsDentro,
+      numsVizinhos,
+      numsFora,
+    };
+  });
+
+  // Vizinhos NÃO escolhem a casa vencedora. Primeiro precisa existir maioria direta real.
+  const ranking = stats
+    .filter(x => x.dentro >= 3)
+    .sort((a,b) => b.dentro - a.dentro || b.vizinhos - a.vizinhos);
+
+  if (!ranking.length) return null;
+  return ranking[0];
+}
+'''
+          s=s[:start]+new_fn+s[end:]
+
+          old='''  const selectProbabilityFilter = (key,val) => {\n    const MULTI_KEYS=["duzia","coluna","grupoDezena"];\n    setFilterSel(prev=>{\n      if(MULTI_KEYS.includes(key)){\n        const cur=Array.isArray(prev[key])?prev[key]:prev[key]?[prev[key]]:[];\n        if(cur.includes(val)){ const next=cur.filter(v=>v!==val); const np={...prev}; if(next.length===0) delete np[key]; else np[key]=next; return np; }\n        if(cur.length>=2) return {...prev,[key]:[cur[1],val]};\n        return {...prev,[key]:[...cur,val]};\n      }\n      if(prev[key]===val){ const np={...prev}; delete np[key]; return np; }\n      return {...prev,[key]:val};\n    });\n  };'''
+
+          new='''  const selectProbabilityFilter = (key,val) => {\n    // Cards são aditivos por padrão. Só características realmente opostas\n    // permanecem exclusivas entre si (ex.: Par x Ímpar, P1 x P2, Alto x Baixo).\n    const EXCLUSIVE_KEYS = new Set(["paridade","parte","lado","altobaixo","opo"]);\n    setFilterSel(prev=>{\n      if(EXCLUSIVE_KEYS.has(key)){\n        const cur=prev[key];\n        const isActive=Array.isArray(cur)?cur.includes(val):cur===val;\n        if(isActive){ const np={...prev}; delete np[key]; return np; }\n        return {...prev,[key]:val};\n      }\n\n      const cur=Array.isArray(prev[key])?prev[key]:prev[key]?[prev[key]]:[];\n      if(cur.includes(val)){\n        const next=cur.filter(v=>v!==val);\n        const np={...prev};\n        if(next.length===0) delete np[key];\n        else np[key]=next;\n        return np;\n      }\n      return {...prev,[key]:[...cur,val]};\n    });\n  };'''
+
+          if old not in s:
+              raise SystemExit('selectProbabilityFilter block not found')
+          s=s.replace(old,new,1)
+
+          old_title='title={result ? `Nº ${e.num}: CASA ${result.casa} em ${result.dentro}/5 dos últimos PUX` + (result.vizinhos ? ` + ${result.vizinhos} vizinho(s) de borda` : "") : "Sem maioria de CASA nos últimos 5 PUX"}'
+          new_title='title={result ? `Nº ${e.num}: CASA ${result.casa} dominante em ${result.dentro}/5 diretos` + (result.vizinhos ? ` + ${result.vizinhos} vizinho(s) imediato(s) no Race = ${result.apoio}/5 (${result.apoioPct}%)` : ` = ${result.pct}%`) : "Sem maioria de CASA nos últimos 5 PUX"}'
+          if old_title in s:
+              s=s.replace(old_title,new_title,1)
+
+          old_stat='<span style={{fontSize:6,lineHeight:1,opacity:0.95}}>{result.dentro}/5 · {result.pct}%{result.vizinhos>0?` +${result.vizinhos}V`:""}</span>'
+          new_stat='<span style={{fontSize:6,lineHeight:1,opacity:0.95}}>{result.dentro}D{result.vizinhos>0?` +${result.vizinhos}V`:""} · {result.apoioPct}%</span>'
+          if old_stat in s:
+              s=s.replace(old_stat,new_stat,1)
+
+          p.write_text(s)
+          PY
+      - name: Commit changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.jsx
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: use race neighbors in CASA and additive card filters"
+          git push
