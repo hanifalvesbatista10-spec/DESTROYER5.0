@@ -2708,9 +2708,7 @@ export default function DestroyerRaceTable() {
             { label:"DÚZIA",  key:"duzia",    vals:["D1","D2","D3"],       pal:DUZIA_CELL },
             { label:"COL",    key:"coluna",   vals:["C1","C2","C3"],       pal:COLUNA_CELL },
             { label:"CASAS",  key:"grupoDezena", vals:["0","10","20","30"], pal:GRUPO_DEZENA_CELL },
-            { label:"CAVALO", key:"cavalo",   vals:["369","258","147"],     pal:CAVALO_CELL },
             { label:"ZONA",   key:"regiao",   vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL },
-            { label:"FRA",    key:"fra",      vals:["F1e","F2e","F3e","F1d","F2d","F3d"], pal:FRA_CELL },
             { label:"OPO",    key:"opo",      vals:["ZERO","DEZ"],         pal:OPO_CELL },
             { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },
           ];
@@ -2785,16 +2783,17 @@ export default function DestroyerRaceTable() {
                       const sch = pal[val]||{bg:"#111",text:"#888"};
                       const active = isActive(key,val);
                       return (
-                        <button key={val} onClick={()=>toggleFilter(key,val)}
+                        <button key={val} onClick={()=>toggleFilter(key,val)} aria-pressed={active}
                           style={{
                             fontSize:9,fontWeight:"bold",
-                            color: active ? sch.text : "#444",
-                            background: active ? sch.bg : "#0d0d0d",
-                            border: active ? "2px solid "+sch.text+"aa" : "1px solid #222",
+                            color:sch.text,
+                            background:sch.bg,
+                            border:active ? "2px solid #FFD700" : "1px solid "+sch.text+"88",
                             borderRadius:2,padding:"2px 7px",cursor:"pointer",
                             fontFamily:"Arial, sans-serif",
                             transition:"all 0.15s",
-                            boxShadow: active ? "0 0 6px "+sch.bg : "none",
+                            boxShadow:active ? "0 0 7px #FFD70088" : "none",
+                            opacity:active ? 1 : 0.82,
                           }}>
                           {val==="Vermelho"?"VRM":val==="Preto"?"PRT":val}
                         </button>
