@@ -49,7 +49,7 @@ export default function radarCleanup() {
     : 0;
 
   // Entre as repetições reais de CASA, mede apenas se cada característica
-  // permaneceu igual ou mudou. É leitura histórica/descritiva, sem previsão.
+  // permaneceu igual ou mudou.
   const strongRows = featureDefs.map(fd=>{
     const usable = repeatedTransitions.filter(x=>valid(fd.fn(x.a)) && valid(fd.fn(x.b)));
     if(!usable.length) return null;
@@ -65,19 +65,26 @@ export default function radarCleanup() {
     .filter(x=>x.usable>=4 && x.pct>=60)
     .sort((a,b)=>b.pct-a.pct || b.usable-a.usable);
 
+  // Sinal favorável de CASA: a casa atual precisa ter amostra mínima,
+  // repetição histórica >=60% e pelo menos uma característica forte favorável.
+  const favorableHouseSignal = sourceTransitions.length >= 4 && repeatPct >= 60 && strongRows.length > 0;
+
   return (
     <div style={{padding:"8px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
-      <div style={{background:"#080808",border:"1px solid #242424",borderRadius:5,padding:"8px 10px"}}>
+      <div style={{background:favorableHouseSignal?"#0b130d":"#080808",border:favorableHouseSignal?"2px solid #22c55e":"1px solid #242424",borderRadius:5,padding:"8px 10px",boxShadow:favorableHouseSignal?"0 0 9px #22c55e22":"none"}}>
         <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:7}}>
           <span style={{fontSize:8,color:"#CC0000",fontWeight:"bold",letterSpacing:"0.1em"}}>◆ RADAR DE REPETIÇÃO DE CASA</span>
           <span style={{fontSize:10,fontWeight:"bold",color:currentHouseScheme.text,background:currentHouseScheme.bg,padding:"2px 7px",borderRadius:2}}>CASA {currentHouse}</span>
           <span style={{fontSize:8,color:"#777"}}>{repeatedTransitions.length}/{sourceTransitions.length} repetições • {repeatPct}%</span>
+          {favorableHouseSignal && (
+            <span style={{fontSize:8,color:"#bbf7d0",background:"#14532d",border:"1px solid #22c55e",padding:"2px 7px",borderRadius:3,fontWeight:"bold",letterSpacing:"0.04em"}}>● SINAL FAVORÁVEL CASA {currentHouse}</span>
+          )}
         </div>
 
         {strongRows.length>0 ? (
           <div style={{display:"flex",flexDirection:"column",gap:3}}>
             {strongRows.map(x=>(
-              <div key={x.key} title={\`Nas \${x.usable} repetições válidas da CASA \${currentHouse}, esta característica \${x.keep?"manteve":"mudou"} em \${x.pct}% dos casos. Leitura histórica, sem inferência do próximo resultado.\`}
+              <div key={x.key} title={\`Nas \${x.usable} repetições válidas da CASA \${currentHouse}, esta característica \${x.keep?"manteve":"mudou"} em \${x.pct}% dos casos.\`}
                 style={{display:"grid",gridTemplateColumns:"70px 1fr 64px",gap:5,alignItems:"center",background:"#0b0b0b",padding:"4px 7px",borderRadius:3}}>
                 <span style={{fontSize:7,color:"#666",fontWeight:"bold"}}>{x.label}</span>
                 <span style={{fontSize:8,color:x.keep?"#86efac":"#fca5a5",fontWeight:"bold"}}>{x.keep?"MANTÉM":"MUDA"}</span>
@@ -89,9 +96,9 @@ export default function radarCleanup() {
           <div style={{fontSize:8,color:"#444"}}>Sem característica aprovada com amostra e concentração suficientes nesta CASA.</div>
         )}
 
-        <div style={{marginTop:7,fontSize:7,color:"#555",lineHeight:1.4}}>
-          Análise descritiva de transições da CASA atual. Não aplica filtro e não gera números candidatos.
-        </div>
+        {!favorableHouseSignal && sourceTransitions.length>=4 && (
+          <div style={{marginTop:7,fontSize:7,color:"#555"}}>CASA {currentHouse} monitorada, mas ainda sem condição favorável de sinal.</div>
+        )}
       </div>
     </div>
   );
