@@ -4,8 +4,9 @@ import destroyerPatch from './vite-destroyer-patch.js'
 import radarCleanup from './vite-radar-cleanup.js'
 import targetDuziaPatch from './vite-target-duzia-patch.js'
 import focusRepetitionPatch from './vite-focus-repetition.js'
+import terminalFilterPatch from './vite-terminal-filter.js'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), react()],
+  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), react()],
 })
