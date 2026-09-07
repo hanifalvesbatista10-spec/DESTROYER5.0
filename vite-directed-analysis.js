@@ -206,7 +206,7 @@ function DirectedAnalysis({
                     onMouseEnter={()=>setHoveredNumber(n)}
                     onMouseLeave={()=>setHoveredNumber(null)}
                     onClick={()=>setLockedNumber(v=>v===n?null:n)}
-                    title={selectedNumber===n ? `${numberOccurrences} ocorrência(s)` : `Destacar ${n}`}
+                    title={selectedNumber===n ? (numberOccurrences + " ocorrência(s)") : ("Destacar " + n)}
                     style={{height:34,borderRadius:17,background:selected?"#f8fafc":s.bg,color:selected?"#050505":s.text,border:selected?"2px solid #38bdf8":"1px solid "+s.border,fontSize:10,fontWeight:"bold",cursor:"pointer",opacity:selectedNumber!==null&&!selected?0.45:1}}>{n}</button>
                 );
               })}
@@ -239,7 +239,7 @@ function DirectedAnalysis({
                     onMouseEnter={()=>setHoveredNumber(entry.num)}
                     onMouseLeave={()=>setHoveredNumber(null)}
                     onClick={()=>setLockedNumber(v=>v===entry.num?null:entry.num)}
-                    title={`#${idx+1} · número ${entry.num}`}
+                    title={"#" + (idx+1) + " · número " + entry.num}
                     style={getCellStyle(entry)}>{entry.num}</div>
                 ))}
               </div>
