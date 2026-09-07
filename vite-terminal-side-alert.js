@@ -29,8 +29,6 @@ export default function terminalSideAlertPatch() {
     return null;
   };
 
-  // Calcula as chamadas usando SOMENTE o histórico disponível naquele instante.
-  // Isso é essencial para o alerta não nascer depois que o resultado já aconteceu.
   const calculateCalls = (list) => {
     const out = [];
     for(let t=0; t<=9; t++){
@@ -62,8 +60,9 @@ export default function terminalSideAlertPatch() {
   const results = calculateCalls(entries);
   if(results.length === 0) return null;
 
-  // IMPORTANTE: a chamada válida para o giro atual é a que existia ANTES
-  // da entrada do último número. Assim o sistema testa exatamente o próximo giro.
+  // A chamada precisa existir ANTES do último giro.
+  // Quando o terminal da PRIMEIRA coluna (origem) chega agora, o sinal ativa
+  // para o terminal da segunda coluna no próximo giro.
   const priorEntries = entries.slice(0,-1);
   const priorCalls = calculateCalls(priorEntries);
 
@@ -72,11 +71,11 @@ export default function terminalSideAlertPatch() {
   const lastTerminal = getTerminal(lastEntry?.num);
   const eventBase = lastEntry ? String(lastEntry.id ?? entries.length) + ':' + String(lastEntry.num) : '';
 
-  // Pares src→dst que estavam efetivamente chamando ANTES do último giro
-  // e cujo terminal chamado acabou de chegar neste giro.
-  const hitPairs = new Set(
+  // Ativa o alerta na PRIMEIRA coluna: se saiu T9 e já existia T9→T3,
+  // quem pisca é T9, indicando que T3 foi chamado para o próximo giro.
+  const activatedPairs = new Set(
     priorCalls
-      .filter(r => r.dstT === lastTerminal)
+      .filter(r => r.srcT === lastTerminal)
       .map(r => r.srcT + '>' + r.dstT)
   );
 
@@ -115,18 +114,18 @@ export default function terminalSideAlertPatch() {
           const pct=Math.round(cnt/total*100);
           const pairKey=srcT+'>'+dstT;
           const alertKey=eventBase+':'+pairKey;
-          const arrivedNow=hitPairs.has(pairKey);
-          const blinking=arrivedNow && !ackedAlerts.has(alertKey);
+          const activatedNow=activatedPairs.has(pairKey);
+          const blinking=activatedNow && !ackedAlerts.has(alertKey);
           const srcSelected=terminalSelected(srcT);
           const dstSelected=terminalSelected(dstT);
           return (
             <div key={srcT} style={{display:"flex",alignItems:"center",gap:6,background:blinking?"#171300":"#0a0a0a",border:blinking?"1px solid #FFD700":"1px solid #222",borderRadius:4,padding:"4px 8px"}}>
-              <button type="button" onClick={()=>handleTerminalClick(srcT,null)} title={srcSelected?"Remover T"+srcT+" do filtro":"Filtrar por T"+srcT}
-                style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:srcSelected?srcC+"55":srcC+"22",border:srcSelected?"3px solid #FFD700":"2px solid "+srcC,color:srcC,fontSize:10,fontWeight:"bold",flexShrink:0,cursor:"pointer",padding:0}}>T{srcT}</button>
+              <button type="button" className={blinking?"terminal-hit-alert":""} onClick={()=>handleTerminalClick(srcT,blinking?alertKey:null)} title={blinking?"T"+srcT+" ATIVOU A CHAMADA PARA T"+dstT+" — clique para reconhecer":srcSelected?"Remover T"+srcT+" do filtro":"Filtrar por T"+srcT}
+                style={{width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:blinking?"#FFD700":srcSelected?srcC+"55":srcC+"22",border:blinking?"3px solid #fff1a0":srcSelected?"3px solid #FFD700":"2px solid "+srcC,color:blinking?"#111":srcC,fontSize:10,fontWeight:"900",flexShrink:0,cursor:"pointer",padding:0}}>T{srcT}</button>
               <span style={{fontSize:12,color:"#444"}}>→</span>
-              <button type="button" className={blinking?"terminal-hit-alert":""} onClick={()=>handleTerminalClick(dstT,blinking?alertKey:null)} title={blinking?"T"+dstT+" CHEGOU NO GIRO IMEDIATO — clique para reconhecer e filtrar":dstSelected?"Remover T"+dstT+" do filtro":"Filtrar por T"+dstT}
-                style={{width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:blinking?"#FFD700":dstSelected?dstC+"55":dstC+"22",border:blinking?"3px solid #fff1a0":dstSelected?"3px solid #FFD700":"2px solid "+dstC,color:blinking?"#111":dstC,fontSize:10,fontWeight:"900",flexShrink:0,cursor:"pointer",padding:0}}>T{dstT}</button>
-              {blinking && <span style={{fontSize:7,color:"#FFD700",fontWeight:"900",letterSpacing:".05em"}}>CHEGOU!</span>}
+              <button type="button" onClick={()=>handleTerminalClick(dstT,null)} title={dstSelected?"Remover T"+dstT+" do filtro":"Filtrar por T"+dstT}
+                style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:dstSelected?dstC+"55":dstC+"22",border:dstSelected?"3px solid #FFD700":"2px solid "+dstC,color:dstC,fontSize:10,fontWeight:"bold",flexShrink:0,cursor:"pointer",padding:0}}>T{dstT}</button>
+              {blinking && <span style={{fontSize:7,color:"#FFD700",fontWeight:"900",letterSpacing:".05em"}}>CHAMOU!</span>}
               <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>{cnt}/{total}</span>
               <div style={{flex:1,height:5,background:"#1a1a1a",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#FFD700":dstC}}/></div>
               <span style={{fontSize:8,color:"#555"}}>{pct}%</span>
