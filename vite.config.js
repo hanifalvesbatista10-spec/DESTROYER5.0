@@ -6,6 +6,7 @@ import targetDuziaPatch from './vite-target-duzia-patch.js'
 import focusRepetitionPatch from './vite-focus-repetition.js'
 import terminalFilterPatch from './vite-terminal-filter.js'
 import last3ClickFilterPatch from './vite-last3-click-filter.js'
+import hiddenCharacteristicsPatch from './vite-hidden-characteristics.js'
 import signalFeedbackPatch from './vite-signal-feedback.js'
 import directedAnalysisPatch from './vite-directed-analysis.js'
 import directedWheelRefinePatch from './vite-directed-wheel-refine.js'
@@ -14,5 +15,5 @@ import terminalSideAlertPatch from './vite-terminal-side-alert.js'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), last3ClickFilterPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), react()],
+  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), last3ClickFilterPatch(), hiddenCharacteristicsPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), react()],
 })
