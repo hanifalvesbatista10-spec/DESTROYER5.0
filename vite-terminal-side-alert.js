@@ -60,9 +60,6 @@ export default function terminalSideAlertPatch() {
   const results = calculateCalls(entries);
   if(results.length === 0) return null;
 
-  // A chamada precisa existir ANTES do último giro.
-  // Quando o terminal da PRIMEIRA coluna (origem) chega agora, o sinal ativa
-  // para o terminal da segunda coluna no próximo giro.
   const priorEntries = entries.slice(0,-1);
   const priorCalls = calculateCalls(priorEntries);
 
@@ -71,8 +68,6 @@ export default function terminalSideAlertPatch() {
   const lastTerminal = getTerminal(lastEntry?.num);
   const eventBase = lastEntry ? String(lastEntry.id ?? entries.length) + ':' + String(lastEntry.num) : '';
 
-  // Ativa o alerta na PRIMEIRA coluna: se saiu T9 e já existia T9→T3,
-  // quem pisca é T9, indicando que T3 foi chamado para o próximo giro.
   const activatedPairs = new Set(
     priorCalls
       .filter(r => r.srcT === lastTerminal)
@@ -99,16 +94,16 @@ export default function terminalSideAlertPatch() {
   };
 
   return (
-    <div style={{borderTop:"2px solid #1e1e1e",padding:"8px 12px",background:"#080808",flexShrink:0}}>
+    <div style={{borderTop:"2px solid #1e1e1e",padding:"7px 8px",background:"#080808",flexShrink:0,minWidth:0}}>
       <style>{\`
         @keyframes terminalHitPulse {
           0%,100% { box-shadow: 0 0 0 0 rgba(255,215,0,.20), 0 0 7px rgba(255,215,0,.55); transform:scale(1); }
-          50% { box-shadow: 0 0 0 5px rgba(255,215,0,.05), 0 0 18px rgba(255,215,0,1); transform:scale(1.09); }
+          50% { box-shadow: 0 0 0 4px rgba(255,215,0,.05), 0 0 15px rgba(255,215,0,1); transform:scale(1.07); }
         }
         .terminal-hit-alert { animation: terminalHitPulse .62s ease-in-out infinite; }
       \`}</style>
-      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:8}}>TERMINAL PUXA TERMINAL</div>
-      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+      <div style={{fontSize:7,letterSpacing:"0.1em",color:"#555",textTransform:"uppercase",marginBottom:6}}>TERMINAL PUXA TERMINAL</div>
+      <div style={{display:"flex",flexDirection:"column",gap:4,minWidth:0}}>
         {results.map(({srcT,dstT,cnt,total,occurrences})=>{
           const srcC=tColors[srcT], dstC=tColors[dstT];
           const pct=Math.round(cnt/total*100);
@@ -119,17 +114,28 @@ export default function terminalSideAlertPatch() {
           const srcSelected=terminalSelected(srcT);
           const dstSelected=terminalSelected(dstT);
           return (
-            <div key={srcT} style={{display:"flex",alignItems:"center",gap:6,background:blinking?"#171300":"#0a0a0a",border:blinking?"1px solid #FFD700":"1px solid #222",borderRadius:4,padding:"4px 8px"}}>
-              <button type="button" className={blinking?"terminal-hit-alert":""} onClick={()=>handleTerminalClick(srcT,blinking?alertKey:null)} title={blinking?"T"+srcT+" ATIVOU A CHAMADA PARA T"+dstT+" — clique para reconhecer":srcSelected?"Remover T"+srcT+" do filtro":"Filtrar por T"+srcT}
-                style={{width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:blinking?"#FFD700":srcSelected?srcC+"55":srcC+"22",border:blinking?"3px solid #fff1a0":srcSelected?"3px solid #FFD700":"2px solid "+srcC,color:blinking?"#111":srcC,fontSize:10,fontWeight:"900",flexShrink:0,cursor:"pointer",padding:0}}>T{srcT}</button>
-              <span style={{fontSize:12,color:"#444"}}>→</span>
-              <button type="button" onClick={()=>handleTerminalClick(dstT,null)} title={dstSelected?"Remover T"+dstT+" do filtro":"Filtrar por T"+dstT}
-                style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:dstSelected?dstC+"55":dstC+"22",border:dstSelected?"3px solid #FFD700":"2px solid "+dstC,color:dstC,fontSize:10,fontWeight:"bold",flexShrink:0,cursor:"pointer",padding:0}}>T{dstT}</button>
-              {blinking && <span style={{fontSize:7,color:"#FFD700",fontWeight:"900",letterSpacing:".05em"}}>CHAMOU!</span>}
-              <span style={{fontSize:9,color:"#FFD700",fontWeight:"bold"}}>{cnt}/{total}</span>
-              <div style={{flex:1,height:5,background:"#1a1a1a",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#FFD700":dstC}}/></div>
-              <span style={{fontSize:8,color:"#555"}}>{pct}%</span>
-              <div style={{display:"flex",gap:2}}>{occurrences.map((o,idx)=>{const match=o.nextT===dstT;return <div key={idx} style={{width:14,height:14,borderRadius:"50%",background:match?dstC+"44":"#111",border:"1px solid "+(match?dstC:"#333"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:7,color:match?dstC:"#444"}}>{o.nextNum}</div>})}</div>
+            <div key={srcT} style={{background:blinking?"#171300":"#0a0a0a",border:blinking?"1px solid #FFD700":"1px solid #222",borderRadius:4,padding:"4px 5px",minWidth:0}}>
+              <div style={{display:"grid",gridTemplateColumns:"30px 10px 28px auto 28px 1fr 27px",alignItems:"center",columnGap:3,minWidth:0}}>
+                <button type="button" className={blinking?"terminal-hit-alert":""} onClick={()=>handleTerminalClick(srcT,blinking?alertKey:null)} title={blinking?"T"+srcT+" ATIVOU A CHAMADA PARA T"+dstT+" — clique para reconhecer":srcSelected?"Remover T"+srcT+" do filtro":"Filtrar por T"+srcT}
+                  style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:blinking?"#FFD700":srcSelected?srcC+"55":srcC+"22",border:blinking?"3px solid #fff1a0":srcSelected?"3px solid #FFD700":"2px solid "+srcC,color:blinking?"#111":srcC,fontSize:9,fontWeight:"900",cursor:"pointer",padding:0}}>T{srcT}</button>
+                <span style={{fontSize:10,color:"#444",textAlign:"center"}}>→</span>
+                <button type="button" onClick={()=>handleTerminalClick(dstT,null)} title={dstSelected?"Remover T"+dstT+" do filtro":"Filtrar por T"+dstT}
+                  style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:dstSelected?dstC+"55":dstC+"22",border:dstSelected?"3px solid #FFD700":"2px solid "+dstC,color:dstC,fontSize:9,fontWeight:"bold",cursor:"pointer",padding:0}}>T{dstT}</button>
+                <span style={{fontSize:blinking?6:7,color:blinking?"#FFD700":"#777",fontWeight:blinking?"900":"700",letterSpacing:blinking?".03em":"0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{blinking?"CHAMOU!":""}</span>
+                <span style={{fontSize:8,color:"#FFD700",fontWeight:"bold",textAlign:"right",whiteSpace:"nowrap"}}>{cnt}/{total}</span>
+                <div style={{height:4,background:"#1a1a1a",borderRadius:2,overflow:"hidden",minWidth:10}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#FFD700":dstC}}/></div>
+                <span style={{fontSize:7,color:"#555",textAlign:"right",whiteSpace:"nowrap"}}>{pct}%</span>
+              </div>
+
+              <div style={{display:"flex",alignItems:"center",gap:3,marginTop:3,paddingLeft:41,minWidth:0}}>
+                <span style={{fontSize:6,color:"#414141",letterSpacing:".05em",flexShrink:0}}>HIST</span>
+                <div style={{display:"flex",gap:2,minWidth:0,overflow:"hidden"}}>
+                  {occurrences.map((o,idx)=>{
+                    const match=o.nextT===dstT;
+                    return <div key={idx} title={"Depois de "+o.num+" saiu "+o.nextNum} style={{width:14,height:14,borderRadius:"50%",background:match?dstC+"44":"#111",border:"1px solid "+(match?dstC:"#333"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:7,color:match?dstC:"#444",flexShrink:0}}>{o.nextNum}</div>;
+                  })}
+                </div>
+              </div>
             </div>
           );
         })}
