@@ -65,9 +65,10 @@ export default function radarCleanup() {
     .filter(x=>x.usable>=4 && x.pct>=60)
     .sort((a,b)=>b.pct-a.pct || b.usable-a.usable);
 
-  // Sinal favorável de CASA: a casa atual precisa ter amostra mínima,
-  // repetição histórica >=60% e pelo menos uma característica forte favorável.
-  const favorableHouseSignal = sourceTransitions.length >= 4 && repeatPct >= 60 && strongRows.length > 0;
+  // Sinal favorável: mantém a repetição da CASA como contexto informativo,
+  // mas não exige 60%. O sinal nasce quando existe amostra mínima da CASA
+  // e pelo menos uma característica forte com concentração >=80%.
+  const favorableHouseSignal = sourceTransitions.length >= 4 && strongRows.some(x=>x.pct>=80);
 
   return (
     <div style={{padding:"8px 0",borderTop:"1px solid #1a1a1a",marginTop:4}}>
