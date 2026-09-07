@@ -34,12 +34,12 @@ export default function last3ClickFilterPatch() {
                   const isDuziaAlert = isLastRow && duziaAlert === ckey && CELL_VAL(e,ckey) === "";
                   const isColunaAlert = isLastRow && colunaAlert === ckey && CELL_VAL(e,ckey) === "";
 
-                  // Últimos 3 números: clicar numa característica alimenta diretamente
+                  // Últimos 5 números: clicar numa característica alimenta diretamente
                   // o MESMO filterSel usado pelos botões manuais. Assim, preservamos
                   // exatamente a regra aditiva/exclusiva de selectProbabilityFilter.
-                  const isLast3Clickable = posFromLast >= 1 && posFromLast <= 3;
+                  const isLast5Clickable = posFromLast >= 1 && posFromLast <= 5;
                   const clickTarget = (() => {
-                    if (!isLast3Clickable) return null;
+                    if (!isLast5Clickable) return null;
                     if (ckey === "grupoDezena") return {key:"grupoDezena", val:e.grupoDezena || getGrupoDezena(e.num)};
                     if (ckey === "parte") return {key:"parte", val:e.parte || getParte(e.num)};
                     if (ckey === "col_c1" && e.coluna === "C1") return {key:"coluna", val:"C1"};
