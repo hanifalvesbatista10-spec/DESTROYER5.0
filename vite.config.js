@@ -14,8 +14,9 @@ import directedAnalysisHistoryLockPatch from './vite-directed-analysis-history-l
 import terminalSideAlertPatch from './vite-terminal-side-alert.js'
 import terminalStrategyBacktestPatch from './vite-terminal-strategy-backtest.js'
 import terminalNeighborWeightPatch from './vite-terminal-neighbor-weight.js'
+import backtestTogglePatch from './vite-backtest-toggle.js'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), last3ClickFilterPatch(), hiddenCharacteristicsPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), terminalStrategyBacktestPatch(), terminalNeighborWeightPatch(), react()],
+  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), last3ClickFilterPatch(), hiddenCharacteristicsPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), terminalStrategyBacktestPatch(), terminalNeighborWeightPatch(), backtestTogglePatch(), react()],
 })
