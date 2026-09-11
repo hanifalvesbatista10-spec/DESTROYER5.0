@@ -18,13 +18,13 @@ export default function ruasFocusModePatch() {
       }
 
       // Neste modo ficam abertas somente as características pedidas:
-      // C1/C2/C3 + RUA + ALTO/BAIXO + PAR/ÍMPAR.
+      // C1/C2/C3 + R/P (Rua Ímpar/Par) + ALTO/BAIXO + PAR/ÍMPAR.
       // As colunas estruturais fixas (#, Nº, PUX, CASA) continuam visíveis.
       const visMarker = '    if (!col.toggleable) return true;\n    if (focusCD) return !!cdFocusKeys?.has(key);\n    if (focusRepetition) return !!focusRepetitionKeys?.has(key);';
       if (src.includes(visMarker)) {
         src = src.replace(
           visMarker,
-          '    if (!col.toggleable) return true;\n    if (focusRuas) return ["col_c1","col_c2","col_c3","rua","altobaixo","paridade"].includes(key);\n    if (focusCD) return !!cdFocusKeys?.has(key);\n    if (focusRepetition) return !!focusRepetitionKeys?.has(key);'
+          '    if (!col.toggleable) return true;\n    if (focusRuas) return ["col_c1","col_c2","col_c3","ruaPar","altobaixo","paridade"].includes(key);\n    if (focusCD) return !!cdFocusKeys?.has(key);\n    if (focusRepetition) return !!focusRepetitionKeys?.has(key);'
         );
       }
 
@@ -49,7 +49,7 @@ export default function ruasFocusModePatch() {
       // Botão novo ao lado dos modos existentes.
       const cdEnd = '            🎯 FOCO C/D{focusCD ? (cdStrongestExtra ? " · "+cdStrongestExtra.label+" "+cdStrongestExtra.val+" "+cdStrongestExtra.count+"/6" : " · AGUARDANDO 6") : ""}\n          </button>';
       if (src.includes(cdEnd) && !src.includes('🛣 FOCO RUAS')) {
-        const ruasButton = `${cdEnd}\n          <button\n            onClick={()=>{\n              if(!focusRuas){\n                manualHiddenBeforeRuas.current = new Set(hidden);\n                if(focusRepetition) setFocusRepetition(false);\n                if(focusCD) setFocusCD(false);\n                setFocusRuas(true);\n              } else {\n                setFocusRuas(false);\n                if(manualHiddenBeforeRuas.current) setHidden(new Set(manualHiddenBeforeRuas.current));\n              }\n            }}\n            title={focusRuas ? "C1/C2/C3 + RUA + ALTO/BAIXO + PAR/ÍMPAR" : "Abrir somente C1/C2/C3, RUA, ALTO/BAIXO e PAR/ÍMPAR"}\n            style={{padding:"2px 9px",background:focusRuas?"#3b0764":"#17111f",border:focusRuas?"1px solid #c084fc":"1px solid #4c1d95",borderRadius:2,color:focusRuas?"#e9d5ff":"#c4b5fd",fontSize:8,cursor:"pointer",fontFamily:"Arial, sans-serif",fontWeight:"bold",letterSpacing:"0.04em",boxShadow:focusRuas?"0 0 7px #a855f755":"none"}}>\n            🛣 FOCO RUAS{focusRuas ? " · C + RUA + A/B + P/I" : ""}\n          </button>`;
+        const ruasButton = `${cdEnd}\n          <button\n            onClick={()=>{\n              if(!focusRuas){\n                manualHiddenBeforeRuas.current = new Set(hidden);\n                if(focusRepetition) setFocusRepetition(false);\n                if(focusCD) setFocusCD(false);\n                setFocusRuas(true);\n              } else {\n                setFocusRuas(false);\n                if(manualHiddenBeforeRuas.current) setHidden(new Set(manualHiddenBeforeRuas.current));\n              }\n            }}\n            title={focusRuas ? "C1/C2/C3 + R/P (Rua Ímpar/Par) + ALTO/BAIXO + PAR/ÍMPAR" : "Abrir somente C1/C2/C3, R/P (Rua Ímpar/Par), ALTO/BAIXO e PAR/ÍMPAR"}\n            style={{padding:"2px 9px",background:focusRuas?"#3b0764":"#17111f",border:focusRuas?"1px solid #c084fc":"1px solid #4c1d95",borderRadius:2,color:focusRuas?"#e9d5ff":"#c4b5fd",fontSize:8,cursor:"pointer",fontFamily:"Arial, sans-serif",fontWeight:"bold",letterSpacing:"0.04em",boxShadow:focusRuas?"0 0 7px #a855f755":"none"}}>\n            🛣 FOCO RUAS{focusRuas ? " · C + R/P + A/B + P/I" : ""}\n          </button>`;
         src = src.replace(cdEnd, ruasButton);
       }
 
