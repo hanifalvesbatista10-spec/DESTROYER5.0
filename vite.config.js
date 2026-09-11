@@ -19,8 +19,9 @@ import terminalVisualQualityPatch from './vite-terminal-visual-quality.js'
 import terminalSpaceCleanupPatch from './vite-terminal-space-cleanup.js'
 import terminalActivationNowPatch from './vite-terminal-activation-now.js'
 import cdFocusModePatch from './vite-cd-focus-mode.js'
+import ruasFocusModePatch from './vite-ruas-focus-mode.js'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), last3ClickFilterPatch(), hiddenCharacteristicsPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), terminalStrategyBacktestPatch(), terminalNeighborWeightPatch(), backtestTogglePatch(), terminalVisualQualityPatch(), terminalSpaceCleanupPatch(), terminalActivationNowPatch(), cdFocusModePatch(), react()],
+  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), last3ClickFilterPatch(), hiddenCharacteristicsPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), terminalStrategyBacktestPatch(), terminalNeighborWeightPatch(), backtestTogglePatch(), terminalVisualQualityPatch(), terminalSpaceCleanupPatch(), terminalActivationNowPatch(), cdFocusModePatch(), ruasFocusModePatch(), react()],
 })
