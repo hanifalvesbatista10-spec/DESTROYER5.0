@@ -23,6 +23,13 @@ export default function ruaModeRefinePatch(){
       src=src.replace('{cols.map((col,ci) => {','{(focusRuas ? visibleCols : cols).map((col,ci) => {');
       src=src.replaceAll('C + R/P + A/B + P/I','C + R/P + P/I + A/B');
 
+      // INFO inicia recolhido. O botão continua funcionando como toggle:
+      // ○ INFO fechado por padrão, ● INFO somente após clique.
+      src=src.replace(
+        'const [showCards, setShowCards] = useState(true);',
+        'const [showCards, setShowCards] = useState(false);'
+      );
+
       return {code:src,map:null};
     }
   };
