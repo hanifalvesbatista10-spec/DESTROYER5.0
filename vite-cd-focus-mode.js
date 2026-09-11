@@ -84,7 +84,7 @@ export default function cdFocusModePatch() {
 
       // 5) Botão novo ao lado de FOCO REPETIÇÃO.
       const focusEnd = '            ⚡ FOCO REPETIÇÃO{focusRepetition && focusRepetitionKeys ? ` · ${focusRepetitionKeys.size}` : ""}\n          </button>';
-      if (src.includes(focusEnd) && !src.includes('🎯 FOCO C/D')) {
+      if (src.includes(focusEnd) && !src.includes('🎯 FOCO COLUNA DÚZIA')) {
         const cdButton = `${focusEnd}
           <button
             onClick={()=>{
@@ -101,7 +101,7 @@ export default function cdFocusModePatch() {
               ? (cdStrongestExtra ? "PTE + C1/C2/C3 + D1/D2/D3 + "+cdStrongestExtra.label+" "+cdStrongestExtra.val+" ("+cdStrongestExtra.count+"/6)" : "Aguardando 6 números")
               : "Manter PTE, D1/D2/D3 e C1/C2/C3; somar apenas a característica mais forte dos últimos 6 números"}
             style={{padding:"2px 9px",background:focusCD?"#0c4a6e":"#101820",border:focusCD?"1px solid #22d3ee":"1px solid #334155",borderRadius:2,color:focusCD?"#a5f3fc":"#cbd5e1",fontSize:8,cursor:"pointer",fontFamily:"Arial, sans-serif",fontWeight:"bold",letterSpacing:"0.04em",boxShadow:focusCD?"0 0 7px #22d3ee55":"none"}}>
-            🎯 FOCO C/D{focusCD ? (cdStrongestExtra ? " · "+cdStrongestExtra.label+" "+cdStrongestExtra.val+" "+cdStrongestExtra.count+"/6" : " · AGUARDANDO 6") : ""}
+            🎯 FOCO COLUNA DÚZIA{focusCD ? (cdStrongestExtra ? " · "+cdStrongestExtra.label+" "+cdStrongestExtra.val+" "+cdStrongestExtra.count+"/6" : " · AGUARDANDO 6") : ""}
           </button>`;
         src = src.replace(focusEnd, cdButton);
       }
