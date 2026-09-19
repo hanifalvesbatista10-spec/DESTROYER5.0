@@ -15,7 +15,7 @@ export default function pcaColumnPatch() {
 
       src = src.replace(
         'const RUA_PAR_CELL = { "R.Ímpar":{bg:"#4a0080",text:"#e9d5ff"}, "R.Par":{bg:"#005a5a",text:"#99f6e4"}, "—":{bg:"#111",text:"#444"} };',
-        `const RUA_PAR_CELL = { "R.Ímpar":{bg:"#4a0080",text:"#e9d5ff"}, "R.Par":{bg:"#005a5a",text:"#99f6e4"}, "—":{bg:"#111",text:"#444"} };\n// Paleta de transição: cada grupo combina visualmente PTE + COR + A/B,\n// mantendo contraste com as colunas vizinhas sem copiar exatamente nenhuma delas.\nconst PCA_CELL = {\n  "P1.P.B":{bg:"#26364a",text:"#dbeafe"},\n  "P1.V.B":{bg:"#5b2638",text:"#fecdd3"},\n  "P2.P.A":{bg:"#34452d",text:"#dcfce7"},\n  "P2.V.A":{bg:"#6b2f2f",text:"#fee2e2"},\n  "—":{bg:"#111",text:"#444"}\n};`
+        `const RUA_PAR_CELL = { "R.Ímpar":{bg:"#4a0080",text:"#e9d5ff"}, "R.Par":{bg:"#005a5a",text:"#99f6e4"}, "—":{bg:"#111",text:"#444"} };\n// Paleta de transição: cada grupo combina visualmente PTE + COR + A/B,\n// mantendo contraste com as colunas vizinhas sem copiar exatamente nenhuma delas.\nconst PCA_CELL = {\n  "P1.P.B":{bg:"#3f3f46",text:"#fde68a"},\n  "P1.V.B":{bg:"#991b1b",text:"#fde68a"},\n  "P2.P.A":{bg:"#1f2937",text:"#86efac"},\n  "P2.V.A":{bg:"#7f1d1d",text:"#86efac"},\n  "—":{bg:"#111",text:"#444"}\n};`
       );
 
       src = src.replace(
@@ -69,8 +69,8 @@ export default function pcaColumnPatch() {
         '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },\\n            { label:"P/C/A",  key:"pca",     vals:["P1.P.B","P1.V.B","P2.P.A","P2.V.A"], pal:PCA_CELL },'
       );
       src = src.replace(
-        '            ruaPar:n=>getRuaParidade(n),\\n          };',
-        '            ruaPar:n=>getRuaParidade(n), pca:n=>getPCA(n),\\n          };'
+        /ruaPar:n=>getRuaParidade\(n\),(\s*)};/,
+        'ruaPar:n=>getRuaParidade(n), pca:n=>getPCA(n),$1};'
       );
       src = src.replace(
         'const MULTI_KEYS = ["duzia","coluna","grupoDezena"];',
