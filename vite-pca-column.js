@@ -92,6 +92,19 @@ export default function pcaColumnPatch() {
         '["cor","lado","altobaixo","paridade","parte","cavalo","regiao","duzia","coluna","ruaPar","rua","setor","regtrack","fra","opo","grupoDezena","gp","pca"].includes(col.key)'
       );
 
+      // Correção estrutural: cabeçalho e linhas DEVEM percorrer a mesma ordem calculada.
+      // Sem isso, qualquer coluna nova após a ordenação automática desloca P/I, COR, A/B e R/P.
+      src = src.replace(
+        '                    {cols.map((col,ci) => {',
+        '                    {orderedCols.map((col,ci) => {'
+      );
+
+      // P/C/A precisa manter largura compacta como as células vizinhas; nunca pode absorver o espaço livre da tabela.
+      src = src.replace(
+        '["lado","cor","altobaixo","paridade","parte","cavalo","regiao"].includes(col.key) ? 42 :',
+        '["lado","cor","altobaixo","paridade","parte","cavalo","regiao","pca"].includes(col.key) ? 42 :'
+      );
+
       // Regra absoluta: nenhum modo FOCO existente ganha PCA automaticamente.
       // A coluna existe apenas na tabela neutra até ordem explícita para um novo foco.
       src = src.replace(
