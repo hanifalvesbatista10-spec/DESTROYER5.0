@@ -26,5 +26,5 @@ import pcaColumnPatch from './vite-pca-column.js'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), hiddenCharacteristicsPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), terminalStrategyBacktestPatch(), terminalNeighborWeightPatch(), backtestTogglePatch(), terminalVisualQualityPatch(), terminalSpaceCleanupPatch(), terminalActivationNowPatch(), cdFocusModePatch(), ruasFocusModePatch(), ruaModeRefinePatch(), filterResultsLayoutPatch(), pcaColumnPatch(), last3ClickFilterPatch(), react()],
+  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), hiddenCharacteristicsPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), terminalStrategyBacktestPatch(), terminalNeighborWeightPatch(), backtestTogglePatch(), terminalVisualQualityPatch(), terminalSpaceCleanupPatch(), terminalActivationNowPatch(), cdFocusModePatch(), ruasFocusModePatch(), ruaModeRefinePatch(), filterResultsLayoutPatch(), last3ClickFilterPatch(), pcaColumnPatch(), react()],
 })
