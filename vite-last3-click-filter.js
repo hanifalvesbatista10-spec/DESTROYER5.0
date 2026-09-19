@@ -66,7 +66,7 @@ export default function last3ClickFilterPatch() {
                     return null;
                   })();
 
-                  const pcaMacro = clickTarget && clickTarget.key === "pca" ? ({
+                  const pcaMacro = (clickTarget && clickTarget.key === "pca") ? ({
                     "P1.P.B":{parte:"P1",cor:"Preto",altobaixo:"BAIXO"},
                     "P1.V.B":{parte:"P1",cor:"Vermelho",altobaixo:"BAIXO"},
                     "P2.P.A":{parte:"P2",cor:"Preto",altobaixo:"ALTO"},
