@@ -66,18 +66,18 @@ export default function pcaColumnPatch() {
       // Não cria um motor paralelo: clicar em um grupo aciona os três filtros existentes.
       src = src.replace(
         'const toggleFilter = (key, val) => {',
-        'const toggleFilter = (key, val) => {\n            if(key==="pca"){\\n              const macro={\\n                "P1.P.B":{parte:"P1",cor:"Preto",altobaixo:"BAIXO"},\\n                "P1.V.B":{parte:"P1",cor:"Vermelho",altobaixo:"BAIXO"},\\n                "P2.P.A":{parte:"P2",cor:"Preto",altobaixo:"ALTO"},\\n                "P2.V.A":{parte:"P2",cor:"Vermelho",altobaixo:"ALTO"}\\n              }[val];\\n              if(!macro) return;\\n              setFilterSel(prev=>{\\n                const already=prev.parte===macro.parte && prev.cor===macro.cor && prev.altobaixo===macro.altobaixo;\\n                const next={...prev};\\n                if(already){ delete next.parte; delete next.cor; delete next.altobaixo; }\\n                else { next.parte=macro.parte; next.cor=macro.cor; next.altobaixo=macro.altobaixo; }\\n                delete next.pca;\\n                return next;\\n              });\\n              return;\\n            }'
+        'const toggleFilter = (key, val) => {\n            if(key==="pca"){\n              const macro={\n                "P1.P.B":{parte:"P1",cor:"Preto",altobaixo:"BAIXO"},\n                "P1.V.B":{parte:"P1",cor:"Vermelho",altobaixo:"BAIXO"},\n                "P2.P.A":{parte:"P2",cor:"Preto",altobaixo:"ALTO"},\n                "P2.V.A":{parte:"P2",cor:"Vermelho",altobaixo:"ALTO"}\n              }[val];\n              if(!macro) return;\n              setFilterSel(prev=>{\n                const already=prev.parte===macro.parte && prev.cor===macro.cor && prev.altobaixo===macro.altobaixo;\n                const next={...prev};\n                if(already){ delete next.parte; delete next.cor; delete next.altobaixo; }\n                else { next.parte=macro.parte; next.cor=macro.cor; next.altobaixo=macro.altobaixo; }\n                delete next.pca;\n                return next;\n              });\n              return;\n            }'
       );
       src = src.replace(
         'const isActive = (key,val) => {',
-        'const isActive = (key,val) => {\n            if(key==="pca"){\\n              const macro={\\n                "P1.P.B":{parte:"P1",cor:"Preto",altobaixo:"BAIXO"},\\n                "P1.V.B":{parte:"P1",cor:"Vermelho",altobaixo:"BAIXO"},\\n                "P2.P.A":{parte:"P2",cor:"Preto",altobaixo:"ALTO"},\\n                "P2.V.A":{parte:"P2",cor:"Vermelho",altobaixo:"ALTO"}\\n              }[val];\\n              return !!macro && filterSel.parte===macro.parte && filterSel.cor===macro.cor && filterSel.altobaixo===macro.altobaixo;\\n            }'
+        'const isActive = (key,val) => {\n            if(key==="pca"){\n              const macro={\n                "P1.P.B":{parte:"P1",cor:"Preto",altobaixo:"BAIXO"},\n                "P1.V.B":{parte:"P1",cor:"Vermelho",altobaixo:"BAIXO"},\n                "P2.P.A":{parte:"P2",cor:"Preto",altobaixo:"ALTO"},\n                "P2.V.A":{parte:"P2",cor:"Vermelho",altobaixo:"ALTO"}\n              }[val];\n              return !!macro && filterSel.parte===macro.parte && filterSel.cor===macro.cor && filterSel.altobaixo===macro.altobaixo;\n            }'
       );
 
       // Botões do filtro manual e motor numérico do filtro.
       // O bloco real do App usa FILTER_GROUPS/NFLD; integrar diretamente nele.
       src = src.replace(
         '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },',
-        '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },\\n            { label:"P/C/A",  key:"pca",     vals:["P1.P.B","P1.V.B","P2.P.A","P2.V.A"], pal:PCA_CELL },'
+        '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },\n            { label:"P/C/A",  key:"pca",     vals:["P1.P.B","P1.V.B","P2.P.A","P2.V.A"], pal:PCA_CELL },'
       );
       src = src.replace(
         /ruaPar:n=>getRuaParidade\(n\),(\s*)};/,
