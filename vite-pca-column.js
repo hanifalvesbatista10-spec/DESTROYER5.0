@@ -63,6 +63,19 @@ export default function pcaColumnPatch() {
       );
 
       // Botões do filtro manual e motor numérico do filtro.
+      // O bloco real do App usa FILTER_GROUPS/NFLD; integrar diretamente nele.
+      src = src.replace(
+        '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },',
+        '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },\\n            { label:"P/C/A",  key:"pca",     vals:["P1.P.B","P1.V.B","P2.P.A","P2.V.A"], pal:PCA_CELL },'
+      );
+      src = src.replace(
+        '            ruaPar:n=>getRuaParidade(n),\\n          };',
+        '            ruaPar:n=>getRuaParidade(n), pca:n=>getPCA(n),\\n          };'
+      );
+      src = src.replace(
+        'const MULTI_KEYS = ["duzia","coluna","grupoDezena"];',
+        'const MULTI_KEYS = ["duzia","coluna","grupoDezena","pca"];'
+      );
       src = src.replace(
         '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },',
         '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },\n            { label:"P/C/A",  key:"pca",     vals:["P1.P.B","P1.V.B","P2.P.A","P2.V.A"], pal:PCA_CELL },'
