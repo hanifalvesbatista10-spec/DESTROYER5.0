@@ -59,10 +59,6 @@ export default function last3ClickFilterPatch() {
                     if (ckey === "setor") return {key:"setor", val:e.setor || getSetor(e.num)};
                     if (ckey === "rua") return {key:"rua", val:e.rua || getRua(e.num)};
                     if (ckey === "ruaPar") return {key:"ruaPar", val:getRuaParidade(e.num)};
-                    if (ckey === "pca") {
-                      const v = e.pca || getPCA(e.num);
-                      return v !== "—" ? {key:"pca", val:v} : null;
-                    }
                     return null;
                   })();
 
