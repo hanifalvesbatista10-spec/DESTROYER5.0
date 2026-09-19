@@ -88,10 +88,6 @@ export default function pcaColumnPatch() {
         'const MULTI_KEYS = ["duzia","coluna","grupoDezena","pca"];'
       );
       src = src.replace(
-        '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },',
-        '            { label:"R/P",    key:"ruaPar",  vals:["R.Ímpar","R.Par"],    pal:RUA_PAR_CELL },\n            { label:"P/C/A",  key:"pca",     vals:["P1.P.B","P1.V.B","P2.P.A","P2.V.A"], pal:PCA_CELL },'
-      );
-      src = src.replace(
         '            ruaPar:n=>getRuaParidade(n), rua:n=>getRua(n), setor:n=>getSetor(n), regtrack:n=>getRegTrack(n), gp:n=>getGP(n),',
         '            ruaPar:n=>getRuaParidade(n), rua:n=>getRua(n), setor:n=>getSetor(n), regtrack:n=>getRegTrack(n), gp:n=>getGP(n), pca:n=>getPCA(n),'
       );
