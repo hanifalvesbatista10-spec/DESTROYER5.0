@@ -66,33 +66,14 @@ export default function last3ClickFilterPatch() {
                     return null;
                   })();
 
-                  const pcaMacro = (clickTarget && clickTarget.key === "pca") ? ({
-                    "P1.P.B":{parte:"P1",cor:"Preto",altobaixo:"BAIXO"},
-                    "P1.V.B":{parte:"P1",cor:"Vermelho",altobaixo:"BAIXO"},
-                    "P2.P.A":{parte:"P2",cor:"Preto",altobaixo:"ALTO"},
-                    "P2.V.A":{parte:"P2",cor:"Vermelho",altobaixo:"ALTO"}
-                  }[clickTarget.val]) : null;
                   const clickSelected = clickTarget ? (() => {
-                    if (pcaMacro) return filterSel.parte===pcaMacro.parte && filterSel.cor===pcaMacro.cor && filterSel.altobaixo===pcaMacro.altobaixo;
                     const cur = filterSel[clickTarget.key];
                     return Array.isArray(cur) ? cur.includes(clickTarget.val) : cur === clickTarget.val;
                   })() : false;
-                  const handleCellFilterClick = () => {
-                    if (!clickTarget) return;
-                    if (!pcaMacro) { selectProbabilityFilter(clickTarget.key, clickTarget.val); return; }
-                    setFilterSel(prev=>{
-                      const already=prev.parte===pcaMacro.parte && prev.cor===pcaMacro.cor && prev.altobaixo===pcaMacro.altobaixo;
-                      const next={...prev};
-                      if(already){ delete next.parte; delete next.cor; delete next.altobaixo; }
-                      else { next.parte=pcaMacro.parte; next.cor=pcaMacro.cor; next.altobaixo=pcaMacro.altobaixo; }
-                      delete next.pca;
-                      return next;
-                    });
-                  };
 
                   return (
                     <td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}
-                      onClick={clickTarget ? handleCellFilterClick : undefined}
+                      onClick={clickTarget ? ()=>selectProbabilityFilter(clickTarget.key, clickTarget.val) : undefined}
                       title={clickTarget ? (clickSelected ? "Clique para remover esta característica do filtro" : "Clique para adicionar esta característica ao filtro") : undefined}
                       style={{background: isDuziaAlert || isColunaAlert ? "#001a1f" : scheme.bg, color:scheme.text,padding:"1px 2px",textAlign:"center",
                       fontSize:11,fontWeight:"700",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",
