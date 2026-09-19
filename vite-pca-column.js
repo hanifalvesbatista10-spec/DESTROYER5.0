@@ -104,6 +104,20 @@ export default function pcaColumnPatch() {
       src = src.replace(/\["duzia","coluna","grupoDezena","cor","regiao","cavalo","setor","regtrack","rua","gp","fra","terminal"\]/g,
         '["duzia","coluna","grupoDezena","cor","regiao","cavalo","setor","regtrack","rua","gp","fra","terminal","pca"]');
 
+      // Clique na célula P/C/A dos últimos 5: aplica a mesma macro Parte + Cor + A/B do filtro manual.
+      src = src.replace(
+        'const Cell = ({ckey, isLast}) => {',
+        'const Cell = ({ckey, isLast}) => {\\n                  const pcaVal = ckey==="pca" ? (e.pca || getPCA(e.num)) : null;\\n                  const pcaClickable = ckey==="pca" && pcaVal!=="—" && posFromLast>=1 && posFromLast<=5;\\n                  const pcaMacro = pcaClickable ? ({\\n                    "P1.P.B":{parte:"P1",cor:"Preto",altobaixo:"BAIXO"},\\n                    "P1.V.B":{parte:"P1",cor:"Vermelho",altobaixo:"BAIXO"},\\n                    "P2.P.A":{parte:"P2",cor:"Preto",altobaixo:"ALTO"},\\n                    "P2.V.A":{parte:"P2",cor:"Vermelho",altobaixo:"ALTO"}\\n                  }[pcaVal]) : null;\\n                  const pcaSelected = !!pcaMacro && filterSel.parte===pcaMacro.parte && filterSel.cor===pcaMacro.cor && filterSel.altobaixo===pcaMacro.altobaixo;'
+      );
+      src = src.replace(
+        '<td className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}',
+        '<td onClick={pcaClickable ? ()=>setFilterSel(prev=>{ const already=prev.parte===pcaMacro.parte && prev.cor===pcaMacro.cor && prev.altobaixo===pcaMacro.altobaixo; const next={...prev}; if(already){delete next.parte;delete next.cor;delete next.altobaixo;}else{next.parte=pcaMacro.parte;next.cor=pcaMacro.cor;next.altobaixo=pcaMacro.altobaixo;} delete next.pca; return next; }) : undefined} title={pcaClickable ? (pcaSelected?"Remover grupo P/C/A do filtro":"Aplicar grupo P/C/A ao filtro") : undefined} className={isDuziaAlert || isColunaAlert ? "pulse-duzia" : pulse ? "pulse-cell" : ""}'
+      );
+      src = src.replace(
+        'fontSize:11,fontWeight:"700",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",',
+        'fontSize:11,fontWeight:"700",fontFamily:"Arial, sans-serif",letterSpacing:"0em",whiteSpace:"nowrap",cursor:pcaClickable?"pointer":"default",boxShadow:pcaSelected?"inset 0 0 0 2px #22c55e, inset 0 0 7px #22c55e66":"none",'
+      );
+
       // Últimos 5: a própria célula PCA alimenta o filtro, como as demais características.
       src = src.replace(
         '                    if (ckey === "gp") return {key:"gp", val:e.gp || getGP(e.num)};\n                    return null;',
