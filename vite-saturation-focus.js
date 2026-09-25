@@ -107,7 +107,12 @@ export default function saturationFocusPatch() {
       });
     });
 
-    const addStrongestGroupCandidate = ({id,label,get,values,keyMap,order}) => {
+    // COLUNA e DÚZIA disputam entre si como blocos de dupla.
+    // Apenas o bloco mais forte entra no TOP 3:
+    // ou aparecem as 2 colunas mais fortes, ou aparecem as 2 dúzias mais fortes.
+    const groupedPairs = [];
+
+    const buildPairCandidate = ({id,label,get,values,keyMap,order}) => {
       const vals = recent.map(get);
       const counts = {};
       const lastPos = {};
@@ -118,32 +123,33 @@ export default function saturationFocusPatch() {
         lastPos[v] = i;
       });
 
-      const winner = values
+      const ranked = values
         .filter(v=>(counts[v]||0)>0)
-        .sort((a,b)=>(counts[b]||0)-(counts[a]||0) || (lastPos[b]??-1)-(lastPos[a]??-1))[0];
+        .sort((a,b)=>(counts[b]||0)-(counts[a]||0) || (lastPos[b]??-1)-(lastPos[a]??-1));
 
-      if (!winner) return;
+      if (ranked.length < 2) return;
 
-      const count = counts[winner] || 0;
+      const selected = ranked.slice(0,2);
+      const count = selected.reduce((sum,v)=>sum+(counts[v]||0),0);
       const pct = count / 10;
       if (pct < 0.70) return;
 
-      const stability = stabilityFor(vals, [winner]);
-      candidates.push({
+      const stability = stabilityFor(vals, selected);
+      groupedPairs.push({
         id,
         label,
-        val:winner,
+        val:selected.join("+"),
         pct,
         count,
         longestRun:stability.longestRun,
         repeatLinks:stability.repeatLinks,
         order,
-        keys:[keyMap[winner]].filter(Boolean),
+        keys:selected.map(v=>keyMap[v]).filter(Boolean),
       });
     };
 
-    addStrongestGroupCandidate({
-      id:"colunaStrongest",
+    buildPairCandidate({
+      id:"colunaPair",
       label:"COL",
       get:e=>e.coluna||getColuna(e.num),
       values:["C1","C2","C3"],
@@ -151,14 +157,23 @@ export default function saturationFocusPatch() {
       order:100,
     });
 
-    addStrongestGroupCandidate({
-      id:"duziaStrongest",
+    buildPairCandidate({
+      id:"duziaPair",
       label:"DÚZIA",
       get:e=>e.duzia||getDuzia(e.num),
       values:["D1","D2","D3"],
       keyMap:{D1:"gp_d1",D2:"gp_d2",D3:"gp_d3"},
       order:101,
     });
+
+    groupedPairs.sort((a,b) =>
+      b.pct - a.pct ||
+      b.longestRun - a.longestRun ||
+      b.repeatLinks - a.repeatLinks ||
+      a.order - b.order
+    );
+
+    if (groupedPairs[0]) candidates.push(groupedPairs[0]);
 
     candidates.sort((a,b) =>
       b.pct - a.pct ||
