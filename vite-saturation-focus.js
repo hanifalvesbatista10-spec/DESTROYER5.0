@@ -107,7 +107,7 @@ export default function saturationFocusPatch() {
       });
     });
 
-    const addPairCandidate = ({id,label,get,values,keyMap,order}) => {
+    const addStrongestGroupCandidate = ({id,label,get,values,keyMap,order}) => {
       const vals = recent.map(get);
       const counts = {};
       const lastPos = {};
@@ -118,33 +118,32 @@ export default function saturationFocusPatch() {
         lastPos[v] = i;
       });
 
-      const ranked = values
+      const winner = values
         .filter(v=>(counts[v]||0)>0)
-        .sort((a,b)=>(counts[b]||0)-(counts[a]||0) || (lastPos[b]??-1)-(lastPos[a]??-1));
+        .sort((a,b)=>(counts[b]||0)-(counts[a]||0) || (lastPos[b]??-1)-(lastPos[a]??-1))[0];
 
-      if (!ranked.length) return;
+      if (!winner) return;
 
-      const selected = ranked.slice(0,2);
-      const count = selected.reduce((sum,v)=>sum+(counts[v]||0),0);
+      const count = counts[winner] || 0;
       const pct = count / 10;
       if (pct < 0.70) return;
 
-      const stability = stabilityFor(vals, selected);
+      const stability = stabilityFor(vals, [winner]);
       candidates.push({
         id,
         label,
-        val:selected.join("+"),
+        val:winner,
         pct,
         count,
         longestRun:stability.longestRun,
         repeatLinks:stability.repeatLinks,
         order,
-        keys:selected.map(v=>keyMap[v]).filter(Boolean),
+        keys:[keyMap[winner]].filter(Boolean),
       });
     };
 
-    addPairCandidate({
-      id:"colunaPair",
+    addStrongestGroupCandidate({
+      id:"colunaStrongest",
       label:"COL",
       get:e=>e.coluna||getColuna(e.num),
       values:["C1","C2","C3"],
@@ -152,8 +151,8 @@ export default function saturationFocusPatch() {
       order:100,
     });
 
-    addPairCandidate({
-      id:"duziaPair",
+    addStrongestGroupCandidate({
+      id:"duziaStrongest",
       label:"DÚZIA",
       get:e=>e.duzia||getDuzia(e.num),
       values:["D1","D2","D3"],
