@@ -4,6 +4,8 @@
 // estratégia que bateu o acaso com folga no treino E de novo em dados que ela
 // nunca viu (os 25% mais recentes do histórico).
 
+import { sinaisDaSessao, TIPOS_TABELA } from "./sinaisTabela.js";
+
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const TIER = new Set([5,8,10,11,13,16,23,24,27,30,33,36]);
 const ORPH = new Set([1,6,9,14,17,20,31,34]);
@@ -260,6 +262,50 @@ export function cruzado(seqs) {
   return { events, agora };
 }
 
+// Os sinais que a própria tabela DESTROYER forma (mesma lógica da tela).
+// A tabela começa do zero a cada sessão, então cada sessão é percorrida separada.
+// Confluência: em quantos sinais da tabela cada número aparece no mesmo giro.
+export const CONF_ALERTA = 7;
+export const TIPOS_CONFLUENCIA = {
+  "conf:top1": { label: "Número de maior confluência", escolhe: (rank) => rank.slice(0, 1) },
+  "conf:top3": { label: "3 números de maior confluência", escolhe: (rank) => rank.slice(0, 3) },
+  "conf:alerta": { label: `Alerta: ${CONF_ALERTA}+ sinais no mesmo número`, escolhe: (rank, cnt) => (cnt[rank[0]] >= CONF_ALERTA ? rank.slice(0, 1) : []) },
+};
+function confluencia(lista) {
+  const cnt = new Array(37).fill(0);
+  for (const x of lista) for (const n of new Set(x.nums)) cnt[n]++;
+  const rank = [...cnt.keys()].filter(n => cnt[n] > 0).sort((a, b) => cnt[b] - cnt[a] || a - b);
+  return { cnt, rank };
+}
+
+export function sinaisDaTabela(seqs) {
+  const porTipo = Object.fromEntries([...TIPOS_TABELA, ...Object.keys(TIPOS_CONFLUENCIA)].map(t => [t, { events: [], agora: null }]));
+  let g = 0, ranking = [];
+  seqs.forEach((s, si) => {
+    sinaisDaSessao(s).forEach((lista, i) => {
+      const ultimo = i === s.length - 1;
+      if (ultimo && si !== seqs.length - 1) return;
+      for (const { tipo, nums } of lista) {
+        if (!ultimo) porTipo[tipo].events.push({ g: g + i + 1, hit: nums.includes(s[i + 1]) ? 1 : 0, bet: nums.length });
+        else {
+          const atual = porTipo[tipo].agora?.nums || [];
+          porTipo[tipo].agora = { nums: [...new Set([...atual, ...nums])].sort((a, b) => a - b), detalhe: `Sinal ${tipo} da tabela formado agora` };
+        }
+      }
+      const { cnt, rank } = confluencia(lista);
+      for (const [id, { escolhe }] of Object.entries(TIPOS_CONFLUENCIA)) {
+        const nums = escolhe(rank, cnt);
+        if (!nums.length) continue;
+        if (!ultimo) porTipo[id].events.push({ g: g + i + 1, hit: nums.includes(s[i + 1]) ? 1 : 0, bet: nums.length });
+        else porTipo[id].agora = { nums, detalhe: `Número${nums.length > 1 ? "s" : ""} em que mais sinais da tabela concordam agora (${nums.map(n => `${n}: ${cnt[n]} sinais`).join(", ")})` };
+      }
+      if (ultimo) ranking = rank.map(n => ({ n, sinais: cnt[n] }));
+    });
+    g += s.length;
+  });
+  return { porTipo, ranking };
+}
+
 // ---------- validação ----------
 
 export const MIN_HISTORICO = 500;
@@ -274,15 +320,25 @@ export function validar(sessoes) {
   for (const W of [5, 10])
     estrategias.push({ id: `sit:${W}`, familia: "Situação parecida", label: `Últimos ${W} giros × histórico`, run: () => situacao(seqs, W) });
   estrategias.push({ id: "cruzado", familia: "Filtros cruzados", label: "Colunas quentes (40 giros)", run: () => cruzado(seqs) });
+  let tabela;
+  const daTabela = () => (tabela ||= sinaisDaTabela(seqs));
+  for (const tipo of TIPOS_TABELA)
+    estrategias.push({ id: `tab:${tipo}`, familia: "Sinal da tabela", label: tipo, sempre: true, run: () => daTabela().porTipo[tipo] });
+  for (const [id, { label }] of Object.entries(TIPOS_CONFLUENCIA))
+    estrategias.push({ id, familia: "Confluência dos sinais", label, sempre: true, run: () => daTabela().porTipo[id] });
 
   const zc = zCritico(0.05 / estrategias.length);
   const corte = Math.floor(total * (1 - PARTE_TESTE));
   const curto = total < MIN_HISTORICO;
+  const inicioSessao = total - (seqs[seqs.length - 1]?.length || 0);
 
-  const res = estrategias.map(({ run, ...e }) => {
-    const { events, agora } = curto ? { events: [], agora: null } : run();
+  const res = estrategias.map(({ run, sempre, ...e }) => {
+    const { events, agora } = curto && !sempre ? { events: [], agora: null } : run();
     const treino = resumo(events.filter(x => x.g < corte));
     const teste = resumo(events.filter(x => x.g >= corte));
+    const geral = resumo(events);
+    const sessao = resumo(events.filter(x => x.g >= inicioSessao));
+    const ultimo = events.length ? events[events.length - 1] : null;
     let motivo;
     if (curto) motivo = "histórico curto";
     else if (treino.n < 30) motivo = `poucos sinais no treino (${treino.n})`;
@@ -291,7 +347,7 @@ export function validar(sessoes) {
     else if (teste.n < 20) motivo = `poucos sinais nos dados novos (${teste.n})`;
     else if (teste.z < 1.645 || teste.saldo <= 0) motivo = `funcionou no treino, mas nos dados novos acertou ${pct(teste.taxa)} contra ${pct(teste.acaso)}`;
     const liberada = !motivo;
-    return { ...e, treino, teste, liberada, motivo: motivo || `acertou ${pct(teste.taxa)} contra ${pct(teste.acaso)} do acaso em ${teste.n} sinais novos`, agora };
+    return { ...e, treino, teste, geral, sessao, ultimo, liberada, motivo: motivo || `acertou ${pct(teste.taxa)} contra ${pct(teste.acaso)} do acaso em ${teste.n} sinais novos`, agora };
   });
 
   const colunas = COLUMNS.map(col => {
@@ -313,7 +369,7 @@ export function validar(sessoes) {
     }
     sinal = { entrar: true, nums, fontes: ativas };
   }
-  return { total, sessoes: seqs.length, zCritico: zc, corte, estrategias: res, colunas, sinal };
+  return { total, sessoes: seqs.length, zCritico: zc, corte, estrategias: res, colunas, sinal, confluencia: daTabela().ranking };
 }
 
 const pct = x => `${(x * 100).toFixed(1).replace(".", ",")}%`;

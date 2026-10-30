@@ -74,5 +74,16 @@ test("previsões passadas não mudam quando chegam números novos (não olha o f
 
 test("z crítico corrige por muitas estratégias", () => {
   assert.ok(Math.abs(zCritico(0.05) - 1.645) < 0.01);
-  assert.ok(zCritico(0.05 / 54) > 3);
+  assert.ok(zCritico(0.05 / 72) > 3);
+});
+
+test("confluência: ranking em ordem e top 1 aposta em 1 número só", () => {
+  const v = validar(sessoesDe(aleatorio(700, 9)));
+  const r = v.confluencia;
+  assert.ok(r.length > 0);
+  for (let i = 1; i < r.length; i++) assert.ok(r[i - 1].sinais >= r[i].sinais);
+  const top1 = v.estrategias.find(e => e.id === "conf:top1");
+  assert.equal(top1.geral.fichas, top1.geral.n);
+  const alerta = v.estrategias.find(e => e.id === "conf:alerta");
+  assert.ok(alerta.geral.n <= top1.geral.n);
 });

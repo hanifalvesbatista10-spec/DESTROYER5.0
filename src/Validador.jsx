@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { parseHistorico, pct } from "./validador/engine.js";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { CONF_ALERTA, parseHistorico, pct } from "./validador/engine.js";
 
 const STORAGE_KEY = "validador.sessoes.v1";
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
@@ -95,6 +95,125 @@ function Colunas({ res }) {
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+const retorno = r => (r.fichas ? r.saldo / r.fichas : 0);
+const sinalRet = x => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1).replace(".", ",")}%`;
+
+// Números em que mais sinais da tabela concordam agora. O alerta de "mais indicado"
+// só acende se a estratégia de confluência tiver sido aprovada pelo validador.
+function Confluencia({ res }) {
+  if (!res) return null;
+  const est = id => res.estrategias.find(e => e.id === id);
+  const alerta = est("conf:alerta");
+  const ranking = (res.confluencia || []).slice(0, 10);
+  const topo = ranking[0];
+  const max = topo?.sinais || 1;
+  return (
+    <div style={PANEL}>
+      <h2 style={H2}>Confluência dos sinais</h2>
+      {alerta.liberada && alerta.agora ? (
+        <div style={{ border: "2px solid #FFD700", background: "#2a2200", borderRadius: 6, padding: 12, marginBottom: 12, display: "flex", gap: 12, alignItems: "center" }}>
+          <Bola n={alerta.agora.nums[0]} size={46} />
+          <div>
+            <div style={{ color: "#FFD700", fontWeight: "bold", fontSize: 16 }}>⚠ MAIS INDICADO</div>
+            <div style={{ color: "#ddd", fontSize: 12 }}>{alerta.agora.detalhe}.</div>
+            <div style={{ color: "#aaa", fontSize: 11 }}>Acerto real em dados novos: {pct(alerta.teste.taxa)} contra {pct(alerta.teste.acaso)} do acaso.</div>
+          </div>
+        </div>
+      ) : topo && topo.sinais >= CONF_ALERTA ? (
+        <div style={{ border: "1px dashed #555", borderRadius: 6, padding: 10, marginBottom: 12, fontSize: 12, color: "#aaa" }}>
+          {topo.sinais} sinais concordam no <b style={{ color: "#ddd" }}>{topo.n}</b>, mas o alerta está desligado: quando isso aconteceu antes,
+          acertou {pct(alerta.geral.taxa)} contra {pct(alerta.geral.acaso)} do acaso em {alerta.geral.n} vezes.
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: "#777", marginBottom: 10 }}>
+          Alerta acende com {CONF_ALERTA} ou mais sinais no mesmo número, e só se essa regra for aprovada pelo validador.
+        </div>
+      )}
+      {ranking.length ? ranking.map(({ n, sinais }) => (
+        <div key={n} style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 0" }}>
+          <Bola n={n} size={22} />
+          <div style={{ flex: 1, height: 8, background: "#1a1a1a", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ width: `${(sinais / max) * 100}%`, height: "100%", background: sinais >= CONF_ALERTA ? "#FFD700" : "#4b5563" }} />
+          </div>
+          <span style={{ fontSize: 11, color: "#aaa", width: 62, textAlign: "right" }}>{sinais} sina{sinais > 1 ? "is" : "l"}</span>
+        </div>
+      )) : <div style={{ fontSize: 12, color: "#666" }}>Nenhum sinal da tabela formado agora.</div>}
+      <div style={{ marginTop: 10, borderTop: "1px solid #1d1d1d", paddingTop: 8 }}>
+        {["conf:top1", "conf:top3", "conf:alerta"].map(id => {
+          const e = est(id);
+          return (
+            <div key={id} style={{ fontSize: 11, color: "#888", padding: "2px 0" }}>
+              {e.label}: <span style={{ color: "#ccc" }}>{e.geral.n ? `${pct(e.geral.taxa)} vs ${pct(e.geral.acaso)} acaso, retorno ${sinalRet(retorno(e.geral))}` : "sem histórico"}</span>
+              <span style={{ color: e.liberada ? "#22c55e" : "#666" }}> · {e.liberada ? "APROVADA" : "não aprovada"}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Os 15 sinais que a tabela DESTROYER forma, com o resultado real de cada um.
+function SinaisTabela({ res }) {
+  if (!res) return null;
+  const lista = res.estrategias.filter(e => e.familia === "Sinal da tabela").sort((a, b) => retorno(b.geral) - retorno(a.geral));
+  const cell = { padding: "6px 6px", borderTop: "1px solid #1d1d1d", fontSize: 11, verticalAlign: "top" };
+  const cor = x => (x > 0 ? "#86efac" : x < 0 ? "#fca5a5" : "#aaa");
+  return (
+    <div style={PANEL}>
+      <h2 style={H2}>Sinais da tabela</h2>
+      <div style={{ fontSize: 11, color: "#777", marginBottom: 8 }}>
+        Cada sinal conferido com o número que saiu depois. Retorno = ganho ou perda apostando 1 ficha em cada número do sinal.
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", color: "#ccc", fontFamily: FONT }}>
+          <thead><tr style={{ color: "#888", fontSize: 11, textAlign: "left" }}>
+            <th style={cell}>Sinal</th><th style={cell}>Todo o histórico</th><th style={cell}>Sessão atual</th><th style={cell}>Último</th>
+          </tr></thead>
+          <tbody>{lista.map(e => (
+            <Fragment key={e.id}>
+            <tr>
+              <td style={cell}>
+                <div style={{ color: "#ddd", fontWeight: "bold" }}>{e.label}</div>
+                <div style={{ color: e.liberada ? "#22c55e" : "#666", fontSize: 10 }}>{e.liberada ? "APROVADO" : "não aprovado"}</div>
+              </td>
+              <td style={cell}>
+                {e.geral.n ? <>
+                  <div>{pct(e.geral.taxa)} <span style={{ color: "#666" }}>vs {pct(e.geral.acaso)}</span></div>
+                  <div style={{ color: cor(e.geral.saldo) }}>{sinalRet(retorno(e.geral))} <span style={{ color: "#666" }}>· {e.geral.n} sinais</span></div>
+                </> : "—"}
+              </td>
+              <td style={cell}>
+                {e.sessao.n ? <>
+                  <div>{pct(e.sessao.taxa)} <span style={{ color: "#666" }}>vs {pct(e.sessao.acaso)}</span></div>
+                  <div style={{ color: cor(e.sessao.saldo) }}>{sinalRet(retorno(e.sessao))} <span style={{ color: "#666" }}>· {e.sessao.n}</span></div>
+                </> : "—"}
+              </td>
+              <td style={{ ...cell, color: e.ultimo ? (e.ultimo.hit ? "#22c55e" : "#f87171") : "#666", fontWeight: "bold", whiteSpace: "nowrap" }}>
+                {e.ultimo ? (e.ultimo.hit ? "✓ acertou" : "✗ errou") : "—"}
+              </td>
+            </tr>
+            {e.agora && (
+              <tr>
+                <td colSpan={4} style={{ padding: "0 6px 8px" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 3, alignItems: "center", opacity: e.liberada ? 1 : 0.55 }}>
+                    <span style={{ fontSize: 10, color: "#888", marginRight: 4 }}>agora:</span>
+                    {e.agora.nums.map(n => <Bola key={n} n={n} size={20} />)}
+                  </div>
+                </td>
+              </tr>
+            )}
+            </Fragment>
+          ))}</tbody>
+        </table>
+      </div>
+      <div style={{ fontSize: 11, color: "#666", marginTop: 8 }}>
+        Números de sinal não aprovado aparecem apagados: são o que a tabela mostra, não uma indicação de entrada.
+      </div>
     </div>
   );
 }
@@ -242,6 +361,8 @@ export default function Validador() {
 
         <div style={{ display: "grid", gap: 14 }}>
           <Sinal res={res} calculando={calculando} />
+          <Confluencia res={res} />
+          <SinaisTabela res={res} />
           <Estrategias res={res} />
           <div style={{ fontSize: 11, color: "#666", lineHeight: 1.5 }}>
             Uma estratégia só é aprovada se acertar acima do acaso com folga estatística (corrigida pelo número de estratégias testadas),
