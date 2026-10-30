@@ -80,7 +80,7 @@ test("previsões passadas não mudam quando chegam números novos (não olha o f
 
 test("z crítico corrige por muitas estratégias", () => {
   assert.ok(Math.abs(zCritico(0.05) - 1.645) < 0.01);
-  assert.ok(zCritico(0.05 / 72) > 3);
+  assert.ok(zCritico(0.05 / 76) > 3);
 });
 
 test("confluência: ranking em ordem e top 1 aposta em 1 número só", () => {

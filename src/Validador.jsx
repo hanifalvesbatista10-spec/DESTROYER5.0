@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { CONF_ALERTA, parseHistorico, pct, sessoesRepetidas } from "./validador/engine.js";
 import { hoje, useSessoes } from "./sessaoCompartilhada.js";
+import { CAVALOS } from "./validador/estrategiasPersonalizadas.js";
 
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const numBg = n => n === 0 ? "#15803d" : RED.has(n) ? "#CC0000" : "#1f1f1f";
@@ -147,6 +148,90 @@ function Confluencia({ res }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+const STATUS_COR = { batida: "#22c55e", complementada: "#60a5fa", anulada: "#f87171", aguardando: "#facc15" };
+
+// Estratégias criadas por você. Por enquanto: Cavalo × Rua.
+function Personalizadas({ res }) {
+  if (!res?.personalizadas) return null;
+  const { placar, abertas, recentes } = res.personalizadas.cavalos;
+  const est = c => res.estrategias.find(e => e.id === `pers:cavalo:${c}`);
+  const proxima = oc => {
+    const p = CAVALOS[oc.cavalo].find(x => x >= oc.semRua);
+    return p - oc.semRua === 0 ? `posição ${p} é a PRÓXIMA rodada` : `posição ${p} em ${p - oc.semRua} rodada(s)`;
+  };
+  const cell = { padding: "6px 6px", borderTop: "1px solid #1d1d1d", fontSize: 11, verticalAlign: "top" };
+  const pctDe = (x, t) => (t ? `${Math.round((x / t) * 100)}%` : "—");
+  const agora = Object.keys(CAVALOS).map(est).filter(e => e.agora);
+  return (
+    <div style={PANEL}>
+      <h2 style={H2}>Estratégias personalizadas</h2>
+      <div style={{ fontSize: 13, color: "#ddd", fontWeight: "bold" }}>Cavalo × Rua</div>
+      <div style={{ fontSize: 11, color: "#777", margin: "4px 0 10px", lineHeight: 1.5 }}>
+        Um número repete; os números no meio dizem o cavalo (0, 3, 6, 9 → 0369 · 1, 4, 7 → 147 · 2, 5, 8 → 258).
+        A rua de 3 números dele tem que voltar depois de exatamente uma das posições do cavalo:
+        na 1ª é batida, na 2ª ou 3ª é complementada, depois da última é anulada. Se a rua vier fora da posição, a contagem recomeça.
+      </div>
+
+      {agora.length > 0 && agora.map(e => (
+        <div key={e.id} style={{ border: `1px solid ${e.liberada ? "#22c55e" : "#444"}`, borderRadius: 4, padding: 8, marginBottom: 8, opacity: e.liberada ? 1 : 0.75 }}>
+          <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, color: e.liberada ? "#22c55e" : "#aaa", fontWeight: "bold", marginRight: 4 }}>{e.liberada ? "APROVADA · AGORA:" : "AGORA (não aprovada):"}</span>
+            {e.agora.nums.map(n => <Bola key={n} n={n} size={24} />)}
+          </div>
+          <div style={{ fontSize: 11, color: "#999", marginTop: 4 }}>{e.agora.detalhe}.</div>
+        </div>
+      ))}
+
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", color: "#ccc", fontFamily: FONT }}>
+          <thead><tr style={{ color: "#888", fontSize: 11, textAlign: "left" }}>
+            <th style={cell}>Cavalo</th><th style={cell}>Histórico</th><th style={cell}>Sessão atual</th><th style={cell}>Acerto nas posições</th>
+          </tr></thead>
+          <tbody>{Object.entries(CAVALOS).map(([c, posicoes]) => {
+            const p = placar[c], t = p.batida + p.complementada + p.anulada;
+            const ps = p.sessao, ts = ps.batida + ps.complementada + ps.anulada;
+            const e = est(c);
+            return (
+              <tr key={c}>
+                <td style={cell}>
+                  <div style={{ color: "#ddd", fontWeight: "bold" }}>{c}</div>
+                  <div style={{ color: "#666" }}>posições {posicoes.join(" · ")}</div>
+                </td>
+                <td style={cell}>
+                  <div><span style={{ color: STATUS_COR.batida }}>batida {pctDe(p.batida, t)}</span> · <span style={{ color: STATUS_COR.complementada }}>compl. {pctDe(p.complementada, t)}</span></div>
+                  <div><span style={{ color: STATUS_COR.anulada }}>anulada {pctDe(p.anulada, t)}</span> <span style={{ color: "#666" }}>· {t} vezes</span></div>
+                </td>
+                <td style={cell}>{ts ? <>{ps.batida} batida · {ps.complementada} compl. · {ps.anulada} anulada</> : "—"}</td>
+                <td style={cell}>
+                  {e.geral.n ? <>{pct(e.geral.taxa)} <span style={{ color: "#666" }}>vs {pct(e.geral.acaso)}</span><div style={{ color: e.geral.saldo > 0 ? "#86efac" : "#fca5a5" }}>{sinalRet(retorno(e.geral))}</div></> : "—"}
+                  <div style={{ color: e.liberada ? "#22c55e" : "#666", fontSize: 10 }}>{e.liberada ? "APROVADA" : "não aprovada"}</div>
+                </td>
+              </tr>
+            );
+          })}</tbody>
+        </table>
+      </div>
+
+      <div style={{ fontSize: 11, color: "#888", margin: "10px 0 4px", fontWeight: "bold" }}>Abertas na sessão atual</div>
+      {abertas.length ? abertas.map((oc, k) => (
+        <div key={k} style={{ fontSize: 11, color: "#ccc", padding: "3px 0", borderTop: "1px solid #161616" }}>
+          <b style={{ color: STATUS_COR.aguardando }}>{oc.numero}</b> repetiu ({oc.espaco} no meio) → cavalo {oc.cavalo} · rua {oc.rua.join("-")} ·
+          {" "}{oc.semRua} rodada(s) sem vir · {proxima(oc)}
+        </div>
+      )) : <div style={{ fontSize: 11, color: "#666" }}>Nenhuma aguardando.</div>}
+
+      <div style={{ fontSize: 11, color: "#888", margin: "10px 0 4px", fontWeight: "bold" }}>Últimas resolvidas</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+        {recentes.length ? recentes.map((oc, k) => (
+          <span key={k} style={{ fontSize: 10, border: `1px solid ${STATUS_COR[oc.status]}`, color: STATUS_COR[oc.status], borderRadius: 3, padding: "2px 5px" }}>
+            {oc.numero} · {oc.cavalo} · {oc.status.toUpperCase()}{oc.posicao != null ? ` (${oc.posicao})` : ""}
+          </span>
+        )) : <span style={{ fontSize: 11, color: "#666" }}>Nenhuma ainda.</span>}
       </div>
     </div>
   );
@@ -375,6 +460,7 @@ export default function Validador() {
         <div style={{ display: "grid", gap: 14 }}>
           <Sinal res={res} calculando={calculando} />
           <Confluencia res={res} />
+          <Personalizadas res={res} />
           <SinaisTabela res={res} />
           <Estrategias res={res} />
           <div style={{ fontSize: 11, color: "#666", lineHeight: 1.5 }}>

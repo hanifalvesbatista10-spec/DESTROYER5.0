@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test src/validador/engine.test.js src/validador/sinaisTabela.test.js"
+    "test": "node --test src/validador/engine.test.js src/validador/sinaisTabela.test.js src/validador/estrategiasPersonalizadas.test.js"
   },
   "dependencies": {
     "react": "^19.2.4",

@@ -5,6 +5,7 @@
 // nunca viu (os 25% mais recentes do histórico).
 
 import { sinaisDaSessao, TIPOS_TABELA } from "./sinaisTabela.js";
+import { CAVALOS, cavalosRua } from "./estrategiasPersonalizadas.js";
 
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const TIER = new Set([5,8,10,11,13,16,23,24,27,30,33,36]);
@@ -321,6 +322,42 @@ export function sinaisDaTabela(seqs) {
   return { porTipo, ranking };
 }
 
+// Estratégia personalizada Cavalo × Rua (ver estrategiasPersonalizadas.js).
+// Cada sessão é percorrida separada, como a tabela. Além dos sinais, devolve o
+// placar de cada cavalo e o que está aberto agora na sessão atual.
+export function cavalosDoHistorico(seqs) {
+  const ids = Object.keys(CAVALOS);
+  const porTipo = Object.fromEntries(ids.map(c => [`pers:cavalo:${c}`, { events: [], agora: null }]));
+  const placar = Object.fromEntries(ids.map(c => [c, { batida: 0, complementada: 0, anulada: 0, sessao: { batida: 0, complementada: 0, anulada: 0 } }]));
+  let g = 0, abertas = [], recentes = [];
+  seqs.forEach((s, si) => {
+    const atual = si === seqs.length - 1;
+    const { ocorrencias, apostas } = cavalosRua(s);
+    for (const oc of ocorrencias) {
+      if (oc.status === "aguardando") continue;
+      placar[oc.cavalo][oc.status]++;
+      if (atual) placar[oc.cavalo].sessao[oc.status]++;
+    }
+    apostas.forEach((lista, i) => {
+      for (const a of lista) {
+        const t = porTipo[`pers:cavalo:${a.cavalo}`];
+        if (i < s.length - 1) t.events.push({ g: g + i + 1, hit: a.nums.includes(s[i + 1]) ? 1 : 0, bet: a.nums.length });
+        else if (atual) {
+          const nums = [...new Set([...(t.agora?.nums || []), ...a.nums])].sort((x, y) => x - y);
+          t.agora = { nums, detalhe: `Cavalo ${a.cavalo}: o ${a.oc.numero} repetiu com ${a.oc.espaco} número(s) no meio e a rua ${a.oc.rua.join("-")} está há ${a.pos} rodadas sem vir (posição ${a.pos})` };
+        }
+      }
+    });
+    if (atual) {
+      const resumo = oc => ({ numero: oc.numero, espaco: oc.espaco, cavalo: oc.cavalo, rua: oc.rua, semRua: oc.semRua, status: oc.status, posicao: oc.posicao ?? null, giro: oc.inicio });
+      abertas = ocorrencias.filter(oc => oc.status === "aguardando").map(resumo);
+      recentes = ocorrencias.filter(oc => oc.status !== "aguardando").sort((a, b) => b.fim - a.fim).slice(0, 8).map(resumo);
+    }
+    g += s.length;
+  });
+  return { porTipo, placar, abertas, recentes };
+}
+
 // ---------- validação ----------
 
 export const MIN_HISTORICO = 500;
@@ -342,6 +379,10 @@ export function validar(sessoes) {
     estrategias.push({ id: `tab:${tipo}`, familia: "Sinal da tabela", label: tipo, sempre: true, run: () => daTabela().porTipo[tipo] });
   for (const [id, { label }] of Object.entries(TIPOS_CONFLUENCIA))
     estrategias.push({ id, familia: "Confluência dos sinais", label, sempre: true, run: () => daTabela().porTipo[id] });
+  let cavalos;
+  const daEstrategiaCavalos = () => (cavalos ||= cavalosDoHistorico(seqs));
+  for (const c of Object.keys(CAVALOS))
+    estrategias.push({ id: `pers:cavalo:${c}`, familia: "Estratégia personalizada", label: `Cavalo ${c} × Rua`, sempre: true, run: () => daEstrategiaCavalos().porTipo[`pers:cavalo:${c}`] });
 
   const zc = zCritico(0.05 / estrategias.length);
   const corte = Math.floor(total * (1 - PARTE_TESTE));
@@ -385,7 +426,9 @@ export function validar(sessoes) {
     }
     sinal = { entrar: true, nums, fontes: ativas };
   }
-  return { total, sessoes: seqs.length, repetidas, zCritico: zc, corte, estrategias: res, colunas, sinal, confluencia: daTabela().ranking };
+  const { placar, abertas, recentes } = daEstrategiaCavalos();
+  return { total, sessoes: seqs.length, repetidas, zCritico: zc, corte, estrategias: res, colunas, sinal, confluencia: daTabela().ranking,
+    personalizadas: { cavalos: { placar, abertas, recentes } } };
 }
 
 const pct = x => `${(x * 100).toFixed(1).replace(".", ",")}%`;
