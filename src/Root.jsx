@@ -14,7 +14,7 @@ export default function Root() {
   return (
     <>
       <App />
-      <a href="#validador" style={{ position: 'fixed', top: 8, right: 8, zIndex: 1000, background: '#CC0000', color: '#fff',
+      <a href="#validador" style={{ position: 'fixed', bottom: 8, right: 8, zIndex: 1000, background: '#CC0000', color: '#fff',
         fontFamily: 'Arial, sans-serif', fontWeight: 'bold', fontSize: 11, letterSpacing: 1, padding: '6px 10px',
         borderRadius: 4, textDecoration: 'none' }}>VALIDADOR</a>
     </>

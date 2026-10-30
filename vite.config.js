@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import lineEndingsPatch from './vite-line-endings.js'
 import destroyerPatch from './vite-destroyer-patch.js'
 import radarCleanup from './vite-radar-cleanup.js'
 import targetDuziaPatch from './vite-target-duzia-patch.js'
@@ -27,5 +28,5 @@ import pcaColumnPatch from './vite-pca-column.js'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), last3ClickFilterPatch(), hiddenCharacteristicsPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), terminalStrategyBacktestPatch(), terminalNeighborWeightPatch(), backtestTogglePatch(), terminalVisualQualityPatch(), terminalSpaceCleanupPatch(), terminalActivationNowPatch(), cdFocusModePatch(), ruasFocusModePatch(), ruaModeRefinePatch(), saturationFocusPatch(), filterResultsLayoutPatch(), pcaColumnPatch(), react()],
+  plugins: [lineEndingsPatch(), destroyerPatch(), radarCleanup(), targetDuziaPatch(), focusRepetitionPatch(), terminalFilterPatch(), last3ClickFilterPatch(), hiddenCharacteristicsPatch(), signalFeedbackPatch(), directedAnalysisPatch(), directedWheelRefinePatch(), directedAnalysisHistoryLockPatch(), terminalSideAlertPatch(), terminalStrategyBacktestPatch(), terminalNeighborWeightPatch(), backtestTogglePatch(), terminalVisualQualityPatch(), terminalSpaceCleanupPatch(), terminalActivationNowPatch(), cdFocusModePatch(), ruasFocusModePatch(), ruaModeRefinePatch(), saturationFocusPatch(), filterResultsLayoutPatch(), pcaColumnPatch(), react()],
 })
