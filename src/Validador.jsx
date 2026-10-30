@@ -99,7 +99,8 @@ function Confluencia({ res }) {
   if (!res) return null;
   const est = id => res.estrategias.find(e => e.id === id);
   const alerta = est("conf:alerta");
-  const ranking = (res.confluencia || []).slice(0, 10);
+  // Todos os números citados por algum sinal, para nenhum ficar escondido.
+  const ranking = res.confluencia || [];
   const topo = ranking[0];
   const max = topo?.sinais || 1;
   return (
@@ -124,13 +125,16 @@ function Confluencia({ res }) {
           Alerta acende com {CONF_ALERTA} ou mais sinais no mesmo número, e só se essa regra for aprovada pelo validador.
         </div>
       )}
-      {ranking.length ? ranking.map(({ n, sinais }) => (
-        <div key={n} style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 0" }}>
+      {ranking.length ? ranking.map(({ n, sinais, tipos }) => (
+        <div key={n} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", borderTop: "1px solid #161616" }}>
           <Bola n={n} size={22} />
-          <div style={{ flex: 1, height: 8, background: "#1a1a1a", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{ width: `${(sinais / max) * 100}%`, height: "100%", background: sinais >= CONF_ALERTA ? "#FFD700" : "#4b5563" }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ height: 6, background: "#1a1a1a", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ width: `${(sinais / max) * 100}%`, height: "100%", background: sinais >= CONF_ALERTA ? "#FFD700" : "#4b5563" }} />
+            </div>
+            <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{tipos.join(" · ")}</div>
           </div>
-          <span style={{ fontSize: 11, color: "#aaa", width: 62, textAlign: "right" }}>{sinais} sina{sinais > 1 ? "is" : "l"}</span>
+          <span style={{ fontSize: 11, color: "#aaa", width: 54, textAlign: "right", flexShrink: 0 }}>{sinais} sina{sinais > 1 ? "is" : "l"}</span>
         </div>
       )) : <div style={{ fontSize: 12, color: "#666" }}>Nenhum sinal da tabela formado agora.</div>}
       <div style={{ marginTop: 10, borderTop: "1px solid #1d1d1d", paddingTop: 8 }}>

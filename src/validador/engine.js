@@ -314,7 +314,7 @@ export function sinaisDaTabela(seqs) {
         if (!ultimo) porTipo[id].events.push({ g: g + i + 1, hit: nums.includes(s[i + 1]) ? 1 : 0, bet: nums.length });
         else porTipo[id].agora = { nums, detalhe: `Número${nums.length > 1 ? "s" : ""} em que mais sinais da tabela concordam agora (${nums.map(n => `${n}: ${cnt[n]} sinais`).join(", ")})` };
       }
-      if (ultimo) ranking = rank.map(n => ({ n, sinais: cnt[n] }));
+      if (ultimo) ranking = rank.map(n => ({ n, sinais: cnt[n], tipos: [...new Set(lista.filter(x => x.nums.includes(n)).map(x => x.tipo))] }));
     });
     g += s.length;
   });

@@ -743,6 +743,70 @@ function painelSinais(entries) {
   return step2;
 }
 
+// Sinal 3F, "3 fichas" (bloco escrito direto na tela do App.jsx): coluna com
+// vantagem de 3+ nos últimos 5 + parte dominante + Lado ou OPO mais consistente.
+function tresFichas(entries) {
+          if(entries.length < 5) return [];
+          const l5 = entries.slice(-5);
+
+          // 1. Coluna mais forte com vantagem de 3+ números
+          const colCnt = {C1:0,C2:0,C3:0};
+          l5.forEach(e=>{ if(colCnt[e.coluna]!==undefined) colCnt[e.coluna]++; });
+          const colSorted = Object.entries(colCnt).sort((a,b)=>b[1]-a[1]);
+          const [bestCol, bestColCnt] = colSorted[0];
+          const [,secondColCnt] = colSorted[1]||["",0];
+          // Must have 3+ advantage (e.g. 4-1, 5-0, 3-0)
+          if(bestColCnt - secondColCnt < 3) return [];
+
+          // 2. Parte mais evidente nos últimos 5
+          const parteCnt = {P1:0,P2:0};
+          l5.forEach(e=>{ if(parteCnt[e.parte]!==undefined) parteCnt[e.parte]++; });
+          const bestParte = Object.entries(parteCnt).sort((a,b)=>b[1]-a[1])[0][0];
+
+          // 3. Lado race vs OPO — avalia qual tem mais consistência (presença + sequência)
+          const ladoCnt = {"PB e VA":0,"PA e VB":0};
+          const opoCnt  = {ZERO:0,DEZ:0};
+          l5.forEach(e=>{
+            if(ladoCnt[e.lado]!==undefined) ladoCnt[e.lado]++;
+            if(opoCnt[e.opo]!==undefined)  opoCnt[e.opo]++;
+          });
+          const bestLado = Object.entries(ladoCnt).sort((a,b)=>b[1]-a[1])[0];
+          const bestOpo  = Object.entries(opoCnt).sort((a,b)=>b[1]-a[1])[0];
+
+          // Sequência consecutiva — quem tem mais números seguidos nos últimos 5
+          const ladoSeq = (val) => {
+            let max=0,cur=0;
+            l5.forEach(e=>{ if(e.lado===val){cur++;max=Math.max(max,cur);}else cur=0; });
+            return max;
+          };
+          const opoSeq = (val) => {
+            let max=0,cur=0;
+            l5.forEach(e=>{ if(e.opo===val){cur++;max=Math.max(max,cur);}else cur=0; });
+            return max;
+          };
+
+          // Score: count + sequence bonus
+          const ladoScore = bestLado[1] + ladoSeq(bestLado[0]);
+          const opoScore  = bestOpo[1]  + opoSeq(bestOpo[0]);
+
+          const useOpo = opoScore > ladoScore;
+          const thirdKey   = useOpo ? "opo"  : "lado";
+          const thirdVal   = useOpo ? bestOpo[0] : bestLado[0];
+          const thirdCount = useOpo ? bestOpo[1]  : bestLado[1];
+          const thirdFn    = useOpo ? n=>getOpo(n) : n=>getLado(n);
+          // Build candidates
+
+          const cands = [];
+          for(let n=1;n<=36;n++){
+            if(getColuna(n)!==bestCol) continue;
+            if(getParte(n)!==bestParte) continue;
+            if(thirdFn(n)!==thirdVal) continue;
+            cands.push(n);
+          }
+          if(cands.length===0) return [];
+  return cands;
+}
+
 const NUMEROS = Array.from({ length: 37 }, (_, n) => buildEntry(n, n));
 const numerosCom = (pred) => NUMEROS.filter(pred).map(e => e.num);
 const REGRAS = { 1: "REGRA 3+2", 2: "REGRA ABBA", 3: "REGRA PAR/INTERVALO" };
@@ -761,6 +825,7 @@ export function sinaisDoMomento(snap) {
   push("ANALISADOR", ana);
   push("ANALISADOR tier A", a.analyzerNums.filter(x => x.tier === "A").map(x => x.n));
   push("SINAIS (painel)", painelSinais(snap));
+  push("3F (3 fichas)", tresFichas(snap));
   const last = snap[snap.length - 1], prev = snap[snap.length - 2];
   if (prev && last.duzia === "D2" && (prev.duzia === "D1" || prev.duzia === "D3"))
     push("ALERTA DÚZIA", numerosCom(e => e.duzia === (prev.duzia === "D1" ? "D3" : "D1")));
@@ -774,7 +839,7 @@ export function sinaisDoMomento(snap) {
 }
 
 export const TIPOS_TABELA = ["RADAR", "QUADRANTE", "TERMINAL", "DOMINÂNCIA", "ALVOS ULT 5", "ALVOS + COLUNA", "FUSÃO ⚡",
-  "ANALISADOR", "ANALISADOR tier A", "SINAIS (painel)", "ALERTA DÚZIA", "ALERTA COLUNA", "REGRA 3+2", "REGRA ABBA", "REGRA PAR/INTERVALO"];
+  "ANALISADOR", "ANALISADOR tier A", "SINAIS (painel)", "3F (3 fichas)", "ALERTA DÚZIA", "ALERTA COLUNA", "REGRA 3+2", "REGRA ABBA", "REGRA PAR/INTERVALO"];
 
 // Passa por uma sessão giro a giro. Para cada giro i (0 = primeiro número)
 // lista os sinais formados com as entradas 0..i, que valem para o giro i+1.
