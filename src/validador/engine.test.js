@@ -24,6 +24,12 @@ test("importa linhas no formato colado e põe em ordem cronológica", () => {
   assert.equal(b[0].nums.length, 50);
 });
 
+test("como na tabela, o primeiro número de cada linha é o mais recente", () => {
+  const linha = "30/10/2026 — " + Array.from({ length: 12 }, (_, i) => i + 1).join(" ");
+  assert.deepEqual(parseHistorico(linha)[0].nums, [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+  assert.deepEqual(parseHistorico(linha, true, false)[0].nums, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+});
+
 test("junta blocos extraídos em duplicidade sem repetir números", () => {
   const base = aleatorio(300, 3);
   const r = juntarSobrepostas([{ date: "d", nums: base.slice(0, 200) }, { date: "d", nums: base.slice(60, 300) }]);

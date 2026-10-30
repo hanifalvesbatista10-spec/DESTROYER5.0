@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import { useEntradasCompartilhadas } from "./sessaoCompartilhada.js";
 
 const RED_NUMS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 
@@ -1680,7 +1681,7 @@ function PatternCatalog({ entries, onApplyFilters }) {
 let idCounter = 0;
 
 export default function DestroyerRaceTable() {
-  const [entries, setEntries] = useState([]);
+  const [entries, setEntries] = useEntradasCompartilhadas(buildEntry);
   const [input, setInput]     = useState("");
   const [colOrder, setColOrder] = useState(() => INIT_COLS.map(c=>c.key));
   const [hidden, setHidden] = useState(

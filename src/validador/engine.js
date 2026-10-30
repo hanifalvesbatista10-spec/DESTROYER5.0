@@ -76,8 +76,9 @@ const MATCH = Array.from({ length: 37 }, (_, a) =>
 const DATE_RE = /(\d{2})\/(\d{2})\/(\d{4})/;
 
 // Aceita linhas como "1. 30/10/2026 — 34 28 21 ..." ou "30/10/2026|34 28 ...".
-// Os números de cada linha vêm do mais antigo para o mais novo.
-export function parseHistorico(text, maisRecentePrimeiro = true) {
+// Como na caixa da tabela, o primeiro número de cada linha é o mais recente
+// (numeroRecentePrimeiro = false para linhas do mais antigo ao mais novo).
+export function parseHistorico(text, maisRecentePrimeiro = true, numeroRecentePrimeiro = true) {
   let blocos = [];
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(DATE_RE);
@@ -85,6 +86,7 @@ export function parseHistorico(text, maisRecentePrimeiro = true) {
     const resto = line.slice(m.index + m[0].length);
     const nums = (resto.match(/\d+/g) || []).map(Number).filter(n => n <= 36);
     if (nums.length < 10) continue;
+    if (numeroRecentePrimeiro) nums.reverse();
     blocos.push({ date: `${m[3]}-${m[2]}-${m[1]}`, nums });
   }
   if (maisRecentePrimeiro) blocos.reverse();

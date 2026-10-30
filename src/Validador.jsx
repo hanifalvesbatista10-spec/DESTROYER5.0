@@ -1,19 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { CONF_ALERTA, parseHistorico, pct } from "./validador/engine.js";
+import { hoje, useSessoes } from "./sessaoCompartilhada.js";
 
-const STORAGE_KEY = "validador.sessoes.v1";
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const numBg = n => n === 0 ? "#15803d" : RED.has(n) ? "#CC0000" : "#1f1f1f";
-const hoje = () => new Date().toISOString().slice(0, 10);
 const dataBR = d => d.split("-").reverse().join("/");
-
-function carregar() {
-  try {
-    const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (Array.isArray(s) && s.length) return s;
-  } catch { /* sem armazenamento: começa vazio */ }
-  return [{ date: hoje(), nums: [] }];
-}
 
 const FONT = "Arial, sans-serif";
 const PANEL = { background: "#111", border: "1px solid #262626", borderRadius: 6, padding: 14 };
@@ -250,9 +241,10 @@ function Estrategias({ res }) {
 function Historico({ sessoes, setSessoes }) {
   const [texto, setTexto] = useState("");
   const [recentePrimeiro, setRecentePrimeiro] = useState(true);
+  const [numeroRecentePrimeiro, setNumeroRecentePrimeiro] = useState(true);
   const [aviso, setAviso] = useState("");
   const importar = () => {
-    const blocos = parseHistorico(texto, recentePrimeiro);
+    const blocos = parseHistorico(texto, recentePrimeiro, numeroRecentePrimeiro);
     if (!blocos.length) { setAviso("Nenhuma linha com data e números encontrada."); return; }
     const atual = sessoes[sessoes.length - 1];
     const anteriores = sessoes.slice(0, -1);
@@ -284,6 +276,9 @@ function Historico({ sessoes, setSessoes }) {
         <label style={{ fontSize: 12, color: "#999" }}>
           <input type="checkbox" checked={recentePrimeiro} onChange={e => setRecentePrimeiro(e.target.checked)} /> lista começa pela sessão mais recente
         </label>
+        <label style={{ fontSize: 12, color: "#999" }}>
+          <input type="checkbox" checked={numeroRecentePrimeiro} onChange={e => setNumeroRecentePrimeiro(e.target.checked)} /> em cada linha o primeiro número é o mais recente (igual à tabela)
+        </label>
         <button style={{ ...BTN, marginLeft: "auto" }} onClick={exportar}>Exportar</button>
       </div>
       {aviso && <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>{aviso}</div>}
@@ -292,7 +287,7 @@ function Historico({ sessoes, setSessoes }) {
 }
 
 export default function Validador() {
-  const [sessoes, setSessoes] = useState(carregar);
+  const [sessoes, setSessoes] = useSessoes();
   const [resultado, setResultado] = useState(null);
   const [colar, setColar] = useState("");
   const worker = useRef(null);
@@ -308,7 +303,6 @@ export default function Validador() {
   }, []);
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessoes)); } catch { /* segue sem salvar */ }
     const id = pedido.current.id + 1;
     pedido.current = { id, sessoes };
     const t = setTimeout(() => worker.current?.postMessage({ id, sessoes }), 150);
@@ -322,7 +316,8 @@ export default function Validador() {
   const setAtual = nums => setSessoes([...sessoes.slice(0, -1), { ...atual, nums }]);
   const ultimos = useMemo(() => atual.nums.slice(-14).reverse(), [atual]);
   const adicionarColados = () => {
-    const nums = (colar.match(/\d+/g) || []).map(Number).filter(n => n <= 36);
+    // Mesma ordem da caixa da tabela: o primeiro número colado é o mais recente.
+    const nums = (colar.match(/\d+/g) || []).map(Number).filter(n => n <= 36).reverse();
     if (nums.length) setAtual([...atual.nums, ...nums]);
     setColar("");
   };
@@ -352,7 +347,7 @@ export default function Validador() {
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
               <input value={colar} onChange={e => setColar(e.target.value)} onKeyDown={e => e.key === "Enter" && adicionarColados()}
-                placeholder="ou cole vários (do mais antigo ao mais novo)" style={{ ...TEXTAREA, flex: 1 }} />
+                placeholder="ou cole vários, como na tabela: 23 10 11" style={{ ...TEXTAREA, flex: 1 }} />
               <button style={BTN} onClick={adicionarColados}>Adicionar</button>
             </div>
           </div>
