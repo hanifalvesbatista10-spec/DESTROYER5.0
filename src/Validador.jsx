@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { CONF_ALERTA, parseHistorico, pct } from "./validador/engine.js";
+import { CONF_ALERTA, parseHistorico, pct, sessoesRepetidas } from "./validador/engine.js";
 import { hoje, useSessoes } from "./sessaoCompartilhada.js";
 
 const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
@@ -248,10 +248,15 @@ function Historico({ sessoes, setSessoes }) {
     if (!blocos.length) { setAviso("Nenhuma linha com data e números encontrada."); return; }
     const atual = sessoes[sessoes.length - 1];
     const anteriores = sessoes.slice(0, -1);
-    setSessoes([...anteriores, ...blocos, ...(atual.nums.length ? [atual] : [{ date: hoje(), nums: [] }])]);
+    const juntas = [...anteriores, ...blocos, ...(atual.nums.length ? [atual] : [{ date: hoje(), nums: [] }])];
+    // Sessão já salva antes (mesmo trecho, em qualquer ordem) não entra duas vezes.
+    const repetidas = sessoesRepetidas(juntas);
+    setSessoes(juntas.filter((_, i) => !repetidas.includes(i)));
     setTexto("");
-    setAviso(`${blocos.length} sessões importadas (${blocos.reduce((a, b) => a + b.nums.length, 0)} números, trechos repetidos removidos).`);
+    setAviso(`${blocos.length} sessões importadas (${blocos.reduce((a, b) => a + b.nums.length, 0)} números)` +
+      (repetidas.length ? `; ${repetidas.length} sessões repetidas foram descartadas, ficou a cópia mais nova.` : "."));
   };
+  const repetidasSalvas = useMemo(() => sessoesRepetidas(sessoes), [sessoes]);
   const exportar = () => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(sessoes)], { type: "application/json" }));
     const a = document.createElement("a"); a.href = url; a.download = `validador-${hoje()}.json`; a.click(); URL.revokeObjectURL(url);
@@ -259,6 +264,15 @@ function Historico({ sessoes, setSessoes }) {
   return (
     <div style={PANEL}>
       <h2 style={H2}>Histórico</h2>
+      {repetidasSalvas.length > 0 && (
+        <div style={{ border: "1px solid #b45309", background: "#2a1a05", borderRadius: 4, padding: 10, marginBottom: 12, fontSize: 12, color: "#fcd34d" }}>
+          {repetidasSalvas.length} sessões repetem números de outras (provavelmente o mesmo histórico importado duas vezes).
+          Elas estão sendo ignoradas na validação, porque repetição faz estratégia parecer aprovada sem ser.
+          <div style={{ marginTop: 8 }}>
+            <button style={BTN} onClick={() => setSessoes(sessoes.filter((_, i) => !repetidasSalvas.includes(i)))}>Remover as repetidas do histórico</button>
+          </div>
+        </div>
+      )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
         {sessoes.slice(0, -1).map((s, i) => (
           <span key={i} style={{ fontSize: 11, background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 3, padding: "3px 6px", color: "#bbb" }}>

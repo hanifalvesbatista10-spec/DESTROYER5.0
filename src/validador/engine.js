@@ -123,6 +123,19 @@ export function juntarSobrepostas(blocos) {
   return out;
 }
 
+// Sessões que repetem um trecho de outra (mesma sessão importada duas vezes,
+// inclusive invertida) fazem o validador "prever" a cópia e aprovar estratégia
+// falsa. Devolve os índices a ignorar, mantendo sempre a cópia mais recente.
+export function sessoesRepetidas(sessoes) {
+  const mantidas = [], repetidas = [];
+  for (let i = sessoes.length - 1; i >= 0; i--) {
+    const nums = sessoes[i].nums;
+    if (nums.length >= RUN && mantidas.some(m => compartilhaTrecho(m, nums) || compartilhaTrecho(m, [...nums].reverse()))) repetidas.push(i);
+    else mantidas.push(nums);
+  }
+  return repetidas.reverse();
+}
+
 // ---------- estatística ----------
 
 function phi(z) {
@@ -314,7 +327,8 @@ export const MIN_HISTORICO = 500;
 const PARTE_TESTE = 0.25;
 
 export function validar(sessoes) {
-  const seqs = sessoes.map(s => s.nums).filter(s => s.length);
+  const repetidas = sessoesRepetidas(sessoes);
+  const seqs = sessoes.filter((_, i) => !repetidas.includes(i)).map(s => s.nums).filter(s => s.length);
   const total = seqs.reduce((a, s) => a + s.length, 0);
   const estrategias = [];
   for (const col of COLUMNS) for (const K of [3, 4, 5])
@@ -371,7 +385,7 @@ export function validar(sessoes) {
     }
     sinal = { entrar: true, nums, fontes: ativas };
   }
-  return { total, sessoes: seqs.length, zCritico: zc, corte, estrategias: res, colunas, sinal, confluencia: daTabela().ranking };
+  return { total, sessoes: seqs.length, repetidas, zCritico: zc, corte, estrategias: res, colunas, sinal, confluencia: daTabela().ranking };
 }
 
 const pct = x => `${(x * 100).toFixed(1).replace(".", ",")}%`;

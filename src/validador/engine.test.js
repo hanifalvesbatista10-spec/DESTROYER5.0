@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { COLUMNS, parseHistorico, juntarSobrepostas, validar, zCritico, padroes, situacao, cruzado } from "./engine.js";
+import { COLUMNS, parseHistorico, juntarSobrepostas, validar, zCritico, padroes, situacao, cruzado, sessoesRepetidas } from "./engine.js";
 
 function rng(seed) {
   let s = seed >>> 0;
@@ -92,4 +92,15 @@ test("confluência: ranking em ordem e top 1 aposta em 1 número só", () => {
   assert.equal(top1.geral.fichas, top1.geral.n);
   const alerta = v.estrategias.find(e => e.id === "conf:alerta");
   assert.ok(alerta.geral.n <= top1.geral.n);
+});
+
+test("histórico importado duas vezes não cria estratégia aprovada", () => {
+  const unico = sessoesDe(aleatorio(1600, 12));
+  const invertido = unico.map(s => ({ ...s, nums: [...s.nums].reverse() }));
+  assert.deepEqual(sessoesRepetidas([...unico, ...unico]), unico.map((_, i) => i));
+  assert.deepEqual(sessoesRepetidas([...invertido, ...unico]), unico.map((_, i) => i));
+  const v = validar([...unico, ...unico]);
+  assert.equal(v.total, 1600);
+  assert.equal(v.repetidas.length, unico.length);
+  assert.deepEqual(v.estrategias.filter(e => e.liberada).map(e => e.id), []);
 });
