@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useEntradasCompartilhadas } from "./sessaoCompartilhada.js";
+import { maisFamiliares } from "./validador/familiaridade.js";
 
 const RED_NUMS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 
@@ -711,7 +712,6 @@ function CatalogFooterStats({ entries, terminalStats, filterSel, onSelectFilter 
       {label:"Lado",  key:"lado",   vals:["PB e VA","PA e VB"],          pal:LADO_CELL},
       {label:"Par",   key:"paridade", vals:["Par","Ímpar"],              pal:PAR_CELL},
       {label:"Parte", key:"parte",  vals:["P1","P2"],                    pal:PARTE_CELL},
-      {label:"Dúzia", key:"duzia",  vals:["D1","D2","D3"],               pal:DUZIA_CELL},
       {label:"Zona",  key:"regiao", vals:["Tier","Orphelins","Voisins"], pal:REGIAO_CELL},
       {label:"Cavalo",key:"cavalo", vals:["369","258","147"],             pal:CAVALO_CELL},
       {label:"FRA",   key:"fra",    vals:["F1e","F2e","F3e","F1d","F2d","F3d"], pal:FRA_CELL},
@@ -723,7 +723,7 @@ function CatalogFooterStats({ entries, terminalStats, filterSel, onSelectFilter 
       const arr = [];
       for(let k=0;k<p.count;k++) arr.push({
         cor:getColor(p.num), lado:getLado(p.num), paridade:getParidade(p.num),
-        parte:getParte(p.num), duzia:getDuzia(p.num), regiao:getRegiao(p.num), cavalo:getCavalo(p.num),
+        parte:getParte(p.num), regiao:getRegiao(p.num), cavalo:getCavalo(p.num),
         fra:getFra(p.num), opo:getOpo(p.num), grupoDezena:getGrupoDezena(p.num), ruaPar:getRuaParidade(p.num)
       });
       return arr;
@@ -738,9 +738,19 @@ function CatalogFooterStats({ entries, terminalStats, filterSel, onSelectFilter 
     });
   }
 
-  if (dominants.length === 0) return null;
+  // Coluna e Dúzia sempre aparecem: a mais forte entre os 5 números puxados da linha.
+  const fortesDos5 = [
+    {label:"Coluna", key:"coluna", vals:["C1","C2","C3"], pal:COLUNA_CELL},
+    {label:"Dúzia",  key:"duzia",  vals:["D1","D2","D3"], pal:DUZIA_CELL},
+  ].flatMap(({label,key,vals,pal}) => {
+    const best = vals.map(val=>({val,cnt:lastHist.filter(e=>e[key]===val).length})).sort((a,b)=>b.cnt-a.cnt)[0];
+    const pct = lastHist.length ? Math.round(best.cnt/lastHist.length*100) : 0;
+    return pct >= 50 ? [{label,val:best.val,pct,pal:pal[best.val]||{bg:"#222",text:"#aaa"},filterKey:key}] : [];
+  });
+
+  if (dominants.length === 0 && fortesDos5.length === 0) return null;
   dominants.sort((a,b)=>b.pct-a.pct);
-  const top5cards = dominants.slice(0,5);
+  const top5cards = [...fortesDos5, ...dominants.slice(0,5)].sort((a,b)=>b.pct-a.pct);
   const cardActive=(key,val)=>{ const cur=filterSel?.[key]; return Array.isArray(cur)?cur.includes(val):cur===val; };
 
   return (
@@ -2351,6 +2361,8 @@ export default function DestroyerRaceTable() {
           const domKeys = Object.keys(allDomVals).filter(k=>NFIELDX[k]);
           const matchNums = [];
           for(let n=0;n<=36;n++){ if(domKeys.length>0 && domKeys.every(k=>NFIELDX[k](n)===allDomVals[k])) matchNums.push(n); }
+          const puxadosDaLinha = getHistorico(entries, entries.length - 1, entries[entries.length - 1].num).map(e=>e.num);
+          const familiares = maisFamiliares(matchNums, puxadosDaLinha);
           return (
             <div style={{display:"flex",gap:3,padding:"3px 0",flexWrap:"wrap",alignItems:"center",borderTop:"1px solid #1a1a1a",borderBottom:"1px solid #1a1a1a",marginTop:2,marginBottom:2}}>
               {sortedDomCols.map(col => {
@@ -2410,8 +2422,9 @@ export default function DestroyerRaceTable() {
                   <span style={{fontSize:7,color:"#555",flexShrink:0}}>▶</span>
                   {matchNums.map(n=>{
                     const cor=getColor(n);
+                    const dourado=familiares.nums.includes(n);
                     return (
-                      <div key={n} style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:NUM_BALL[cor].bg,border:"2px solid "+NUM_BALL[cor].border,color:"#fff",fontSize:11,fontWeight:"bold",flexShrink:0}}>{n}</div>
+                      <div key={n} title={dourado?`Mais parecido com o ${familiares.motivo[n].com} puxado: ${familiares.motivo[n].classes.join(", ")}`:undefined} style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",background:NUM_BALL[cor].bg,border:dourado?"3px solid #FFD700":"2px solid "+NUM_BALL[cor].border,boxShadow:dourado?"0 0 10px #FFD700":"none",color:"#fff",fontSize:11,fontWeight:"bold",flexShrink:0}}>{n}</div>
                     );
                   })}
                 </div>
